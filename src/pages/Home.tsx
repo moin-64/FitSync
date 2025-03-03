@@ -6,9 +6,10 @@ import { useAuth } from '../context/AuthContext';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Dumbbell, PlusSquare, Camera, Scan, LogOut, User } from 'lucide-react';
+import { Dumbbell, PlusSquare, Camera, LogOut, User } from 'lucide-react';
 import ProblemBar from '@/components/ProblemBar';
 import WorkoutCard from '@/components/WorkoutCard';
+import WorkoutScanner from '@/components/WorkoutScanner';
 
 const Home = () => {
   const { profile, workouts, loading, deleteWorkout } = useUser();
@@ -16,6 +17,7 @@ const Home = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [savedWorkouts, setSavedWorkouts] = useState<any[]>([]);
+  const [showScanner, setShowScanner] = useState(false);
   
   useEffect(() => {
     if (!loading) {
@@ -49,10 +51,7 @@ const Home = () => {
   };
   
   const handleScanWorkout = () => {
-    toast({
-      title: 'Coming Soon',
-      description: 'This feature will be available in a future update!',
-    });
+    setShowScanner(true);
   };
   
   const handleLimitationAdded = (limitation: string) => {
@@ -75,6 +74,8 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-background animate-page-transition-in">
+      {showScanner && <WorkoutScanner onClose={() => setShowScanner(false)} />}
+      
       <header className="glass border-b border-border/30 sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">

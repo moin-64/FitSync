@@ -2,7 +2,7 @@
 import React from 'react';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Play, Trash2 } from 'lucide-react';
+import { Play, Trash2, Calendar, Clock, Dumbbell, Camera, Sparkles } from 'lucide-react';
 
 interface WorkoutCardProps {
   id: string;
@@ -23,10 +23,22 @@ const WorkoutCard: React.FC<WorkoutCardProps> = ({
   onStart,
   onDelete
 }) => {
-  const typeLabels = {
-    manual: 'Custom',
-    ai: 'AI Generated',
-    scanned: 'Scanned'
+  const typeConfig = {
+    manual: {
+      label: 'Custom',
+      icon: <Dumbbell className="h-4 w-4" />,
+      color: 'bg-primary/20 text-primary'
+    },
+    ai: {
+      label: 'AI Generated',
+      icon: <Sparkles className="h-4 w-4" />,
+      color: 'bg-secondary/20 text-secondary'
+    },
+    scanned: {
+      label: 'Scanned',
+      icon: <Camera className="h-4 w-4" />,
+      color: 'bg-muted/50 text-foreground'
+    }
   };
   
   const formatDuration = (minutes: number) => {
@@ -48,16 +60,23 @@ const WorkoutCard: React.FC<WorkoutCardProps> = ({
     <Card className="glass card-hover h-full overflow-hidden flex flex-col">
       <div className="p-4 flex flex-col h-full">
         <div className="mb-2">
-          <span className="pill bg-secondary/20 text-secondary-foreground">
-            {typeLabels[type]}
+          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${typeConfig[type].color}`}>
+            {typeConfig[type].icon}
+            <span className="ml-1">{typeConfig[type].label}</span>
           </span>
         </div>
         
         <h3 className="text-lg font-bold mb-2">{name}</h3>
         
-        <div className="text-sm text-muted-foreground mb-4 flex-grow">
-          <p>{exerciseCount} exercises</p>
-          <p>{formatDuration(duration)}</p>
+        <div className="text-sm text-muted-foreground space-y-1 mb-4 flex-grow">
+          <div className="flex items-center">
+            <Calendar className="h-4 w-4 mr-1.5" />
+            <p>{exerciseCount} exercises</p>
+          </div>
+          <div className="flex items-center">
+            <Clock className="h-4 w-4 mr-1.5" />
+            <p>{formatDuration(duration)}</p>
+          </div>
         </div>
         
         <div className="flex space-x-2 mt-auto">
