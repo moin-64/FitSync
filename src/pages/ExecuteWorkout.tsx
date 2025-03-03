@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -22,6 +21,7 @@ const ExecuteWorkout: React.FC = () => {
   const [caloriesBurned, setCaloriesBurned] = useState<number | null>(null);
   const [oxygenSaturation, setOxygenSaturation] = useState<number | null>(null);
   const [showCompletionForm, setShowCompletionForm] = useState(false);
+  const [exerciseTimer, setExerciseTimer] = useState(0);
   
   // Audio analysis state
   const audioContext = useRef<AudioContext | null>(null);
@@ -44,6 +44,16 @@ const ExecuteWorkout: React.FC = () => {
     completed: false
   };
   
+  const currentEx = workout.exercises[currentExercise];
+  
+  // Initialize exercise timer when current exercise changes
+  useEffect(() => {
+    if (currentEx && currentEx.duration) {
+      setExerciseTimer(currentEx.duration);
+    }
+  }, [currentExercise, currentEx]);
+  
+  // Main timer for tracking total workout time
   useEffect(() => {
     const timer = setInterval(() => {
       if (!isPaused) {
@@ -53,6 +63,31 @@ const ExecuteWorkout: React.FC = () => {
     
     return () => clearInterval(timer);
   }, [isPaused]);
+  
+  // Exercise countdown timer
+  useEffect(() => {
+    let intervalId: number;
+    
+    if (currentEx && currentEx.duration && exerciseTimer > 0 && !isPaused) {
+      intervalId = window.setInterval(() => {
+        setExerciseTimer(prevTime => {
+          const newTime = prevTime - 1;
+          
+          // If timer reaches zero, move to next exercise or rest period
+          if (newTime <= 0) {
+            handleSkip();
+            return 0;
+          }
+          
+          return newTime;
+        });
+      }, 1000);
+    }
+    
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [exerciseTimer, isPaused, currentEx]);
   
   // Setup audio context and analyzer for detecting struggle
   useEffect(() => {
@@ -201,10 +236,15 @@ const ExecuteWorkout: React.FC = () => {
     }
   };
   
+  // Format time for display (MM:SS)
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+  
   // Calculate progress percentage
   const progress = (currentExercise / workout.exercises.length) * 100;
-  
-  const currentEx = workout.exercises[currentExercise];
   
   if (showCompletionForm) {
     return (
@@ -329,7 +369,7 @@ const ExecuteWorkout: React.FC = () => {
         
         {currentEx.duration ? (
           <p className="text-xl mb-4">
-            {Math.floor(currentEx.duration / 60)}:{(currentEx.duration % 60).toString().padStart(2, '0')}
+            {formatTime(exerciseTimer)}
           </p>
         ) : (
           <p className="text-xl mb-4">{currentEx.sets} sets × {currentEx.reps} reps</p>
