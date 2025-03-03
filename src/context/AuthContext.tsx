@@ -20,6 +20,11 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Key storage constants
+const USER_KEY = 'user';
+const KEY_PREFIX = 'secure_key-';
+const USER_DATA_KEY = 'userData';
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -29,7 +34,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Check if user is already logged in
     const checkAuth = async () => {
       try {
-        const storedUser = localStorage.getItem('user');
+        const storedUser = localStorage.getItem(USER_KEY);
         if (storedUser) {
           const userData = JSON.parse(storedUser);
           setUser(userData);
@@ -50,18 +55,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // In a real app, this would be an API call to validate credentials
       // For demo purposes, we're simulating authentication locally
       
-      // Simulating server response with user data and encryption key
+      // Retrieve the private key for this user
+      const privateKey = localStorage.getItem(`${KEY_PREFIX}${email}`);
+      
+      if (!privateKey) {
+        throw new Error('User not found or invalid credentials');
+      }
+      
+      // Simulating server response with user data
       const mockUserResponse = {
         id: `user-${Date.now()}`,
         username: email.split('@')[0],
         email,
-        // In a real app, this key would be securely stored and retrieved
-        encryptionKey: localStorage.getItem(`key-${email}`) || ''
       };
-      
-      if (!mockUserResponse.encryptionKey) {
-        throw new Error('User not found or invalid credentials');
-      }
       
       // Store user in state
       setUser({
@@ -71,14 +77,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       
       // Save to local storage for persistence
-      localStorage.setItem('user', JSON.stringify({
+      localStorage.setItem(USER_KEY, JSON.stringify({
         id: mockUserResponse.id,
         username: mockUserResponse.username,
         email: mockUserResponse.email
       }));
       
       // Decrypt and load user data
-      await decryptUserData(mockUserResponse.encryptionKey);
+      await decryptUserData(privateKey);
       
       navigate('/home');
     } catch (error) {
@@ -92,14 +98,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (username: string, email: string, password: string) => {
     setLoading(true);
     try {
-      // Generate encryption key pair for the user
+      // Generate secure encryption key pair for the user
       const { publicKey, privateKey } = await generateKeyPair();
       
-      // In a real app, this would be an API call to create a user account
-      // and store the public key securely on the server
+      // In a real app, the public key would be sent to the server,
+      // while the private key would be derived from the user's password
+      // or stored in a secure enclave/keychain
       
-      // For demo, we'll store locally
-      localStorage.setItem(`key-${email}`, privateKey);
+      // For demo, we'll store the private key locally (not recommended for production)
+      localStorage.setItem(`${KEY_PREFIX}${email}`, privateKey);
       
       // Create user data
       const userData = {
@@ -112,10 +119,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(userData);
       
       // Save to local storage for persistence
-      localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem(USER_KEY, JSON.stringify(userData));
       
-      // Initialize encrypted user data storage
-      await initializeUserData(privateKey);
+      // Initialize encrypted user data storage using the public key
+      await initializeUserData(publicKey);
       
       navigate('/onboarding');
     } catch (error) {
@@ -128,12 +135,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('user');
-    localStorage.removeItem('userData');
+    localStorage.removeItem(USER_KEY);
+    // Note: We don't remove the encrypted data or keys on logout
+    // This allows the user to log back in and access their data
     navigate('/login');
   };
 
-  const initializeUserData = async (key: string) => {
+  const initializeUserData = async (publicKey: string) => {
     // Initialize empty encrypted user data
     const emptyUserData = {
       profile: {
@@ -148,19 +156,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       settings: {}
     };
     
-    // Encrypt and store
-    const encrypted = await encryptData(JSON.stringify(emptyUserData), key);
-    localStorage.setItem('userData', encrypted);
+    // Encrypt and store using the public key
+    const encrypted = await encryptData(JSON.stringify(emptyUserData), publicKey);
+    localStorage.setItem(USER_DATA_KEY, encrypted);
   };
 
-  const decryptUserData = async (key: string) => {
+  const decryptUserData = async (privateKey: string) => {
     // In a real app, this might fetch encrypted data from a server
     // For demo, we're just retrieving from localStorage
     try {
-      const encryptedData = localStorage.getItem('userData');
+      const encryptedData = localStorage.getItem(USER_DATA_KEY);
       if (encryptedData) {
-        // Decrypt user data
-        const decrypted = await decryptData(encryptedData, key);
+        // Decrypt user data using the private key
+        const decrypted = await decryptData(encryptedData, privateKey);
         // Here we would parse and load decrypted user data into app state
         console.log('User data loaded successfully');
       }
