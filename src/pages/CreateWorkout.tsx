@@ -8,24 +8,38 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Plus, SaveAll, Trash2, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { ArrowLeft, Plus, SaveAll, Trash2, ChevronDown, ChevronUp, Loader2, Dumbbell } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-// Mock data for exercise options
+// Erweiterte Liste mit Fitnessübungen
 const availableExercises = [
-  { id: 'ex1', name: 'Bench Press', equipment: 'Barbell', videoUrl: '/bench-press.mp4' },
-  { id: 'ex2', name: 'Squat', equipment: 'Barbell', videoUrl: '/squat.mp4' },
-  { id: 'ex3', name: 'Deadlift', equipment: 'Barbell', videoUrl: '/deadlift.mp4' },
-  { id: 'ex4', name: 'Pull Up', equipment: 'Body Weight', videoUrl: '/pull-up.mp4' },
-  { id: 'ex5', name: 'Push Up', equipment: 'Body Weight', videoUrl: '/push-up.mp4' },
-  { id: 'ex6', name: 'Lat Pulldown', equipment: 'Cable Machine', videoUrl: '/lat-pulldown.mp4' },
-  { id: 'ex7', name: 'Leg Press', equipment: 'Machine', videoUrl: '/leg-press.mp4' },
-  { id: 'ex8', name: 'Bicep Curl', equipment: 'Dumbbell', videoUrl: '/bicep-curl.mp4' },
-  { id: 'ex9', name: 'Tricep Extension', equipment: 'Cable', videoUrl: '/tricep-extension.mp4' },
-  { id: 'ex10', name: 'Shoulder Press', equipment: 'Dumbbell', videoUrl: '/shoulder-press.mp4' },
+  { id: 'ex1', name: 'Bench Press', equipment: 'Barbell', videoUrl: '/bench-press.mp4', category: 'Chest' },
+  { id: 'ex2', name: 'Squat', equipment: 'Barbell', videoUrl: '/squat.mp4', category: 'Legs' },
+  { id: 'ex3', name: 'Deadlift', equipment: 'Barbell', videoUrl: '/deadlift.mp4', category: 'Back' },
+  { id: 'ex4', name: 'Pull Up', equipment: 'Body Weight', videoUrl: '/pull-up.mp4', category: 'Back' },
+  { id: 'ex5', name: 'Push Up', equipment: 'Body Weight', videoUrl: '/push-up.mp4', category: 'Chest' },
+  { id: 'ex6', name: 'Lat Pulldown', equipment: 'Cable Machine', videoUrl: '/lat-pulldown.mp4', category: 'Back' },
+  { id: 'ex7', name: 'Leg Press', equipment: 'Machine', videoUrl: '/leg-press.mp4', category: 'Legs' },
+  { id: 'ex8', name: 'Bicep Curl', equipment: 'Dumbbell', videoUrl: '/bicep-curl.mp4', category: 'Arms' },
+  { id: 'ex9', name: 'Tricep Extension', equipment: 'Cable', videoUrl: '/tricep-extension.mp4', category: 'Arms' },
+  { id: 'ex10', name: 'Shoulder Press', equipment: 'Dumbbell', videoUrl: '/shoulder-press.mp4', category: 'Shoulders' },
+  { id: 'ex11', name: 'Leg Curl', equipment: 'Machine', videoUrl: '/leg-curl.mp4', category: 'Legs' },
+  { id: 'ex12', name: 'Leg Extension', equipment: 'Machine', videoUrl: '/leg-extension.mp4', category: 'Legs' },
+  { id: 'ex13', name: 'Chest Fly', equipment: 'Cable', videoUrl: '/chest-fly.mp4', category: 'Chest' },
+  { id: 'ex14', name: 'Lateral Raise', equipment: 'Dumbbell', videoUrl: '/lateral-raise.mp4', category: 'Shoulders' },
+  { id: 'ex15', name: 'Face Pull', equipment: 'Cable', videoUrl: '/face-pull.mp4', category: 'Shoulders' },
+  { id: 'ex16', name: 'Cable Row', equipment: 'Cable', videoUrl: '/cable-row.mp4', category: 'Back' },
+  { id: 'ex17', name: 'Calf Raise', equipment: 'Machine', videoUrl: '/calf-raise.mp4', category: 'Legs' },
+  { id: 'ex18', name: 'Hammer Curl', equipment: 'Dumbbell', videoUrl: '/hammer-curl.mp4', category: 'Arms' },
+  { id: 'ex19', name: 'Skull Crusher', equipment: 'Barbell', videoUrl: '/skull-crusher.mp4', category: 'Arms' },
+  { id: 'ex20', name: 'Incline Bench Press', equipment: 'Barbell', videoUrl: '/incline-bench-press.mp4', category: 'Chest' },
+  { id: 'ex21', name: 'Romanian Deadlift', equipment: 'Barbell', videoUrl: '/romanian-deadlift.mp4', category: 'Legs' },
+  { id: 'ex22', name: 'Pull-Through', equipment: 'Cable', videoUrl: '/pull-through.mp4', category: 'Glutes' },
+  { id: 'ex23', name: 'Ab Roller', equipment: 'Ab Wheel', videoUrl: '/ab-roller.mp4', category: 'Core' },
+  { id: 'ex24', name: 'Plank', equipment: 'Body Weight', videoUrl: '/plank.mp4', category: 'Core' },
 ];
 
-// Mock AI-generated workout
+// Verbesserte AI-Workout-Generierung
 const generateAIWorkout = (limitations: string[] = []) => {
   const warmup = {
     id: `ex-warmup-${Date.now()}`,
@@ -35,59 +49,69 @@ const generateAIWorkout = (limitations: string[] = []) => {
     duration: 600, // 10 minutes in seconds
     restBetweenSets: 60,
     equipment: 'Treadmill',
+    weight: 0,
   };
   
-  let exercises = [
-    {
-      id: `ex-${Date.now()}-1`,
-      name: 'Bench Press',
-      sets: 3,
-      reps: 10,
-      restBetweenSets: 90,
-      equipment: 'Barbell',
-    },
-    {
-      id: `ex-${Date.now()}-2`,
-      name: 'Squat',
-      sets: 3,
-      reps: 10,
-      restBetweenSets: 90,
-      equipment: 'Barbell',
-    },
-    {
-      id: `ex-${Date.now()}-3`,
-      name: 'Pull Up',
-      sets: 3,
-      reps: 8,
-      restBetweenSets: 90,
-      equipment: 'Body Weight',
-    },
-  ];
+  // Zufällige Übungen auswählen basierend auf Kategorien
+  const pickRandomExercises = (category: string, count: number) => {
+    const categoryExercises = availableExercises.filter(ex => ex.category === category);
+    const selected = [];
+    for (let i = 0; i < count && i < categoryExercises.length; i++) {
+      const randomIndex = Math.floor(Math.random() * categoryExercises.length);
+      selected.push(categoryExercises[randomIndex]);
+      categoryExercises.splice(randomIndex, 1); // Entferne ausgewählte Übung, um Duplikate zu vermeiden
+    }
+    return selected;
+  };
   
-  // Filter out exercises that would aggravate limitations
+  // Workout-Zusammenstellung
+  let exercises = [
+    ...pickRandomExercises('Chest', 1),
+    ...pickRandomExercises('Back', 1),
+    ...pickRandomExercises('Legs', 1),
+    ...pickRandomExercises('Arms', 1),
+    ...pickRandomExercises('Shoulders', 1),
+    ...pickRandomExercises('Core', 1),
+  ].map(exercise => ({
+    id: `ex-${Date.now()}-${exercise.id}`,
+    name: exercise.name,
+    sets: Math.floor(Math.random() * 2) + 3, // 3-4 Sätze
+    reps: Math.floor(Math.random() * 6) + 8, // 8-12 Wiederholungen
+    restBetweenSets: (Math.floor(Math.random() * 4) + 6) * 15, // 90-150 Sekunden Pause
+    equipment: exercise.equipment,
+    weight: 0, // Standardgewicht, das der Benutzer anpassen kann
+  }));
+  
+  // Limitationen berücksichtigen
   if (limitations.length > 0) {
     if (limitations.some(l => l.toLowerCase().includes('arm') || l.toLowerCase().includes('wrist'))) {
-      exercises = exercises.filter(ex => !['Bench Press', 'Pull Up', 'Bicep Curl'].includes(ex.name));
-      exercises.push({
-        id: `ex-${Date.now()}-4`,
-        name: 'Leg Press',
-        sets: 3,
-        reps: 12,
-        restBetweenSets: 90,
-        equipment: 'Machine',
-      });
+      exercises = exercises.filter(ex => !['Bench Press', 'Bicep Curl', 'Tricep Extension', 'Shoulder Press'].includes(ex.name));
+      // Ersetzen durch Beinübungen
+      const legExercises = pickRandomExercises('Legs', 2);
+      exercises.push(...legExercises.map(exercise => ({
+        id: `ex-${Date.now()}-${exercise.id}`,
+        name: exercise.name,
+        sets: Math.floor(Math.random() * 2) + 3,
+        reps: Math.floor(Math.random() * 6) + 8,
+        restBetweenSets: (Math.floor(Math.random() * 4) + 6) * 15,
+        equipment: exercise.equipment,
+        weight: 0,
+      })));
     }
     
     if (limitations.some(l => l.toLowerCase().includes('leg') || l.toLowerCase().includes('knee'))) {
-      exercises = exercises.filter(ex => !['Squat', 'Leg Press'].includes(ex.name));
-      exercises.push({
-        id: `ex-${Date.now()}-5`,
-        name: 'Shoulder Press',
-        sets: 3,
-        reps: 10,
-        restBetweenSets: 90,
-        equipment: 'Dumbbell',
-      });
+      exercises = exercises.filter(ex => !['Squat', 'Leg Press', 'Leg Extension', 'Leg Curl'].includes(ex.name));
+      // Ersetzen durch Oberkörperübungen
+      const upperBodyExercises = [...pickRandomExercises('Chest', 1), ...pickRandomExercises('Back', 1)];
+      exercises.push(...upperBodyExercises.map(exercise => ({
+        id: `ex-${Date.now()}-${exercise.id}`,
+        name: exercise.name,
+        sets: Math.floor(Math.random() * 2) + 3,
+        reps: Math.floor(Math.random() * 6) + 8,
+        restBetweenSets: (Math.floor(Math.random() * 4) + 6) * 15,
+        equipment: exercise.equipment,
+        weight: 0,
+      })));
     }
   }
   
@@ -103,6 +127,7 @@ interface Exercise {
   restBetweenSets: number;
   equipment: string;
   videoUrl?: string;
+  weight?: number; // Neues Feld für Gewicht
 }
 
 interface LocationState {
@@ -121,33 +146,35 @@ const CreateWorkout = () => {
   const [expandedExercise, setExpandedExercise] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [exerciseFilter, setExerciseFilter] = useState('all'); // Filter für Übungskategorie
   
   useEffect(() => {
-    // If AI workout, generate a workout based on user profile
+    // Wenn KI-Workout, generiere ein Workout basierend auf dem Benutzerprofil
     if (state?.type === 'ai') {
       setIsGenerating(true);
-      setWorkoutName('AI Generated Workout');
+      setWorkoutName('KI-generiertes Workout');
       
-      // Simulate AI generating a workout
+      // KI-Workout-Generierung simulieren
       setTimeout(() => {
         const aiExercises = generateAIWorkout(profile.limitations);
         setExercises(aiExercises);
         setIsGenerating(false);
       }, 1500);
     } else if (state?.type === 'manual') {
-      // Start with a warmup for manual workouts
+      // Starte mit einem Warm-up für manuelle Workouts
       setExercises([
         {
           id: `ex-warmup-${Date.now()}`,
           name: 'Cardio Warmup',
           sets: 1,
           reps: 1,
-          duration: 600, // 10 minutes in seconds
+          duration: 600, // 10 Minuten in Sekunden
           restBetweenSets: 60,
           equipment: 'Treadmill',
+          weight: 0,
         }
       ]);
-      setWorkoutName('My Custom Workout');
+      setWorkoutName('Mein eigenes Workout');
     }
   }, [state?.type, profile.limitations]);
   
@@ -159,6 +186,7 @@ const CreateWorkout = () => {
       reps: 10,
       restBetweenSets: 60,
       equipment: '',
+      weight: 0, // Standardgewicht
     };
     
     setExercises([...exercises, newExercise]);
@@ -180,8 +208,8 @@ const CreateWorkout = () => {
   const handleSaveWorkout = async () => {
     if (!workoutName) {
       toast({
-        title: 'Workout name required',
-        description: 'Please give your workout a name',
+        title: 'Workout-Name erforderlich',
+        description: 'Bitte geben Sie Ihrem Workout einen Namen',
         variant: 'destructive',
       });
       return;
@@ -189,8 +217,8 @@ const CreateWorkout = () => {
     
     if (exercises.length < 2) {
       toast({
-        title: 'Add more exercises',
-        description: 'Your workout should have at least two exercises',
+        title: 'Mehr Übungen hinzufügen',
+        description: 'Ihr Workout sollte mindestens zwei Übungen enthalten',
         variant: 'destructive',
       });
       return;
@@ -207,16 +235,16 @@ const CreateWorkout = () => {
       });
       
       toast({
-        title: 'Workout saved',
-        description: 'Your workout has been saved successfully',
+        title: 'Workout gespeichert',
+        description: 'Ihr Workout wurde erfolgreich gespeichert',
       });
       
       navigate('/home');
     } catch (error) {
-      console.error('Failed to save workout:', error);
+      console.error('Fehler beim Speichern des Workouts:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to save the workout',
+        title: 'Fehler',
+        description: 'Fehler beim Speichern des Workouts',
         variant: 'destructive',
       });
       setIsSaving(false);
@@ -228,15 +256,23 @@ const CreateWorkout = () => {
     const remainingSeconds = seconds % 60;
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
+
+  // Gefilterte Übungen basierend auf Kategorie
+  const getFilteredExercises = () => {
+    if (exerciseFilter === 'all') {
+      return availableExercises;
+    }
+    return availableExercises.filter(ex => ex.category === exerciseFilter);
+  };
   
   if (isGenerating) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
-          <h2 className="text-2xl font-bold mb-2">Creating Your Workout</h2>
+          <h2 className="text-2xl font-bold mb-2">Erstelle dein Workout</h2>
           <p className="text-muted-foreground mb-6">
-            Our AI is designing a personalized workout plan for you...
+            Unsere KI erstellt einen personalisierten Trainingsplan für dich...
           </p>
           <div className="glass p-4 rounded-lg text-left space-y-2 max-w-md mx-auto animate-pulse">
             <div className="h-4 bg-muted rounded w-3/4"></div>
@@ -259,12 +295,12 @@ const CreateWorkout = () => {
               size="icon"
               onClick={() => navigate('/home')}
               className="mr-2"
-              aria-label="Go back"
+              aria-label="Zurück"
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <h1 className="text-xl font-bold">
-              {state?.type === 'ai' ? 'AI Workout Plan' : 'Create Workout'}
+              {state?.type === 'ai' ? 'KI-Trainingsplan' : 'Workout erstellen'}
             </h1>
           </div>
           
@@ -276,12 +312,12 @@ const CreateWorkout = () => {
             {isSaving ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Saving...
+                Speichern...
               </>
             ) : (
               <>
                 <SaveAll className="h-4 w-4 mr-2" />
-                Save Workout
+                Workout speichern
               </>
             )}
           </Button>
@@ -291,13 +327,13 @@ const CreateWorkout = () => {
       <main className="container mx-auto px-4 py-6">
         <div className="mb-6">
           <Label htmlFor="workout-name" className="text-sm font-medium mb-1 block">
-            Workout Name
+            Workout-Name
           </Label>
           <Input
             id="workout-name"
             value={workoutName}
             onChange={(e) => setWorkoutName(e.target.value)}
-            placeholder="Give your workout a name"
+            placeholder="Gib deinem Workout einen Namen"
             className="glass border-border/30"
           />
         </div>
@@ -318,7 +354,7 @@ const CreateWorkout = () => {
               >
                 <div className="flex justify-between items-center">
                   <CardTitle className="text-base">
-                    {exercise.name || `Exercise ${index + 1}`}
+                    {exercise.name || `Übung ${index + 1}`}
                   </CardTitle>
                   {expandedExercise === exercise.id ? (
                     <ChevronUp className="h-5 w-5 text-muted-foreground" />
@@ -331,7 +367,31 @@ const CreateWorkout = () => {
               {expandedExercise === exercise.id && (
                 <CardContent className="p-4 pt-0 space-y-4">
                   <div>
-                    <Label htmlFor={`exercise-name-${exercise.id}`}>Exercise Name</Label>
+                    <Label htmlFor={`exercise-name-${exercise.id}`}>Übungsname</Label>
+                    
+                    {/* Kategorie-Filter */}
+                    <div className="mb-2 flex gap-2 overflow-x-auto py-1 no-scrollbar">
+                      <Button 
+                        variant={exerciseFilter === 'all' ? "default" : "outline"} 
+                        size="sm"
+                        onClick={() => setExerciseFilter('all')}
+                        className="whitespace-nowrap"
+                      >
+                        Alle
+                      </Button>
+                      {Array.from(new Set(availableExercises.map(ex => ex.category))).map(category => (
+                        <Button
+                          key={category}
+                          variant={exerciseFilter === category ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setExerciseFilter(category)}
+                          className="whitespace-nowrap"
+                        >
+                          {category}
+                        </Button>
+                      ))}
+                    </div>
+                    
                     <Select
                       value={exercise.name}
                       onValueChange={(value) => {
@@ -344,10 +404,10 @@ const CreateWorkout = () => {
                       }}
                     >
                       <SelectTrigger className="w-full glass" id={`exercise-name-${exercise.id}`}>
-                        <SelectValue placeholder="Select an exercise" />
+                        <SelectValue placeholder="Wähle eine Übung" />
                       </SelectTrigger>
                       <SelectContent>
-                        {availableExercises.map((ex) => (
+                        {getFilteredExercises().map((ex) => (
                           <SelectItem key={ex.id} value={ex.name}>
                             {ex.name} ({ex.equipment})
                           </SelectItem>
@@ -356,10 +416,31 @@ const CreateWorkout = () => {
                     </Select>
                   </div>
                   
+                  {/* Gewichtsfeld */}
+                  <div>
+                    <Label htmlFor={`weight-${exercise.id}`} className="mb-1 block flex items-center">
+                      <Dumbbell className="h-4 w-4 mr-2" />
+                      Gewicht (kg): {exercise.weight || 0}
+                    </Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id={`weight-${exercise.id}`}
+                        type="number"
+                        min="0"
+                        step="2.5"
+                        value={exercise.weight || 0}
+                        onChange={(e) => 
+                          updateExercise(exercise.id, { weight: parseFloat(e.target.value) || 0 })
+                        }
+                        className="glass"
+                      />
+                    </div>
+                  </div>
+                  
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor={`sets-${exercise.id}`} className="mb-1 block">
-                        Sets: {exercise.sets}
+                        Sätze: {exercise.sets}
                       </Label>
                       <Slider
                         id={`sets-${exercise.id}`}
@@ -375,7 +456,7 @@ const CreateWorkout = () => {
                     
                     <div>
                       <Label htmlFor={`reps-${exercise.id}`} className="mb-1 block">
-                        Reps: {exercise.reps}
+                        Wiederholungen: {exercise.reps}
                       </Label>
                       <Slider
                         id={`reps-${exercise.id}`}
@@ -392,7 +473,7 @@ const CreateWorkout = () => {
                   
                   <div>
                     <Label htmlFor={`rest-${exercise.id}`} className="mb-1 block">
-                      Rest Between Sets: {formatDuration(exercise.restBetweenSets)}
+                      Pause zwischen Sätzen: {formatDuration(exercise.restBetweenSets)}
                     </Label>
                     <Slider
                       id={`rest-${exercise.id}`}
@@ -409,7 +490,7 @@ const CreateWorkout = () => {
                   {exercise.duration !== undefined && (
                     <div>
                       <Label htmlFor={`duration-${exercise.id}`} className="mb-1 block">
-                        Duration: {formatDuration(exercise.duration)}
+                        Dauer: {formatDuration(exercise.duration)}
                       </Label>
                       <Slider
                         id={`duration-${exercise.id}`}
@@ -433,7 +514,7 @@ const CreateWorkout = () => {
                       disabled={exercises.length <= 1}
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
-                      Remove Exercise
+                      Übung entfernen
                     </Button>
                   </div>
                 </CardContent>
@@ -447,14 +528,14 @@ const CreateWorkout = () => {
           className="w-full bg-secondary hover:bg-secondary/90"
         >
           <Plus className="h-4 w-4 mr-2" />
-          Add Exercise
+          Übung hinzufügen
         </Button>
       </main>
       
       <div className="fixed bottom-0 left-0 right-0 glass border-t border-border/30 py-4 px-6">
         <div className="container mx-auto flex justify-between items-center">
           <div>
-            <span className="text-sm text-muted-foreground">Total exercises: {exercises.length}</span>
+            <span className="text-sm text-muted-foreground">Übungen gesamt: {exercises.length}</span>
           </div>
           
           <Button
@@ -462,7 +543,7 @@ const CreateWorkout = () => {
             disabled={isSaving}
             className="bg-primary hover:bg-primary/90"
           >
-            {isSaving ? 'Saving...' : 'Save Workout'}
+            {isSaving ? 'Speichern...' : 'Workout speichern'}
           </Button>
         </div>
       </div>

@@ -2,6 +2,7 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Exercise } from '@/types/workout';
+import { Dumbbell } from 'lucide-react';
 
 interface ExerciseDisplayProps {
   exercise: Exercise;
@@ -31,7 +32,7 @@ const ExerciseDisplay: React.FC<ExerciseDisplayProps> = ({
           />
         ) : (
           <div className="flex flex-col items-center justify-center">
-            <p className="text-muted-foreground mb-2">Exercise Demonstration</p>
+            <p className="text-muted-foreground mb-2">Übungsdemonstration</p>
             <p className="text-sm text-muted-foreground">{exercise.name}</p>
           </div>
         )}
@@ -44,12 +45,22 @@ const ExerciseDisplay: React.FC<ExerciseDisplayProps> = ({
           {formattedTime}
         </p>
       ) : (
-        <p className="text-xl mb-4">{exercise.sets} sets × {exercise.reps} reps</p>
+        <div className="mb-4 flex flex-col items-center">
+          <p className="text-xl">{exercise.sets} Sätze × {exercise.reps} Wiederholungen</p>
+          
+          {/* Gewichtsanzeige */}
+          {exercise.weight !== undefined && exercise.weight > 0 && (
+            <div className="flex items-center mt-2 text-lg text-primary">
+              <Dumbbell className="h-5 w-5 mr-1" />
+              <span>{exercise.weight} kg</span>
+            </div>
+          )}
+        </div>
       )}
       
       {struggleDetected && (
         <div className="mb-4 p-3 bg-destructive/20 text-destructive rounded-md text-center">
-          <p>Increased effort detected. Consider reducing intensity.</p>
+          <p>Erhöhte Anstrengung erkannt. Erwägen Sie, die Intensität zu reduzieren.</p>
         </div>
       )}
       
@@ -58,7 +69,7 @@ const ExerciseDisplay: React.FC<ExerciseDisplayProps> = ({
         variant="outline"
         className="mb-4 w-full max-w-xs"
       >
-        {isPaused ? "Resume" : "Pause"}
+        {isPaused ? "Fortsetzen" : "Pause"}
       </Button>
     </div>
   );

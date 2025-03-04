@@ -7,25 +7,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Lock, Mail } from 'lucide-react';
+import { ArrowLeft, Lock, Mail, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { login, retryAuth } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
     
     if (!email || !password) {
-      toast({
-        title: 'Missing information',
-        description: 'Please enter both email and password',
-        variant: 'destructive',
-      });
+      setErrorMessage('Bitte geben Sie E-Mail und Passwort ein');
       return;
     }
     
@@ -34,10 +33,29 @@ const Login = () => {
       await login(email, password);
       navigate('/home');
     } catch (error) {
-      console.error('Login failed:', error);
+      console.error('Anmeldung fehlgeschlagen:', error);
+      setErrorMessage('Bitte überprüfen Sie Ihre Anmeldedaten und versuchen Sie es erneut');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRetry = async () => {
+    try {
+      setIsLoading(true);
+      await retryAuth();
+      if (localStorage.getItem('user')) {
+        navigate('/home');
+        toast({
+          title: 'Erfolgreich wiederhergestellt',
+          description: 'Ihre Sitzung wurde erfolgreich wiederhergestellt',
+        });
+      }
+    } catch (error) {
+      console.error('Fehler bei der erneuten Authentifizierung:', error);
       toast({
-        title: 'Login failed',
-        description: 'Please check your credentials and try again',
+        title: 'Wiederherstellung fehlgeschlagen',
+        description: 'Bitte melden Sie sich erneut an',
         variant: 'destructive',
       });
     } finally {
@@ -58,16 +76,26 @@ const Login = () => {
               <Lock className="h-6 w-6 text-primary" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold text-center">Welcome back</CardTitle>
+          <CardTitle className="text-2xl font-bold text-center">Willkommen zurück</CardTitle>
           <CardDescription className="text-center">
-            Enter your credentials to access your account
+            Geben Sie Ihre Anmeldedaten ein, um auf Ihr Konto zuzugreifen
           </CardDescription>
         </CardHeader>
+        
+        {errorMessage && (
+          <div className="px-6">
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Fehler</AlertTitle>
+              <AlertDescription>{errorMessage}</AlertDescription>
+            </Alert>
+          </div>
+        )}
         
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">E-Mail</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -84,19 +112,19 @@ const Login = () => {
             
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">Passwort</Label>
                 <Link 
                   to="#" 
                   className="text-xs text-primary hover:underline"
                   onClick={(e) => {
                     e.preventDefault();
                     toast({
-                      title: 'Password Reset',
-                      description: 'This feature will be available soon.',
+                      title: 'Passwort-Reset',
+                      description: 'Diese Funktion wird in Kürze verfügbar sein.',
                     });
                   }}
                 >
-                  Forgot password?
+                  Passwort vergessen?
                 </Link>
               </div>
               <div className="relative">
@@ -119,13 +147,23 @@ const Login = () => {
               className="w-full bg-primary hover:bg-primary/90" 
               disabled={isLoading}
             >
-              {isLoading ? 'Signing in...' : 'Sign in'}
+              {isLoading ? 'Anmelden...' : 'Anmelden'}
+            </Button>
+            
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={handleRetry}
+              disabled={isLoading}
+            >
+              Sitzung wiederherstellen
             </Button>
             
             <div className="text-center text-sm">
-              Don't have an account?{' '}
+              Noch kein Konto?{' '}
               <Link to="/register" className="text-primary hover:underline">
-                Create one
+                Erstellen Sie eines
               </Link>
             </div>
           </CardFooter>

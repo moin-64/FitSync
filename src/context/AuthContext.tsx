@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { encryptData, decryptData, generateKeyPair } from '../utils/encryption';
+import { useToast } from '@/hooks/use-toast';
 
 interface User {
   id: string;
@@ -16,6 +17,7 @@ interface AuthContextType {
   register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
+  retryAuth: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -28,67 +30,110 @@ const USER_DATA_KEY = 'userData';
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState<Error | null>(null);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
-  useEffect(() => {
-    // Check if user is already logged in
-    const checkAuth = async () => {
-      try {
-        const storedUser = localStorage.getItem(USER_KEY);
-        if (storedUser) {
+  // Auth-Prüfung verbessern
+  const checkAuth = async () => {
+    try {
+      setAuthError(null);
+      const storedUser = localStorage.getItem(USER_KEY);
+      if (storedUser) {
+        try {
           const userData = JSON.parse(storedUser);
           setUser(userData);
+          
+          // Prüfe, ob der Schlüssel für diesen Benutzer existiert
+          const userKey = localStorage.getItem(`${KEY_PREFIX}${userData.email}`);
+          if (!userKey) {
+            throw new Error('Schlüssel nicht gefunden');
+          }
+        } catch (parseError) {
+          console.error('Fehler beim Parsen der Benutzerdaten:', parseError);
+          // Ungültige Benutzerdaten löschen
+          localStorage.removeItem(USER_KEY);
+          setUser(null);
+          throw new Error('Fehler beim Laden der Benutzerdaten');
         }
-      } catch (error) {
-        console.error('Authentication check failed:', error);
-      } finally {
-        setLoading(false);
       }
-    };
+    } catch (error) {
+      console.error('Authentifizierungsprüfung fehlgeschlagen:', error);
+      setAuthError(error as Error);
+      // Benutzer ausloggen bei kritischem Fehler
+      setUser(null);
+      localStorage.removeItem(USER_KEY);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
+    // Bei Initialisierung auf Authentifizierung prüfen
     checkAuth();
   }, []);
+
+  // Funktion zum erneuten Authentifizierungsversuch
+  const retryAuth = async () => {
+    setLoading(true);
+    await checkAuth();
+  };
 
   const login = async (email: string, password: string) => {
     setLoading(true);
     try {
-      // In a real app, this would be an API call to validate credentials
-      // For demo purposes, we're simulating authentication locally
+      // In einer echten App würde hier ein API-Aufruf zur Validierung der Anmeldeinformationen erfolgen
+      // Für Demo-Zwecke simulieren wir die Authentifizierung lokal
       
-      // Retrieve the private key for this user
+      // Den privaten Schlüssel für diesen Benutzer abrufen
       const privateKey = localStorage.getItem(`${KEY_PREFIX}${email}`);
       
       if (!privateKey) {
-        throw new Error('User not found or invalid credentials');
+        toast({
+          title: 'Anmeldung fehlgeschlagen',
+          description: 'Benutzer nicht gefunden oder ungültige Anmeldedaten',
+          variant: 'destructive',
+        });
+        throw new Error('Benutzer nicht gefunden oder ungültige Anmeldedaten');
       }
       
-      // Simulating server response with user data
+      // Simulieren einer Serverantwort mit Benutzerdaten
       const mockUserResponse = {
         id: `user-${Date.now()}`,
         username: email.split('@')[0],
         email,
       };
       
-      // Store user in state
+      // Benutzer im State speichern
       setUser({
         id: mockUserResponse.id,
         username: mockUserResponse.username,
         email: mockUserResponse.email
       });
       
-      // Save to local storage for persistence
+      // In localStorage für Persistenz speichern
       localStorage.setItem(USER_KEY, JSON.stringify({
         id: mockUserResponse.id,
         username: mockUserResponse.username,
         email: mockUserResponse.email
       }));
       
-      // Decrypt and load user data
+      // Benutzerdaten entschlüsseln und laden
       await decryptUserData(privateKey);
+      
+      toast({
+        title: 'Erfolgreich angemeldet',
+        description: `Willkommen zurück, ${mockUserResponse.username}!`,
+      });
       
       navigate('/home');
     } catch (error) {
-      console.error('Login failed:', error);
+      console.error('Anmeldung fehlgeschlagen:', error);
+      toast({
+        title: 'Anmeldung fehlgeschlagen',
+        description: 'Bitte überprüfen Sie Ihre Anmeldedaten und versuchen Sie es erneut',
+        variant: 'destructive',
+      });
       throw error;
     } finally {
       setLoading(false);
@@ -98,35 +143,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (username: string, email: string, password: string) => {
     setLoading(true);
     try {
-      // Generate secure encryption key pair for the user
+      // Prüfen, ob der Benutzer bereits existiert
+      const existingKey = localStorage.getItem(`${KEY_PREFIX}${email}`);
+      if (existingKey) {
+        toast({
+          title: 'Registrierung fehlgeschlagen',
+          description: 'Ein Benutzer mit dieser E-Mail-Adresse existiert bereits',
+          variant: 'destructive',
+        });
+        throw new Error('Benutzer existiert bereits');
+      }
+      
+      // Sicheres Verschlüsselungsschlüsselpaar für den Benutzer generieren
       const { publicKey, privateKey } = await generateKeyPair();
       
-      // In a real app, the public key would be sent to the server,
-      // while the private key would be derived from the user's password
-      // or stored in a secure enclave/keychain
+      // In einer echten App würde der öffentliche Schlüssel an den Server gesendet,
+      // während der private Schlüssel aus dem Passwort des Benutzers abgeleitet
+      // oder in einem sicheren Enclave/Keychain gespeichert würde
       
-      // For demo, we'll store the private key locally (not recommended for production)
+      // Für die Demo speichern wir den privaten Schlüssel lokal (nicht für die Produktion empfohlen)
       localStorage.setItem(`${KEY_PREFIX}${email}`, privateKey);
       
-      // Create user data
+      // Benutzerdaten erstellen
       const userData = {
         id: `user-${Date.now()}`,
         username,
         email
       };
       
-      // Store user in state
+      // Benutzer im State speichern
       setUser(userData);
       
-      // Save to local storage for persistence
+      // In localStorage für Persistenz speichern
       localStorage.setItem(USER_KEY, JSON.stringify(userData));
       
-      // Initialize encrypted user data storage using the public key
+      // Verschlüsselten Benutzerdatenspeicher mit dem öffentlichen Schlüssel initialisieren
       await initializeUserData(publicKey);
+      
+      toast({
+        title: 'Registrierung erfolgreich',
+        description: 'Ihr Konto wurde erfolgreich erstellt',
+      });
       
       navigate('/onboarding');
     } catch (error) {
-      console.error('Registration failed:', error);
+      console.error('Registrierung fehlgeschlagen:', error);
       throw error;
     } finally {
       setLoading(false);
@@ -136,13 +197,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     setUser(null);
     localStorage.removeItem(USER_KEY);
-    // Note: We don't remove the encrypted data or keys on logout
-    // This allows the user to log back in and access their data
+    // Hinweis: Wir entfernen bei der Abmeldung nicht die verschlüsselten Daten oder Schlüssel
+    // Dadurch kann sich der Benutzer wieder anmelden und auf seine Daten zugreifen
+    toast({
+      title: 'Abgemeldet',
+      description: 'Sie wurden erfolgreich abgemeldet',
+    });
     navigate('/login');
   };
 
   const initializeUserData = async (publicKey: string) => {
-    // Initialize empty encrypted user data
+    // Leere verschlüsselte Benutzerdaten initialisieren
     const emptyUserData = {
       profile: {
         birthdate: null,
@@ -156,25 +221,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       settings: {}
     };
     
-    // Encrypt and store using the public key
+    // Mit dem öffentlichen Schlüssel verschlüsseln und speichern
     const encrypted = await encryptData(JSON.stringify(emptyUserData), publicKey);
     localStorage.setItem(USER_DATA_KEY, encrypted);
   };
 
   const decryptUserData = async (privateKey: string) => {
-    // In a real app, this might fetch encrypted data from a server
-    // For demo, we're just retrieving from localStorage
+    // In einer echten App würden verschlüsselte Daten von einem Server abgerufen
+    // Für die Demo rufen wir sie aus localStorage ab
     try {
       const encryptedData = localStorage.getItem(USER_DATA_KEY);
       if (encryptedData) {
-        // Decrypt user data using the private key
+        // Benutzerdaten mit dem privaten Schlüssel entschlüsseln
         const decrypted = await decryptData(encryptedData, privateKey);
-        // Here we would parse and load decrypted user data into app state
-        console.log('User data loaded successfully');
+        // Hier würden wir entschlüsselte Benutzerdaten in den App-Status laden
+        console.log('Benutzerdaten erfolgreich geladen');
       }
     } catch (error) {
-      console.error('Failed to decrypt user data:', error);
-      // Handle decryption failure - possibly wrong key/user
+      console.error('Fehler beim Entschlüsseln der Benutzerdaten:', error);
+      // Entschlüsselungsfehler behandeln - möglicherweise falscher Schlüssel/Benutzer
+      toast({
+        title: 'Fehler beim Laden der Daten',
+        description: 'Ihre Daten konnten nicht geladen werden',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -186,7 +256,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         register,
         logout,
-        isAuthenticated: !!user
+        isAuthenticated: !!user,
+        retryAuth
       }}
     >
       {children}
@@ -197,7 +268,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth muss innerhalb eines AuthProviders verwendet werden');
   }
   return context;
 };

@@ -8,6 +8,7 @@ export interface Exercise {
   restBetweenSets: number;
   equipment: string;
   videoUrl?: string;
+  weight?: number; // Neues Feld für Gewicht
 }
 
 export interface Workout {
@@ -27,5 +28,5 @@ export interface WorkoutHistory {
   heartRate?: number;
   caloriesBurned?: number;
   oxygenSaturation?: number;
-  performance: number; // 0-100 rating
+  performance: number; // 0-100 Bewertung
 }
