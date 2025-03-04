@@ -2,6 +2,12 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { encryptData, decryptData } from '../utils/encryption';
+import { 
+  Rank, 
+  calculateEligibleRank, 
+  calculateMaxWeight, 
+  calculateMaxReps 
+} from '../utils/rankingUtils';
 
 interface UserProfile {
   birthdate: string | null;
@@ -9,7 +15,7 @@ interface UserProfile {
   weight: number | null;
   experienceLevel: string | null;
   limitations: string[];
-  rank: string;
+  rank: Rank;
 }
 
 interface Workout {
@@ -30,6 +36,7 @@ interface Exercise {
   restBetweenSets: number;
   equipment: string;
   videoUrl?: string;
+  weight?: number;
 }
 
 interface WorkoutHistory {
@@ -193,12 +200,30 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     const updatedHistory = [...userData.history, workoutHistory];
     
-    // Calculate new rank based on workout history (simplified)
+    // Calculate new rank based on workout achievements
     const updatedProfile = { ...userData.profile };
-    if (updatedHistory.length >= 20) {
-      updatedProfile.rank = 'Advanced';
-    } else if (updatedHistory.length >= 10) {
-      updatedProfile.rank = 'Intermediate';
+    
+    // Extract all exercises from completed workouts
+    const allExercises = updatedWorkouts
+      .filter(w => w.completed)
+      .flatMap(w => w.exercises);
+    
+    // Calculate max weight and reps
+    const maxWeight = calculateMaxWeight(allExercises);
+    const maxReps = calculateMaxReps(allExercises);
+    
+    // Determine eligible rank
+    const eligibleRank = calculateEligibleRank(
+      updatedProfile.rank,
+      updatedProfile.birthdate,
+      updatedHistory.length,
+      maxWeight,
+      maxReps
+    );
+    
+    // Update rank if eligible for promotion
+    if (eligibleRank !== updatedProfile.rank) {
+      updatedProfile.rank = eligibleRank;
     }
     
     await saveUserData({

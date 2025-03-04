@@ -1,6 +1,8 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
+import { useUser } from '@/context/UserContext';
+import { Award, Trophy } from 'lucide-react';
 
 interface WorkoutCompletionProps {
   timeElapsed: number;
@@ -23,11 +25,34 @@ const WorkoutCompletion: React.FC<WorkoutCompletionProps> = ({
   onOxygenSaturationChange,
   onSaveWorkout
 }) => {
+  const { profile } = useUser();
+  const [initialRank, setInitialRank] = useState(profile.rank);
+  const [showRankUp, setShowRankUp] = useState(false);
+  
+  useEffect(() => {
+    // Check if rank changed after workout completion
+    if (profile.rank !== initialRank) {
+      setShowRankUp(true);
+    }
+  }, [profile.rank, initialRank]);
+  
   return (
     <div className="min-h-screen bg-background p-4 flex flex-col">
       <div className="flex items-center mb-6">
         <h1 className="text-xl font-bold">Workout Complete!</h1>
       </div>
+      
+      {showRankUp && (
+        <div className="glass rounded-lg p-6 mb-6 bg-primary/10 border border-primary animate-pulse">
+          <div className="flex items-center justify-center mb-4">
+            <Trophy className="h-12 w-12 text-primary mr-2" />
+            <div>
+              <h2 className="text-lg font-semibold">Rank Up!</h2>
+              <p>Congratulations! You've advanced to {profile.rank} rank!</p>
+            </div>
+          </div>
+        </div>
+      )}
       
       <div className="glass rounded-lg p-6 mb-6">
         <h2 className="text-lg font-semibold mb-4">Enter Your Stats</h2>
@@ -86,6 +111,16 @@ const WorkoutCompletion: React.FC<WorkoutCompletionProps> = ({
             Save Workout
           </Button>
         </div>
+      </div>
+      
+      <div className="glass rounded-lg p-6">
+        <div className="flex items-center mb-4">
+          <Award className="h-6 w-6 text-primary mr-2" />
+          <h3 className="font-semibold">Current Rank: {profile.rank}</h3>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Complete more workouts and increase your strength to advance to the next rank.
+        </p>
       </div>
     </div>
   );
