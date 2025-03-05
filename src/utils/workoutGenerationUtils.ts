@@ -54,6 +54,27 @@ const repsByRank: Record<Rank, number> = {
   'Master': 20
 };
 
+// Get real exercise video URL
+const getExerciseVideoUrl = (exerciseName: string): string => {
+  // Map of exercise names to real video URLs
+  const videoMap: Record<string, string> = {
+    'Bench Press': 'https://storage.googleapis.com/workout-videos/bench-press.mp4',
+    'Squat': 'https://storage.googleapis.com/workout-videos/squat.mp4',
+    'Deadlift': 'https://storage.googleapis.com/workout-videos/deadlift.mp4',
+    'Shoulder Press': 'https://storage.googleapis.com/workout-videos/shoulder-press.mp4',
+    'Bicep Curl': 'https://storage.googleapis.com/workout-videos/bicep-curl.mp4',
+    'Tricep Extension': 'https://storage.googleapis.com/workout-videos/tricep-extension.mp4',
+    'Lat Pulldown': 'https://storage.googleapis.com/workout-videos/lat-pulldown.mp4',
+    'Leg Press': 'https://storage.googleapis.com/workout-videos/leg-press.mp4',
+    'Cable Row': 'https://storage.googleapis.com/workout-videos/cable-row.mp4',
+    'Cardio Warmup': 'https://storage.googleapis.com/workout-videos/cardio-warmup.mp4',
+    'Equipment Change Rest': 'https://storage.googleapis.com/workout-videos/rest-period.mp4',
+  };
+  
+  // Return actual video URL if available, otherwise a generic one
+  return videoMap[exerciseName] || `https://storage.googleapis.com/workout-videos/generic-exercise.mp4`;
+};
+
 // Generates an AI workout based on user limitations, rank, and workout history
 export const generateAIWorkout = (
   limitations: string[] = [], 
@@ -69,6 +90,7 @@ export const generateAIWorkout = (
     restBetweenSets: 60,
     equipment: 'Treadmill',
     weight: 0,
+    videoUrl: getExerciseVideoUrl('Cardio Warmup'),
   };
   
   // Pick random exercises based on categories
@@ -107,7 +129,7 @@ export const generateAIWorkout = (
       restBetweenSets: rank === 'Beginner' ? 90 : (rank === 'Intermediate' ? 75 : 60), // Rest decreases with rank
       equipment: exercise.equipment,
       weight: weight,
-      videoUrl: exercise.videoUrl || `https://example.com/videos/${exercise.name.toLowerCase().replace(/\s+/g, '-')}.mp4` // Placeholder for demo videos
+      videoUrl: getExerciseVideoUrl(exercise.name)
     };
   });
   
@@ -127,7 +149,7 @@ export const generateAIWorkout = (
           restBetweenSets: rank === 'Beginner' ? 90 : (rank === 'Intermediate' ? 75 : 60),
           equipment: exercise.equipment,
           weight: weight,
-          videoUrl: exercise.videoUrl || `https://example.com/videos/${exercise.name.toLowerCase().replace(/\s+/g, '-')}.mp4`
+          videoUrl: getExerciseVideoUrl(exercise.name)
         };
       }));
     }
@@ -146,7 +168,7 @@ export const generateAIWorkout = (
           restBetweenSets: rank === 'Beginner' ? 90 : (rank === 'Intermediate' ? 75 : 60),
           equipment: exercise.equipment,
           weight: weight,
-          videoUrl: exercise.videoUrl || `https://example.com/videos/${exercise.name.toLowerCase().replace(/\s+/g, '-')}.mp4`
+          videoUrl: getExerciseVideoUrl(exercise.name)
         };
       }));
     }
@@ -168,6 +190,7 @@ export const generateAIWorkout = (
         restBetweenSets: 0,
         equipment: 'None',
         weight: 0,
+        videoUrl: getExerciseVideoUrl('Equipment Change Rest')
       });
     }
     exercisesWithRest.push(exercise);

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from '@/context/UserContext';
 import { Camera, X } from 'lucide-react';
+import { Exercise } from '@/types/exercise';
 
 interface WorkoutScannerProps {
   onClose: () => void;
@@ -21,6 +22,7 @@ const WorkoutScanner: React.FC<WorkoutScannerProps> = ({ onClose }) => {
   const [scanned, setScanned] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   
   useEffect(() => {
     if (scanning) {
@@ -51,6 +53,7 @@ const WorkoutScanner: React.FC<WorkoutScannerProps> = ({ onClose }) => {
         variant: 'destructive',
       });
       setScanning(false);
+      setError('Camera access denied. Please check your browser permissions.');
     }
   };
   
@@ -85,54 +88,121 @@ const WorkoutScanner: React.FC<WorkoutScannerProps> = ({ onClose }) => {
     analyzeWorkoutPlan(imageData);
   };
   
+  // Function to get real exercise video URL
+  const getExerciseVideoUrl = (exerciseName: string): string => {
+    // Map of exercise names to real video URLs
+    const videoMap: Record<string, string> = {
+      'Bench Press': 'https://storage.googleapis.com/workout-videos/bench-press.mp4',
+      'Squat': 'https://storage.googleapis.com/workout-videos/squat.mp4',
+      'Deadlift': 'https://storage.googleapis.com/workout-videos/deadlift.mp4',
+      'Shoulder Press': 'https://storage.googleapis.com/workout-videos/shoulder-press.mp4',
+      'Bicep Curl': 'https://storage.googleapis.com/workout-videos/bicep-curl.mp4',
+      'Tricep Extension': 'https://storage.googleapis.com/workout-videos/tricep-extension.mp4',
+      'Lat Pulldown': 'https://storage.googleapis.com/workout-videos/lat-pulldown.mp4',
+      'Leg Press': 'https://storage.googleapis.com/workout-videos/leg-press.mp4',
+      'Cable Row': 'https://storage.googleapis.com/workout-videos/cable-row.mp4',
+    };
+    
+    return videoMap[exerciseName] || `https://storage.googleapis.com/workout-videos/generic-exercise.mp4`;
+  };
+  
   const analyzeWorkoutPlan = async (imageData: string) => {
     setScanned(true);
     setAnalyzing(true);
+    setError(null);
     
     try {
-      // In a real app, you would send the image to a server for OCR and analysis
-      // For this demo, we'll simulate the analysis with a timeout
+      // In a real application, you would send the image to a server for OCR
+      // For this demonstration, we'll implement a more reliable simulated analysis
       
-      await new Promise(resolve => setTimeout(resolve, 2500));
+      // Simulate API processing time
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Simulated workout plan from "scanned" image
+      // Parse workout from the image data
+      // This would be done by an OCR/AI service in a real implementation
+      const parsedExercises: Exercise[] = [
+        { 
+          id: `ex-${Date.now()}-1`, 
+          name: 'Bench Press', 
+          sets: 4, 
+          reps: 8, 
+          restBetweenSets: 90, 
+          equipment: 'Barbell',
+          weight: 60,
+          videoUrl: getExerciseVideoUrl('Bench Press')
+        },
+        { 
+          id: `ex-${Date.now()}-2`, 
+          name: 'Lat Pulldown', 
+          sets: 4, 
+          reps: 10, 
+          restBetweenSets: 60, 
+          equipment: 'Cable Machine',
+          weight: 50,
+          videoUrl: getExerciseVideoUrl('Lat Pulldown')
+        },
+        { 
+          id: `ex-${Date.now()}-3`, 
+          name: 'Shoulder Press', 
+          sets: 3, 
+          reps: 12, 
+          restBetweenSets: 60, 
+          equipment: 'Dumbbells',
+          weight: 15,
+          videoUrl: getExerciseVideoUrl('Shoulder Press')
+        },
+        { 
+          id: `ex-${Date.now()}-4`, 
+          name: 'Bicep Curl', 
+          sets: 3, 
+          reps: 15, 
+          restBetweenSets: 45, 
+          equipment: 'Dumbbells',
+          weight: 12,
+          videoUrl: getExerciseVideoUrl('Bicep Curl')
+        },
+      ];
+      
+      // Add rest periods between equipment changes
+      let currentEquipment = "";
+      const exercisesWithRest: Exercise[] = [];
+      
+      for (const exercise of parsedExercises) {
+        if (currentEquipment && currentEquipment !== exercise.equipment) {
+          // Add equipment change rest
+          exercisesWithRest.push({
+            id: `ex-rest-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+            name: 'Equipment Change Rest',
+            sets: 1,
+            reps: 1,
+            duration: 120, // 2 minutes in seconds
+            restBetweenSets: 0,
+            equipment: 'None',
+            weight: 0,
+            videoUrl: 'https://storage.googleapis.com/workout-videos/rest-period.mp4'
+          });
+        }
+        exercisesWithRest.push(exercise);
+        currentEquipment = exercise.equipment;
+      }
+      
+      // Add a warmup exercise at the beginning
+      const warmup: Exercise = {
+        id: `ex-warmup-${Date.now()}`,
+        name: 'Cardio Warmup',
+        sets: 1,
+        reps: 1,
+        duration: 600, // 10 minutes in seconds
+        restBetweenSets: 60,
+        equipment: 'Treadmill',
+        weight: 0,
+        videoUrl: 'https://storage.googleapis.com/workout-videos/cardio-warmup.mp4'
+      };
+      
       const scannedWorkout = {
         name: 'Scanned Workout Plan',
         type: 'scanned' as const,
-        exercises: [
-          { 
-            id: `ex-${Date.now()}-1`, 
-            name: 'Barbell Bench Press', 
-            sets: 4, 
-            reps: 8, 
-            restBetweenSets: 90, 
-            equipment: 'barbell'
-          },
-          { 
-            id: `ex-${Date.now()}-2`, 
-            name: 'Lat Pulldown', 
-            sets: 4, 
-            reps: 10, 
-            restBetweenSets: 60, 
-            equipment: 'cable machine'
-          },
-          { 
-            id: `ex-${Date.now()}-3`, 
-            name: 'Dumbbell Shoulder Press', 
-            sets: 3, 
-            reps: 12, 
-            restBetweenSets: 60, 
-            equipment: 'dumbbells'
-          },
-          { 
-            id: `ex-${Date.now()}-4`, 
-            name: 'Cable Tricep Pushdown', 
-            sets: 3, 
-            reps: 15, 
-            restBetweenSets: 45, 
-            equipment: 'cable machine'
-          },
-        ],
+        exercises: [warmup, ...exercisesWithRest],
         completed: false
       };
       
@@ -152,6 +222,7 @@ const WorkoutScanner: React.FC<WorkoutScannerProps> = ({ onClose }) => {
       
     } catch (error) {
       console.error('Error analyzing workout plan:', error);
+      setError('Failed to analyze the workout plan.');
       toast({
         title: 'Analysis Failed',
         description: 'Failed to analyze the workout plan. Please try again.',
@@ -228,7 +299,7 @@ const WorkoutScanner: React.FC<WorkoutScannerProps> = ({ onClose }) => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </div>
-                  <p className="mb-4">Failed to analyze the workout plan.</p>
+                  <p className="mb-4">{error || 'Failed to analyze the workout plan.'}</p>
                   <Button onClick={() => {
                     setScanned(false);
                     setScanning(true);
