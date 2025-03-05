@@ -1,3 +1,4 @@
+
 import { availableExercises } from '../constants/exerciseData';
 import { Rank } from './rankingUtils';
 
@@ -44,6 +45,15 @@ const determineWeight = (
   return Math.round(baseWeight);
 };
 
+// Define reps by rank for use in multiple places
+const repsByRank: Record<Rank, number> = {
+  'Beginner': 8,
+  'Intermediate': 10,
+  'Advanced': 12,
+  'Expert': 15,
+  'Master': 20
+};
+
 // Generates an AI workout based on user limitations, rank, and workout history
 export const generateAIWorkout = (
   limitations: string[] = [], 
@@ -82,15 +92,6 @@ export const generateAIWorkout = (
     ...pickRandomExercises('Shoulders', 1),
     ...pickRandomExercises('Core', 1),
   ].map(exercise => {
-    // Determine reps based on rank
-    const repsByRank: Record<Rank, number> = {
-      'Beginner': 8,
-      'Intermediate': 10,
-      'Advanced': 12,
-      'Expert': 15,
-      'Master': 20
-    };
-    
     // Base reps with small random variation
     const baseReps = repsByRank[rank];
     const reps = baseReps + Math.floor(Math.random() * 3) - 1; // -1 to +1 variation

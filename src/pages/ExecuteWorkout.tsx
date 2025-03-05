@@ -6,6 +6,8 @@ import { useUser } from '@/context/UserContext';
 import { useAudioAnalysis } from '@/hooks/useAudioAnalysis';
 import { useWorkoutTimer } from '@/hooks/useWorkoutTimer';
 import { calculateMaxWeight } from '@/utils/rankingUtils';
+import { Button } from "@/components/ui/button";
+import { Play, Pause } from 'lucide-react';
 
 // Components
 import WorkoutHeader from '@/components/workout/WorkoutHeader';
