@@ -107,7 +107,7 @@ export const generateAIWorkout = (
       restBetweenSets: rank === 'Beginner' ? 90 : (rank === 'Intermediate' ? 75 : 60), // Rest decreases with rank
       equipment: exercise.equipment,
       weight: weight,
-      videoUrl: exercise.videoUrl
+      videoUrl: exercise.videoUrl || `https://example.com/videos/${exercise.name.toLowerCase().replace(/\s+/g, '-')}.mp4` // Placeholder for demo videos
     };
   });
   
@@ -127,7 +127,7 @@ export const generateAIWorkout = (
           restBetweenSets: rank === 'Beginner' ? 90 : (rank === 'Intermediate' ? 75 : 60),
           equipment: exercise.equipment,
           weight: weight,
-          videoUrl: exercise.videoUrl
+          videoUrl: exercise.videoUrl || `https://example.com/videos/${exercise.name.toLowerCase().replace(/\s+/g, '-')}.mp4`
         };
       }));
     }
@@ -146,13 +146,35 @@ export const generateAIWorkout = (
           restBetweenSets: rank === 'Beginner' ? 90 : (rank === 'Intermediate' ? 75 : 60),
           equipment: exercise.equipment,
           weight: weight,
-          videoUrl: exercise.videoUrl
+          videoUrl: exercise.videoUrl || `https://example.com/videos/${exercise.name.toLowerCase().replace(/\s+/g, '-')}.mp4`
         };
       }));
     }
   }
   
-  return [warmup, ...exercises];
+  // Add equipment change rest period (2 minutes)
+  let currentEquipment = "";
+  const exercisesWithRest = [];
+  
+  for (const exercise of exercises) {
+    if (currentEquipment && currentEquipment !== exercise.equipment) {
+      // Add equipment change rest
+      exercisesWithRest.push({
+        id: `ex-rest-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        name: 'Equipment Change Rest',
+        sets: 1,
+        reps: 1,
+        duration: 120, // 2 minutes in seconds
+        restBetweenSets: 0,
+        equipment: 'None',
+        weight: 0,
+      });
+    }
+    exercisesWithRest.push(exercise);
+    currentEquipment = exercise.equipment;
+  }
+  
+  return [warmup, ...exercisesWithRest];
 };
 
 // Format duration from seconds to MM:SS

@@ -18,9 +18,16 @@ export const initializeUserData = async (publicKey: string) => {
     settings: {}
   };
   
-  // Encrypt with public key and store
-  const encrypted = await encryptData(JSON.stringify(emptyUserData), publicKey);
-  localStorage.setItem(USER_DATA_KEY, encrypted);
+  try {
+    // Encrypt with public key and store
+    const encrypted = await encryptData(JSON.stringify(emptyUserData), publicKey);
+    localStorage.setItem(USER_DATA_KEY, encrypted);
+    console.log('User data initialized successfully');
+    return true;
+  } catch (error) {
+    console.error('Error initializing user data:', error);
+    return false;
+  }
 };
 
 export const decryptUserData = async (privateKey: string): Promise<boolean> => {
@@ -41,4 +48,25 @@ export const decryptUserData = async (privateKey: string): Promise<boolean> => {
     // Handle decryption error - possibly wrong key/user
     return false;
   }
+};
+
+export const getUserMaxWeights = (workouts: any[]): Record<string, number> => {
+  const maxWeights: Record<string, number> = {};
+  
+  // Extract all exercises from completed workouts
+  const allExercises = workouts
+    .filter(w => w.completed)
+    .flatMap(w => w.exercises);
+  
+  // Find max weight for each exercise
+  allExercises.forEach(exercise => {
+    if (exercise.weight && exercise.weight > 0) {
+      const currentMax = maxWeights[exercise.name] || 0;
+      if (exercise.weight > currentMax) {
+        maxWeights[exercise.name] = exercise.weight;
+      }
+    }
+  });
+  
+  return maxWeights;
 };

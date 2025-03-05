@@ -4,7 +4,7 @@ import { useUser } from '../context/UserContext';
 import { useToast } from "@/hooks/use-toast";
 import { Exercise, LocationState } from '@/types/exercise';
 import { generateAIWorkout } from '@/utils/workoutGenerationUtils';
-import { calculateMaxWeight } from '@/utils/rankingUtils';
+import { getUserMaxWeights } from '@/utils/userDataUtils';
 
 // Component imports
 import WorkoutHeader from '@/components/workout/WorkoutHeader';
@@ -33,22 +33,8 @@ const CreateWorkout = () => {
       setIsGenerating(true);
       setWorkoutName('KI-generiertes Workout');
       
-      // Calculate max weights from previous workouts
-      const allExercises = workouts
-        .filter(w => w.completed)
-        .flatMap(w => w.exercises);
-      
-      // Calculate max weight for each exercise
-      const exerciseWeights: Record<string, number> = {};
-      
-      allExercises.forEach(exercise => {
-        if (exercise.weight && exercise.weight > 0) {
-          const existingMax = exerciseWeights[exercise.name] || 0;
-          if (exercise.weight > existingMax) {
-            exerciseWeights[exercise.name] = exercise.weight;
-          }
-        }
-      });
+      // Get max weights from previous workouts
+      const exerciseWeights = getUserMaxWeights(workouts);
       
       // Generate AI workout with rank and max weights
       setTimeout(() => {
