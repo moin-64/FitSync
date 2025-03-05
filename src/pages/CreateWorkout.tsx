@@ -1,10 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { useToast } from "@/hooks/use-toast";
 import { Exercise, LocationState } from '@/types/exercise';
 import { generateAIWorkout } from '@/utils/workoutGenerationUtils';
+import { calculateMaxWeight } from '@/utils/rankingUtils';
 
 // Component imports
 import WorkoutHeader from '@/components/workout/WorkoutHeader';
@@ -17,7 +17,7 @@ const CreateWorkout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { state } = location as { state: LocationState };
-  const { profile, addWorkout } = useUser();
+  const { profile, addWorkout, workouts } = useUser();
   const { toast } = useToast();
   
   const [workoutName, setWorkoutName] = useState('');
@@ -33,9 +33,30 @@ const CreateWorkout = () => {
       setIsGenerating(true);
       setWorkoutName('KI-generiertes Workout');
       
-      // Simulate AI workout generation
+      // Calculate max weights from previous workouts
+      const allExercises = workouts
+        .filter(w => w.completed)
+        .flatMap(w => w.exercises);
+      
+      // Calculate max weight for each exercise
+      const exerciseWeights: Record<string, number> = {};
+      
+      allExercises.forEach(exercise => {
+        if (exercise.weight && exercise.weight > 0) {
+          const existingMax = exerciseWeights[exercise.name] || 0;
+          if (exercise.weight > existingMax) {
+            exerciseWeights[exercise.name] = exercise.weight;
+          }
+        }
+      });
+      
+      // Generate AI workout with rank and max weights
       setTimeout(() => {
-        const aiExercises = generateAIWorkout(profile.limitations);
+        const aiExercises = generateAIWorkout(
+          profile.limitations,
+          profile.rank,
+          exerciseWeights
+        );
         setExercises(aiExercises);
         setIsGenerating(false);
       }, 1500);
@@ -55,7 +76,7 @@ const CreateWorkout = () => {
       ]);
       setWorkoutName('Mein eigenes Workout');
     }
-  }, [state?.type, profile.limitations]);
+  }, [state?.type, profile.limitations, profile.rank, workouts]);
   
   const addExercise = () => {
     const newExercise: Exercise = {

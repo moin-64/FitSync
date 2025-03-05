@@ -1,8 +1,55 @@
-
 import { availableExercises } from '../constants/exerciseData';
+import { Rank } from './rankingUtils';
 
-// Generates an AI workout based on user limitations
-export const generateAIWorkout = (limitations: string[] = []) => {
+// Helper function to determine weight based on rank and exercise
+const determineWeight = (
+  exerciseName: string, 
+  rank: Rank,
+  maxWeights: Record<string, number> = {}
+): number => {
+  // Base weights by rank (in kg)
+  const baseWeightsByRank: Record<Rank, number> = {
+    'Beginner': 10,
+    'Intermediate': 25,
+    'Advanced': 45,
+    'Expert': 70,
+    'Master': 100
+  };
+
+  // Exercise-specific modifiers
+  const exerciseModifiers: Record<string, number> = {
+    'Bench Press': 1.0,
+    'Squat': 1.4,
+    'Deadlift': 1.6,
+    'Shoulder Press': 0.6,
+    'Bicep Curl': 0.4,
+    'Tricep Extension': 0.3,
+    'Lat Pulldown': 0.8,
+    'Leg Press': 1.5,
+    'Cable Row': 0.7,
+  };
+
+  // Default modifier if exercise not found
+  const modifier = exerciseModifiers[exerciseName] || 0.5;
+  
+  // Calculate base weight from rank
+  const baseWeight = baseWeightsByRank[rank] * modifier;
+  
+  // If user has a previous max for this exercise, recommend slightly higher
+  if (maxWeights[exerciseName]) {
+    return Math.round(maxWeights[exerciseName] * 1.05); // 5% increase from last max
+  }
+  
+  // Otherwise use the rank-based calculation
+  return Math.round(baseWeight);
+};
+
+// Generates an AI workout based on user limitations, rank, and workout history
+export const generateAIWorkout = (
+  limitations: string[] = [], 
+  rank: Rank = 'Beginner',
+  maxWeights: Record<string, number> = {}
+) => {
   const warmup = {
     id: `ex-warmup-${Date.now()}`,
     name: 'Cardio Warmup',
@@ -34,15 +81,34 @@ export const generateAIWorkout = (limitations: string[] = []) => {
     ...pickRandomExercises('Arms', 1),
     ...pickRandomExercises('Shoulders', 1),
     ...pickRandomExercises('Core', 1),
-  ].map(exercise => ({
-    id: `ex-${Date.now()}-${exercise.id}`,
-    name: exercise.name,
-    sets: Math.floor(Math.random() * 2) + 3, // 3-4 sets
-    reps: Math.floor(Math.random() * 6) + 8, // 8-12 reps
-    restBetweenSets: (Math.floor(Math.random() * 4) + 6) * 15, // 90-150 seconds rest
-    equipment: exercise.equipment,
-    weight: 0, // Default weight that user can adjust
-  }));
+  ].map(exercise => {
+    // Determine reps based on rank
+    const repsByRank: Record<Rank, number> = {
+      'Beginner': 8,
+      'Intermediate': 10,
+      'Advanced': 12,
+      'Expert': 15,
+      'Master': 20
+    };
+    
+    // Base reps with small random variation
+    const baseReps = repsByRank[rank];
+    const reps = baseReps + Math.floor(Math.random() * 3) - 1; // -1 to +1 variation
+    
+    // Determine weight based on rank and exercise name
+    const weight = determineWeight(exercise.name, rank, maxWeights);
+    
+    return {
+      id: `ex-${Date.now()}-${exercise.id}`,
+      name: exercise.name,
+      sets: rank === 'Beginner' ? 3 : (rank === 'Intermediate' ? 4 : 5), // Sets increase with rank
+      reps: reps,
+      restBetweenSets: rank === 'Beginner' ? 90 : (rank === 'Intermediate' ? 75 : 60), // Rest decreases with rank
+      equipment: exercise.equipment,
+      weight: weight,
+      videoUrl: exercise.videoUrl
+    };
+  });
   
   // Consider limitations
   if (limitations.length > 0) {
@@ -50,30 +116,38 @@ export const generateAIWorkout = (limitations: string[] = []) => {
       exercises = exercises.filter(ex => !['Bench Press', 'Bicep Curl', 'Tricep Extension', 'Shoulder Press'].includes(ex.name));
       // Replace with leg exercises
       const legExercises = pickRandomExercises('Legs', 2);
-      exercises.push(...legExercises.map(exercise => ({
-        id: `ex-${Date.now()}-${exercise.id}`,
-        name: exercise.name,
-        sets: Math.floor(Math.random() * 2) + 3,
-        reps: Math.floor(Math.random() * 6) + 8,
-        restBetweenSets: (Math.floor(Math.random() * 4) + 6) * 15,
-        equipment: exercise.equipment,
-        weight: 0,
-      })));
+      exercises.push(...legExercises.map(exercise => {
+        const weight = determineWeight(exercise.name, rank, maxWeights);
+        return {
+          id: `ex-${Date.now()}-${exercise.id}`,
+          name: exercise.name,
+          sets: rank === 'Beginner' ? 3 : (rank === 'Intermediate' ? 4 : 5),
+          reps: repsByRank[rank] || 10,
+          restBetweenSets: rank === 'Beginner' ? 90 : (rank === 'Intermediate' ? 75 : 60),
+          equipment: exercise.equipment,
+          weight: weight,
+          videoUrl: exercise.videoUrl
+        };
+      }));
     }
     
     if (limitations.some(l => l.toLowerCase().includes('leg') || l.toLowerCase().includes('knee'))) {
       exercises = exercises.filter(ex => !['Squat', 'Leg Press', 'Leg Extension', 'Leg Curl'].includes(ex.name));
       // Replace with upper body exercises
       const upperBodyExercises = [...pickRandomExercises('Chest', 1), ...pickRandomExercises('Back', 1)];
-      exercises.push(...upperBodyExercises.map(exercise => ({
-        id: `ex-${Date.now()}-${exercise.id}`,
-        name: exercise.name,
-        sets: Math.floor(Math.random() * 2) + 3,
-        reps: Math.floor(Math.random() * 6) + 8,
-        restBetweenSets: (Math.floor(Math.random() * 4) + 6) * 15,
-        equipment: exercise.equipment,
-        weight: 0,
-      })));
+      exercises.push(...upperBodyExercises.map(exercise => {
+        const weight = determineWeight(exercise.name, rank, maxWeights);
+        return {
+          id: `ex-${Date.now()}-${exercise.id}`,
+          name: exercise.name,
+          sets: rank === 'Beginner' ? 3 : (rank === 'Intermediate' ? 4 : 5),
+          reps: repsByRank[rank] || 10,
+          restBetweenSets: rank === 'Beginner' ? 90 : (rank === 'Intermediate' ? 75 : 60),
+          equipment: exercise.equipment,
+          weight: weight,
+          videoUrl: exercise.videoUrl
+        };
+      }));
     }
   }
   

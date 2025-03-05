@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { Dumbbell, Clock, AlertTriangle } from 'lucide-react';
+import { Dumbbell, Clock, AlertTriangle, Play, Pause } from 'lucide-react';
 import { Exercise } from '@/types/exercise';
 
 interface ExerciseDisplayProps {
@@ -10,6 +10,8 @@ interface ExerciseDisplayProps {
   isPaused?: boolean;
   struggleDetected?: boolean;
   onTogglePause?: () => void;
+  onCompleteSet?: () => void;
+  maxWeight?: number | null;
 }
 
 const ExerciseDisplay: React.FC<ExerciseDisplayProps> = ({
@@ -17,9 +19,12 @@ const ExerciseDisplay: React.FC<ExerciseDisplayProps> = ({
   formattedTime,
   isPaused,
   struggleDetected,
-  onTogglePause
+  onTogglePause,
+  onCompleteSet,
+  maxWeight
 }) => {
   const [currentSet, setCurrentSet] = useState(1);
+  const [videoKey, setVideoKey] = useState(Date.now());
   const isTimedExercise = Boolean(exercise.duration);
   const isWeightExercise = exercise.equipment !== 'none' && 
                           exercise.equipment !== 'body weight' &&
@@ -28,7 +33,25 @@ const ExerciseDisplay: React.FC<ExerciseDisplayProps> = ({
   const handleCompleteSet = () => {
     if (currentSet < exercise.sets) {
       setCurrentSet(prev => prev + 1);
+      if (onCompleteSet) {
+        onCompleteSet();
+      }
     }
+  };
+
+  // Reset set counter when exercise changes
+  useEffect(() => {
+    setCurrentSet(1);
+    setVideoKey(Date.now()); // Force video reload when exercise changes
+  }, [exercise.id]);
+  
+  // Get video URL or use placeholder
+  const getVideoUrl = () => {
+    if (exercise.videoUrl) {
+      return exercise.videoUrl;
+    }
+    // Default placeholder video based on exercise category
+    return '/placeholder.svg';
   };
   
   return (
@@ -45,10 +68,28 @@ const ExerciseDisplay: React.FC<ExerciseDisplayProps> = ({
       <div className="flex flex-col items-center glass p-8 rounded-lg w-full max-w-md">
         <h2 className="text-2xl font-bold mb-2">{exercise.name}</h2>
         
-        {isWeightExercise && exercise.weight && (
+        <div className="w-full mb-4 bg-background/50 rounded-lg overflow-hidden aspect-video">
+          <video 
+            key={videoKey}
+            className="w-full h-full object-cover"
+            src={getVideoUrl()}
+            autoPlay={!isPaused}
+            loop
+            muted
+            playsInline
+            controls={false}
+          >
+            Your browser does not support the video tag.
+          </video>
+        </div>
+        
+        {isWeightExercise && (
           <div className="bg-primary/20 px-3 py-1 rounded-full mb-4 flex items-center">
             <Dumbbell className="h-4 w-4 mr-1 text-primary" />
-            <span className="text-sm font-medium">{exercise.weight} kg</span>
+            <span className="text-sm font-medium">
+              {exercise.weight || 0} kg 
+              {maxWeight && maxWeight > 0 && ` (Your best: ${maxWeight} kg)`}
+            </span>
           </div>
         )}
         
@@ -63,6 +104,7 @@ const ExerciseDisplay: React.FC<ExerciseDisplayProps> = ({
                 className="mt-4"
                 variant={isPaused ? "default" : "secondary"}
               >
+                {isPaused ? <Play className="h-4 w-4 mr-2" /> : <Pause className="h-4 w-4 mr-2" />}
                 {isPaused ? "Resume" : "Pause"}
               </Button>
             )}

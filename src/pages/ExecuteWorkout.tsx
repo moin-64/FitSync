@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useUser } from '@/context/UserContext';
 import { useAudioAnalysis } from '@/hooks/useAudioAnalysis';
 import { useWorkoutTimer } from '@/hooks/useWorkoutTimer';
+import { calculateMaxWeight } from '@/utils/rankingUtils';
 
 // Components
 import WorkoutHeader from '@/components/workout/WorkoutHeader';
@@ -13,13 +14,23 @@ import ExerciseDisplay from '@/components/workout/ExerciseDisplay';
 import WorkoutControls from '@/components/workout/WorkoutControls';
 import WorkoutCompletion from '@/components/workout/WorkoutCompletion';
 
+// Exercise states
+enum ExerciseState {
+  ACTIVE = 'active',
+  REST = 'rest',
+  TRANSITION = 'transition'
+}
+
 const ExecuteWorkout: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { completeWorkout, workouts } = useUser();
+  const { completeWorkout, workouts, history } = useUser();
   
   const [currentExercise, setCurrentExercise] = useState(0);
+  const [currentSet, setCurrentSet] = useState(1);
+  const [exerciseState, setExerciseState] = useState<ExerciseState>(ExerciseState.ACTIVE);
+  const [restTimeRemaining, setRestTimeRemaining] = useState(0);
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -28,6 +39,7 @@ const ExecuteWorkout: React.FC = () => {
   const [oxygenSaturation, setOxygenSaturation] = useState<number | null>(null);
   const [showCompletionForm, setShowCompletionForm] = useState(false);
   const [localStruggleDetected, setLocalStruggleDetected] = useState(false);
+  const [maxWeights, setMaxWeights] = useState<Record<string, number>>({});
   
   // Get the workout based on ID
   const workout = workouts.find(w => w.id === id) || {
@@ -46,6 +58,28 @@ const ExecuteWorkout: React.FC = () => {
   
   const currentEx = workout.exercises[currentExercise];
   
+  // Initialize max weights from workout history
+  useEffect(() => {
+    // Extract all exercises from completed workouts
+    const allExercises = workouts
+      .filter(w => w.completed)
+      .flatMap(w => w.exercises);
+    
+    // Calculate max weight for each exercise
+    const exerciseWeights: Record<string, number> = {};
+    
+    allExercises.forEach(exercise => {
+      if (exercise.weight && exercise.weight > 0) {
+        const existingMax = exerciseWeights[exercise.name] || 0;
+        if (exercise.weight > existingMax) {
+          exerciseWeights[exercise.name] = exercise.weight;
+        }
+      }
+    });
+    
+    setMaxWeights(exerciseWeights);
+  }, [workouts]);
+  
   // Use the audio analysis hook
   const { struggleDetected, stopAudioAnalysis } = useAudioAnalysis({
     isRecording,
@@ -55,10 +89,61 @@ const ExecuteWorkout: React.FC = () => {
   
   // Use the workout timer hook for exercise timers
   const { formattedTime } = useWorkoutTimer({
-    duration: currentEx.duration,
+    duration: exerciseState === ExerciseState.ACTIVE ? currentEx.duration : undefined,
     isPaused,
-    onComplete: handleSkip
+    onComplete: handleExerciseComplete
   });
+  
+  // Rest timer
+  useEffect(() => {
+    let timer: number;
+    
+    if (exerciseState === ExerciseState.REST && restTimeRemaining > 0 && !isPaused) {
+      timer = window.setInterval(() => {
+        setRestTimeRemaining(prev => {
+          const newTime = prev - 1;
+          if (newTime <= 0) {
+            // End of rest period
+            if (currentSet < currentEx.sets) {
+              // Move to next set of the same exercise
+              setCurrentSet(prev => prev + 1);
+              setExerciseState(ExerciseState.ACTIVE);
+              return 0;
+            } else if (currentExercise < workout.exercises.length - 1) {
+              // Move to next exercise with transition period
+              setExerciseState(ExerciseState.TRANSITION);
+              return 120; // 2 minute transition period between exercises
+            } else {
+              // End of workout
+              handleEndWorkout();
+              return 0;
+            }
+          }
+          return newTime;
+        });
+      }, 1000);
+    }
+    
+    if (exerciseState === ExerciseState.TRANSITION && restTimeRemaining > 0 && !isPaused) {
+      timer = window.setInterval(() => {
+        setRestTimeRemaining(prev => {
+          const newTime = prev - 1;
+          if (newTime <= 0) {
+            // End of transition period, move to next exercise
+            setCurrentExercise(prev => prev + 1);
+            setCurrentSet(1);
+            setExerciseState(ExerciseState.ACTIVE);
+            return 0;
+          }
+          return newTime;
+        });
+      }, 1000);
+    }
+    
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [exerciseState, restTimeRemaining, isPaused, currentSet, currentEx.sets, currentExercise, workout.exercises.length]);
   
   // Main timer for tracking total workout time
   useEffect(() => {
@@ -71,10 +156,53 @@ const ExecuteWorkout: React.FC = () => {
     return () => clearInterval(timer);
   }, [isPaused]);
   
+  // Function to handle completing a timed exercise
+  function handleExerciseComplete() {
+    if (exerciseState === ExerciseState.ACTIVE) {
+      if (currentEx.duration) {
+        // For timed exercises
+        if (currentSet < currentEx.sets) {
+          // Move to rest period before next set
+          setExerciseState(ExerciseState.REST);
+          setRestTimeRemaining(currentEx.restBetweenSets);
+        } else if (currentExercise < workout.exercises.length - 1) {
+          // Move to transition period before next exercise
+          setExerciseState(ExerciseState.TRANSITION);
+          setRestTimeRemaining(120); // 2 minute transition
+        } else {
+          // End of workout
+          handleEndWorkout();
+        }
+      }
+    }
+  }
+  
+  // Function to handle completing a set (non-timed exercise)
+  function handleCompleteSet() {
+    if (exerciseState === ExerciseState.ACTIVE) {
+      if (currentSet < currentEx.sets) {
+        // Move to rest period before next set
+        setExerciseState(ExerciseState.REST);
+        setRestTimeRemaining(currentEx.restBetweenSets);
+      } else if (currentExercise < workout.exercises.length - 1) {
+        // Move to transition period before next exercise
+        setExerciseState(ExerciseState.TRANSITION);
+        setRestTimeRemaining(120); // 2 minute transition
+      } else {
+        // End of workout
+        handleEndWorkout();
+      }
+    }
+  }
+  
   function handleSkip() {
     if (currentExercise < workout.exercises.length - 1) {
       setCurrentExercise(prev => prev + 1);
+      setCurrentSet(1);
+      setExerciseState(ExerciseState.ACTIVE);
       setLocalStruggleDetected(false);
+    } else {
+      handleEndWorkout();
     }
   }
   
@@ -137,6 +265,61 @@ const ExecuteWorkout: React.FC = () => {
     );
   }
   
+  // Determine the current display
+  const renderExerciseOrRest = () => {
+    if (exerciseState === ExerciseState.REST || exerciseState === ExerciseState.TRANSITION) {
+      // Display rest countdown
+      const isTransition = exerciseState === ExerciseState.TRANSITION;
+      const nextExerciseName = isTransition && currentExercise < workout.exercises.length - 1 
+        ? workout.exercises[currentExercise + 1].name 
+        : null;
+      
+      return (
+        <div className="flex-1 flex flex-col items-center justify-center my-8">
+          <div className="flex flex-col items-center glass p-8 rounded-lg w-full max-w-md">
+            <h2 className="text-2xl font-bold mb-2">
+              {isTransition ? "Transition Rest" : "Rest"}
+            </h2>
+            
+            <div className="text-center mb-6">
+              <div className="text-4xl font-mono font-bold mb-2">
+                {Math.floor(restTimeRemaining / 60)}:{(restTimeRemaining % 60).toString().padStart(2, '0')}
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {isTransition 
+                  ? `Get ready for: ${nextExerciseName}` 
+                  : `Prepare for set ${currentSet + 1} of ${currentEx.sets}`
+                }
+              </p>
+              
+              <Button 
+                onClick={handleTogglePause}
+                className="mt-4"
+                variant={isPaused ? "default" : "secondary"}
+              >
+                {isPaused ? <Play className="h-4 w-4 mr-2" /> : <Pause className="h-4 w-4 mr-2" />}
+                {isPaused ? "Resume" : "Pause"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    } else {
+      // Display the active exercise
+      return (
+        <ExerciseDisplay
+          exercise={currentEx}
+          formattedTime={formattedTime}
+          isPaused={isPaused}
+          struggleDetected={localStruggleDetected}
+          onTogglePause={handleTogglePause}
+          onCompleteSet={handleCompleteSet}
+          maxWeight={maxWeights[currentEx.name] || null}
+        />
+      );
+    }
+  };
+  
   return (
     <div className="min-h-screen bg-background p-4 flex flex-col">
       <WorkoutHeader
@@ -152,13 +335,7 @@ const ExecuteWorkout: React.FC = () => {
         timeElapsed={timeElapsed}
       />
       
-      <ExerciseDisplay
-        exercise={currentEx}
-        formattedTime={formattedTime}
-        isPaused={isPaused}
-        struggleDetected={localStruggleDetected}
-        onTogglePause={handleTogglePause}
-      />
+      {renderExerciseOrRest()}
       
       <WorkoutControls
         onSkip={handleSkip}
