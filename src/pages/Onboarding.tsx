@@ -10,13 +10,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from 'lucide-react';
 import { Slider } from "@/components/ui/slider";
+import { Rank } from '@/utils/rankingUtils';
 
 const Onboarding = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [birthdate, setBirthdate] = useState('');
   const [height, setHeight] = useState(175); // default in cm
   const [weight, setWeight] = useState(70); // default in kg
-  const [experienceLevel, setExperienceLevel] = useState('beginner');
+  const [experienceLevel, setExperienceLevel] = useState<Rank>('Beginner');
   const [isLoading, setIsLoading] = useState(false);
   const { updateProfile } = useUser();
   const navigate = useNavigate();
@@ -151,12 +152,12 @@ const Onboarding = () => {
             <RadioGroup
               id="experience"
               value={experienceLevel}
-              onValueChange={setExperienceLevel}
+              onValueChange={(value: Rank) => setExperienceLevel(value)}
               className="space-y-3"
               disabled={isLoading}
             >
               <div className="flex items-center space-x-2 glass p-3 rounded-lg transition-all hover:border-primary cursor-pointer">
-                <RadioGroupItem value="beginner" id="beginner" />
+                <RadioGroupItem value="Beginner" id="beginner" />
                 <Label htmlFor="beginner" className="flex-1 cursor-pointer">
                   <div className="font-medium">Beginner</div>
                   <div className="text-sm text-muted-foreground">New to fitness or returning after a long break</div>
@@ -164,7 +165,7 @@ const Onboarding = () => {
               </div>
               
               <div className="flex items-center space-x-2 glass p-3 rounded-lg transition-all hover:border-primary cursor-pointer">
-                <RadioGroupItem value="intermediate" id="intermediate" />
+                <RadioGroupItem value="Intermediate" id="intermediate" />
                 <Label htmlFor="intermediate" className="flex-1 cursor-pointer">
                   <div className="font-medium">Intermediate</div>
                   <div className="text-sm text-muted-foreground">Regular workouts for several months</div>
@@ -172,7 +173,7 @@ const Onboarding = () => {
               </div>
               
               <div className="flex items-center space-x-2 glass p-3 rounded-lg transition-all hover:border-primary cursor-pointer">
-                <RadioGroupItem value="advanced" id="advanced" />
+                <RadioGroupItem value="Advanced" id="advanced" />
                 <Label htmlFor="advanced" className="flex-1 cursor-pointer">
                   <div className="font-medium">Advanced</div>
                   <div className="text-sm text-muted-foreground">Consistent training for years with good form</div>
