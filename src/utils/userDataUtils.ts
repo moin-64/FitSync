@@ -1,9 +1,14 @@
 
 import { encryptData, decryptData } from './encryption';
 import { USER_DATA_KEY } from '../constants/authConstants';
-import { useToast } from '@/hooks/use-toast';
 
+// Initialize user data with improved error handling
 export const initializeUserData = async (publicKey: string) => {
+  if (!publicKey) {
+    console.error('Cannot initialize user data: Missing public key');
+    return false;
+  }
+  
   // Initialize empty encrypted user data
   const emptyUserData = {
     profile: {
@@ -15,7 +20,9 @@ export const initializeUserData = async (publicKey: string) => {
     },
     workouts: [],
     history: [],
-    settings: {}
+    settings: {
+      lastUpdated: new Date().toISOString()
+    }
   };
   
   try {
@@ -30,43 +37,66 @@ export const initializeUserData = async (publicKey: string) => {
   }
 };
 
+// Improved decryption function
 export const decryptUserData = async (privateKey: string): Promise<boolean> => {
-  // In a real app, encrypted data would be retrieved from a server
-  // For the demo, we retrieve it from localStorage
+  if (!privateKey) {
+    console.error('Cannot decrypt user data: Missing private key');
+    return false;
+  }
+  
   try {
     const encryptedData = localStorage.getItem(USER_DATA_KEY);
-    if (encryptedData) {
-      // Decrypt user data with private key
-      const decrypted = await decryptData(encryptedData, privateKey);
-      // Here we would load decrypted user data into app state
-      console.log('User data successfully loaded');
-      return true;
+    if (!encryptedData) {
+      console.error('No encrypted data found in storage');
+      return false;
     }
-    return false;
+    
+    // Decrypt user data with private key
+    const decrypted = await decryptData(encryptedData, privateKey);
+    
+    // Validate JSON structure
+    try {
+      JSON.parse(decrypted);
+      console.log('User data successfully loaded and validated');
+      return true;
+    } catch (jsonError) {
+      console.error('Decrypted data is not valid JSON:', jsonError);
+      return false;
+    }
   } catch (error) {
     console.error('Error decrypting user data:', error);
-    // Handle decryption error - possibly wrong key/user
     return false;
   }
 };
 
+// Enhanced function to get max weights with better error handling
 export const getUserMaxWeights = (workouts: any[]): Record<string, number> => {
+  if (!workouts || !Array.isArray(workouts)) {
+    console.warn('Invalid workouts data provided to getUserMaxWeights');
+    return {};
+  }
+  
   const maxWeights: Record<string, number> = {};
   
-  // Extract all exercises from completed workouts
-  const allExercises = workouts
-    .filter(w => w.completed)
-    .flatMap(w => w.exercises);
-  
-  // Find max weight for each exercise
-  allExercises.forEach(exercise => {
-    if (exercise.weight && exercise.weight > 0) {
-      const currentMax = maxWeights[exercise.name] || 0;
-      if (exercise.weight > currentMax) {
-        maxWeights[exercise.name] = exercise.weight;
+  try {
+    // Extract all exercises from completed workouts
+    const allExercises = workouts
+      .filter(w => w && w.completed)
+      .flatMap(w => w.exercises || []);
+    
+    // Find max weight for each exercise
+    allExercises.forEach(exercise => {
+      if (exercise && exercise.name && exercise.weight && exercise.weight > 0) {
+        const currentMax = maxWeights[exercise.name] || 0;
+        if (exercise.weight > currentMax) {
+          maxWeights[exercise.name] = exercise.weight;
+        }
       }
-    }
-  });
-  
-  return maxWeights;
+    });
+    
+    return maxWeights;
+  } catch (error) {
+    console.error('Error processing workout data for max weights:', error);
+    return {};
+  }
 };

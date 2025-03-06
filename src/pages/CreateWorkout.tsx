@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
@@ -26,6 +27,7 @@ const CreateWorkout = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [exerciseFilter, setExerciseFilter] = useState('all');
+  const [generationAttempts, setGenerationAttempts] = useState(0); // Track generation attempts
   
   useEffect(() => {
     // If AI workout, generate a workout based on user profile
@@ -38,13 +40,53 @@ const CreateWorkout = () => {
       
       // Generate AI workout with rank and max weights
       setTimeout(() => {
-        const aiExercises = generateAIWorkout(
-          profile.limitations,
-          profile.rank,
-          exerciseWeights
-        );
-        setExercises(aiExercises);
-        setIsGenerating(false);
+        try {
+          const aiExercises = generateAIWorkout(
+            profile.limitations,
+            profile.rank,
+            exerciseWeights
+          );
+          
+          if (aiExercises && aiExercises.length > 0) {
+            setExercises(aiExercises);
+            setIsGenerating(false);
+          } else {
+            // If we get empty exercises, try again (up to 3 times)
+            if (generationAttempts < 3) {
+              setGenerationAttempts(prev => prev + 1);
+            } else {
+              // After 3 attempts, show an error and set a default workout
+              toast({
+                title: 'Fehler bei der Workout-Generierung',
+                description: 'Wir konnten kein Workout erstellen. Bitte versuche es erneut oder erstelle ein manuelles Workout.',
+                variant: 'destructive',
+              });
+              
+              // Provide a fallback workout
+              setExercises([
+                {
+                  id: `ex-warmup-${Date.now()}`,
+                  name: 'Cardio Warmup',
+                  sets: 1,
+                  reps: 1,
+                  duration: 600,
+                  restBetweenSets: 60,
+                  equipment: 'Treadmill',
+                  weight: 0,
+                }
+              ]);
+              setIsGenerating(false);
+            }
+          }
+        } catch (error) {
+          console.error('Error generating AI workout:', error);
+          toast({
+            title: 'Fehler',
+            description: 'Bei der Erstellung des Workouts ist ein Fehler aufgetreten.',
+            variant: 'destructive',
+          });
+          setIsGenerating(false);
+        }
       }, 1500);
     } else if (state?.type === 'manual') {
       // Start with a warm-up for manual workouts
@@ -62,7 +104,7 @@ const CreateWorkout = () => {
       ]);
       setWorkoutName('Mein eigenes Workout');
     }
-  }, [state?.type, profile.limitations, profile.rank, workouts]);
+  }, [state?.type, profile.limitations, profile.rank, workouts, generationAttempts]);
   
   const addExercise = () => {
     const newExercise: Exercise = {
@@ -113,12 +155,14 @@ const CreateWorkout = () => {
     try {
       setIsSaving(true);
       
-      await addWorkout({
+      const newWorkout = {
         name: workoutName,
         type: state?.type || 'manual',
         exercises,
         completed: false,
-      });
+      };
+      
+      await addWorkout(newWorkout);
       
       toast({
         title: 'Workout gespeichert',

@@ -1,4 +1,3 @@
-
 import { availableExercises } from '../constants/exerciseData';
 import { Rank } from './rankingUtils';
 
@@ -45,13 +44,22 @@ const determineWeight = (
   return Math.round(baseWeight);
 };
 
-// Define reps by rank for use in multiple places
+// Define increased sets by rank
+const setsByRank: Record<Rank, number> = {
+  'Beginner': 4,
+  'Intermediate': 5,
+  'Advanced': 6,
+  'Expert': 7,
+  'Master': 8
+};
+
+// Define increased reps by rank
 const repsByRank: Record<Rank, number> = {
-  'Beginner': 8,
-  'Intermediate': 10,
-  'Advanced': 12,
-  'Expert': 15,
-  'Master': 20
+  'Beginner': 10,
+  'Intermediate': 12,
+  'Advanced': 15,
+  'Expert': 18,
+  'Master': 25
 };
 
 // Get real exercise video URL
@@ -93,7 +101,7 @@ export const generateAIWorkout = (
     videoUrl: getExerciseVideoUrl('Cardio Warmup'),
   };
   
-  // Pick random exercises based on categories
+  // Pick random exercises based on categories - FEWER DIFFERENT EXERCISES
   const pickRandomExercises = (category: string, count: number) => {
     const categoryExercises = availableExercises.filter(ex => ex.category === category);
     const selected = [];
@@ -105,74 +113,59 @@ export const generateAIWorkout = (
     return selected;
   };
   
-  // Workout composition
-  let exercises = [
-    ...pickRandomExercises('Chest', 1),
-    ...pickRandomExercises('Back', 1),
-    ...pickRandomExercises('Legs', 1),
-    ...pickRandomExercises('Arms', 1),
-    ...pickRandomExercises('Shoulders', 1),
-    ...pickRandomExercises('Core', 1),
-  ].map(exercise => {
-    // Base reps with small random variation
-    const baseReps = repsByRank[rank];
-    const reps = baseReps + Math.floor(Math.random() * 3) - 1; // -1 to +1 variation
-    
-    // Determine weight based on rank and exercise name
-    const weight = determineWeight(exercise.name, rank, maxWeights);
-    
-    return {
-      id: `ex-${Date.now()}-${exercise.id}`,
-      name: exercise.name,
-      sets: rank === 'Beginner' ? 3 : (rank === 'Intermediate' ? 4 : 5), // Sets increase with rank
-      reps: reps,
-      restBetweenSets: rank === 'Beginner' ? 90 : (rank === 'Intermediate' ? 75 : 60), // Rest decreases with rank
-      equipment: exercise.equipment,
-      weight: weight,
-      videoUrl: getExerciseVideoUrl(exercise.name)
-    };
-  });
+  // REDUCED number of exercise categories - focus on fewer exercises with more sets/reps
+  let exerciseCategories = ['Chest', 'Back', 'Legs'];
   
   // Consider limitations
   if (limitations.length > 0) {
     if (limitations.some(l => l.toLowerCase().includes('arm') || l.toLowerCase().includes('wrist'))) {
-      exercises = exercises.filter(ex => !['Bench Press', 'Bicep Curl', 'Tricep Extension', 'Shoulder Press'].includes(ex.name));
-      // Replace with leg exercises
-      const legExercises = pickRandomExercises('Legs', 2);
-      exercises.push(...legExercises.map(exercise => {
-        const weight = determineWeight(exercise.name, rank, maxWeights);
-        return {
-          id: `ex-${Date.now()}-${exercise.id}`,
-          name: exercise.name,
-          sets: rank === 'Beginner' ? 3 : (rank === 'Intermediate' ? 4 : 5),
-          reps: repsByRank[rank] || 10,
-          restBetweenSets: rank === 'Beginner' ? 90 : (rank === 'Intermediate' ? 75 : 60),
-          equipment: exercise.equipment,
-          weight: weight,
-          videoUrl: getExerciseVideoUrl(exercise.name)
-        };
-      }));
+      // Remove upper body exercises
+      exerciseCategories = exerciseCategories.filter(c => c !== 'Chest' && c !== 'Back');
+      // Add more leg exercises
+      exerciseCategories.push('Legs');
     }
     
     if (limitations.some(l => l.toLowerCase().includes('leg') || l.toLowerCase().includes('knee'))) {
-      exercises = exercises.filter(ex => !['Squat', 'Leg Press', 'Leg Extension', 'Leg Curl'].includes(ex.name));
-      // Replace with upper body exercises
-      const upperBodyExercises = [...pickRandomExercises('Chest', 1), ...pickRandomExercises('Back', 1)];
-      exercises.push(...upperBodyExercises.map(exercise => {
-        const weight = determineWeight(exercise.name, rank, maxWeights);
-        return {
-          id: `ex-${Date.now()}-${exercise.id}`,
-          name: exercise.name,
-          sets: rank === 'Beginner' ? 3 : (rank === 'Intermediate' ? 4 : 5),
-          reps: repsByRank[rank] || 10,
-          restBetweenSets: rank === 'Beginner' ? 90 : (rank === 'Intermediate' ? 75 : 60),
-          equipment: exercise.equipment,
-          weight: weight,
-          videoUrl: getExerciseVideoUrl(exercise.name)
-        };
-      }));
+      // Remove leg exercises
+      exerciseCategories = exerciseCategories.filter(c => c !== 'Legs');
+      // Add more upper body exercises
+      exerciseCategories.push('Chest', 'Back');
     }
   }
+  
+  // Make sure we have at least 2 categories
+  if (exerciseCategories.length < 2) {
+    exerciseCategories.push('Core');
+  }
+  
+  // Deduplicate categories
+  exerciseCategories = [...new Set(exerciseCategories)];
+  
+  // Create exercises with MORE SETS AND REPS
+  let exercises = exerciseCategories.flatMap(category => {
+    return pickRandomExercises(category, 1).map(exercise => {
+      // More reps with small random variation
+      const baseReps = repsByRank[rank];
+      const reps = baseReps + Math.floor(Math.random() * 5) - 2; // -2 to +2 variation
+      
+      // More sets based on rank
+      const sets = setsByRank[rank];
+      
+      // Determine weight based on rank and exercise name
+      const weight = determineWeight(exercise.name, rank, maxWeights);
+      
+      return {
+        id: `ex-${Date.now()}-${exercise.id}`,
+        name: exercise.name,
+        sets: sets,
+        reps: reps,
+        restBetweenSets: rank === 'Beginner' ? 90 : (rank === 'Intermediate' ? 75 : 60), // Rest decreases with rank
+        equipment: exercise.equipment,
+        weight: weight,
+        videoUrl: getExerciseVideoUrl(exercise.name)
+      };
+    });
+  });
   
   // Add equipment change rest period (2 minutes)
   let currentEquipment = "";
