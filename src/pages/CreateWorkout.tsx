@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { useToast } from "@/hooks/use-toast";
-import { Exercise, LocationState } from '@/types/exercise';
+import { Exercise } from '../types/user';
+import { LocationState } from '@/types/exercise';
 import { generateAIWorkout } from '@/utils/workoutGenerationUtils';
 import { getUserMaxWeights } from '@/utils/userDataUtils';
 
@@ -26,20 +27,17 @@ const CreateWorkout = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [exerciseFilter, setExerciseFilter] = useState('all');
-  const [generationAttempts, setGenerationAttempts] = useState(0); // Track generation attempts
+  const [generationAttempts, setGenerationAttempts] = useState(0);
   
   useEffect(() => {
-    // If AI workout, generate a workout based on user profile
     if (state?.type === 'ai') {
       setIsGenerating(true);
       setWorkoutName('KI-generiertes Workout');
       
-      // Get max weights from previous workouts
       const exerciseWeights = getUserMaxWeights(workouts || []);
       
       const generateWorkout = async () => {
         try {
-          // Add slight delay to avoid UI freezes
           await new Promise(resolve => setTimeout(resolve, 800));
           
           const aiExercises = generateAIWorkout(
@@ -49,13 +47,10 @@ const CreateWorkout = () => {
           );
           
           if (aiExercises && aiExercises.length > 0) {
-            // Modify AI workout to have more sets and fewer exercises
             const modifiedExercises = [...aiExercises];
             
-            // Keep only 3-5 exercises, but increase sets
             if (modifiedExercises.length > 5) {
               const selectedExercises = modifiedExercises.slice(0, 4);
-              // Increase sets for the selected exercises
               selectedExercises.forEach(ex => {
                 if (ex.sets < 4) {
                   ex.sets = Math.min(5, ex.sets + 2);
@@ -66,7 +61,6 @@ const CreateWorkout = () => {
               });
               setExercises(selectedExercises);
             } else {
-              // Increase sets and reps for existing exercises
               modifiedExercises.forEach(ex => {
                 if (ex.sets < 4) {
                   ex.sets = Math.min(5, ex.sets + 1);
@@ -80,18 +74,15 @@ const CreateWorkout = () => {
             
             setIsGenerating(false);
           } else {
-            // If we get empty exercises, try again (up to 3 times)
             if (generationAttempts < 3) {
               setGenerationAttempts(prev => prev + 1);
             } else {
-              // After 3 attempts, show an error and set a default workout
               toast({
                 title: 'Fehler bei der Workout-Generierung',
                 description: 'Wir konnten kein Workout erstellen. Bitte versuche es erneut oder erstelle ein manuelles Workout.',
                 variant: 'destructive',
               });
               
-              // Provide a fallback workout
               setExercises([
                 {
                   id: `ex-warmup-${Date.now()}`,
@@ -121,14 +112,13 @@ const CreateWorkout = () => {
       generateWorkout();
       
     } else if (state?.type === 'manual') {
-      // Start with a warm-up for manual workouts
       setExercises([
         {
           id: `ex-warmup-${Date.now()}`,
           name: 'Cardio Warmup',
           sets: 1,
           reps: 1,
-          duration: 600, // 10 minutes in seconds
+          duration: 600,
           restBetweenSets: 60,
           equipment: 'Treadmill',
           weight: 0,
@@ -146,7 +136,7 @@ const CreateWorkout = () => {
       reps: 10,
       restBetweenSets: 60,
       equipment: '',
-      weight: 0, // Default weight
+      weight: 0,
     };
     
     setExercises([...exercises, newExercise]);
@@ -196,7 +186,6 @@ const CreateWorkout = () => {
         createdAt: new Date().toISOString(),
       };
       
-      // Use timeout to simulate network request
       setTimeout(async () => {
         try {
           await addWorkout(newWorkout);

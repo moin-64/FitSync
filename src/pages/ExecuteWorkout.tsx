@@ -8,6 +8,7 @@ import { useWorkoutTimer } from '@/hooks/useWorkoutTimer';
 import { calculateMaxWeight } from '@/utils/rankingUtils';
 import { Button } from "@/components/ui/button";
 import { Play, Pause } from 'lucide-react';
+import { Workout } from '@/types/user'; // Added import
 
 // Components
 import WorkoutHeader from '@/components/workout/WorkoutHeader';

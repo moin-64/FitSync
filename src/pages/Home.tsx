@@ -10,13 +10,14 @@ import { Dumbbell, PlusSquare, Camera, LogOut, User } from 'lucide-react';
 import ProblemBar from '@/components/ProblemBar';
 import WorkoutCard from '@/components/WorkoutCard';
 import WorkoutScanner from '@/components/WorkoutScanner';
+import { Workout } from '@/types/user'; // Added import
 
 const Home = () => {
   const { profile, workouts, loading, deleteWorkout } = useUser();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [savedWorkouts, setSavedWorkouts] = useState<any[]>([]);
+  const [savedWorkouts, setSavedWorkouts] = useState<Workout[]>([]);
   const [showScanner, setShowScanner] = useState(false);
   
   useEffect(() => {

@@ -1,156 +1,21 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext } from 'react';
 import { useAuth } from './AuthContext';
-import { encryptData, decryptData } from '../utils/encryption';
-import { 
-  Rank, 
-  calculateEligibleRank, 
-  calculateMaxWeight, 
-  calculateMaxReps 
-} from '../utils/rankingUtils';
-
-interface UserProfile {
-  birthdate: string | null;
-  height: number | null;
-  weight: number | null;
-  experienceLevel: string | null;
-  limitations: string[];
-  rank: Rank;
-}
-
-interface Workout {
-  id: string;
-  name: string;
-  type: 'manual' | 'ai' | 'scanned';
-  exercises: Exercise[];
-  createdAt: string;
-  completed: boolean;
-}
-
-interface Exercise {
-  id: string;
-  name: string;
-  sets: number;
-  reps: number;
-  duration?: number;
-  restBetweenSets: number;
-  equipment: string;
-  videoUrl?: string;
-  weight?: number;
-}
-
-interface WorkoutHistory {
-  id: string;
-  workoutId: string;
-  date: string;
-  duration: number;
-  heartRate?: number;
-  caloriesBurned?: number;
-  oxygenSaturation?: number;
-  performance: number; // 0-100 rating
-}
-
-interface UserContextType {
-  profile: UserProfile;
-  workouts: Workout[];
-  history: WorkoutHistory[];
-  loading: boolean;
-  updateProfile: (data: Partial<UserProfile>) => Promise<void>;
-  addWorkout: (workout: Omit<Workout, 'id' | 'createdAt'>) => Promise<Workout>;
-  updateWorkout: (id: string, data: Partial<Workout>) => Promise<void>;
-  deleteWorkout: (id: string) => Promise<void>;
-  completeWorkout: (id: string, stats: Omit<WorkoutHistory, 'id' | 'workoutId' | 'date'>) => Promise<void>;
-  addLimitation: (limitation: string) => Promise<void>;
-  removeLimitation: (limitation: string) => Promise<void>;
-}
-
-interface UserData {
-  profile: UserProfile;
-  workouts: Workout[];
-  history: WorkoutHistory[];
-  settings: Record<string, any>;
-}
-
-const defaultUserProfile: UserProfile = {
-  birthdate: null,
-  height: null,
-  weight: null,
-  experienceLevel: null,
-  limitations: [],
-  rank: 'Beginner'
-};
-
-const defaultUserData: UserData = {
-  profile: defaultUserProfile,
-  workouts: [],
-  history: [],
-  settings: {}
-};
+import { UserContextType, UserProfile, Workout, WorkoutHistory } from '../types/user';
+import { useUserData } from '../hooks/useUserData';
+import { saveUserData, updateProfileRank } from '../utils/userContext.utils';
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isAuthenticated } = useAuth();
-  const [userData, setUserData] = useState<UserData>(defaultUserData);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const loadUserData = async () => {
-      if (!isAuthenticated || !user) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        
-        // In a real app, we would fetch the encrypted data from a server
-        // and decrypt it with the user's key
-        
-        // For demo, we're loading from localStorage
-        const encryptedData = localStorage.getItem('userData');
-        if (encryptedData) {
-          // Placeholder - in real app would use actual decryption with user's key
-          const userDataString = encryptedData; // This would be decrypted
-          try {
-            const parsedData = JSON.parse(userDataString);
-            setUserData(parsedData);
-          } catch (error) {
-            console.error('Error parsing user data:', error);
-            setUserData(defaultUserData);
-          }
-        } else {
-          setUserData(defaultUserData);
-        }
-      } catch (error) {
-        console.error('Failed to load user data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadUserData();
-  }, [isAuthenticated, user]);
-
-  const saveUserData = async (data: UserData) => {
-    try {
-      // In a real app, we would encrypt the data with the user's key
-      // and send it to the server
-      
-      // For demo, we're saving to localStorage
-      const dataString = JSON.stringify(data);
-      localStorage.setItem('userData', dataString); // This would be encrypted
-      
-      setUserData(data);
-    } catch (error) {
-      console.error('Failed to save user data:', error);
-      throw error;
-    }
-  };
+  const { userData, setUserData, loading } = useUserData(user, isAuthenticated);
 
   const updateProfile = async (data: Partial<UserProfile>) => {
     const updatedProfile = { ...userData.profile, ...data };
-    await saveUserData({ ...userData, profile: updatedProfile });
+    const updatedData = { ...userData, profile: updatedProfile };
+    await saveUserData(updatedData);
+    setUserData(updatedData);
   };
 
   const addWorkout = async (workout: Omit<Workout, 'id' | 'createdAt'>): Promise<Workout> => {
@@ -162,7 +27,9 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
     
     const updatedWorkouts = [...userData.workouts, newWorkout];
-    await saveUserData({ ...userData, workouts: updatedWorkouts });
+    const updatedData = { ...userData, workouts: updatedWorkouts };
+    await saveUserData(updatedData);
+    setUserData(updatedData);
     
     return newWorkout;
   };
@@ -174,12 +41,16 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updatedWorkouts = [...userData.workouts];
     updatedWorkouts[workoutIndex] = { ...updatedWorkouts[workoutIndex], ...data };
     
-    await saveUserData({ ...userData, workouts: updatedWorkouts });
+    const updatedData = { ...userData, workouts: updatedWorkouts };
+    await saveUserData(updatedData);
+    setUserData(updatedData);
   };
 
   const deleteWorkout = async (id: string) => {
     const updatedWorkouts = userData.workouts.filter(w => w.id !== id);
-    await saveUserData({ ...userData, workouts: updatedWorkouts });
+    const updatedData = { ...userData, workouts: updatedWorkouts };
+    await saveUserData(updatedData);
+    setUserData(updatedData);
   };
 
   const completeWorkout = async (id: string, stats: Omit<WorkoutHistory, 'id' | 'workoutId' | 'date'>) => {
@@ -201,37 +72,18 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updatedHistory = [...userData.history, workoutHistory];
     
     // Calculate new rank based on workout achievements
-    const updatedProfile = { ...userData.profile };
-    
-    // Extract all exercises from completed workouts
-    const allExercises = updatedWorkouts
-      .filter(w => w.completed)
-      .flatMap(w => w.exercises);
-    
-    // Calculate max weight and reps
-    const maxWeight = calculateMaxWeight(allExercises);
-    const maxReps = calculateMaxReps(allExercises);
-    
-    // Determine eligible rank
-    const eligibleRank = calculateEligibleRank(
-      updatedProfile.rank,
-      updatedProfile.birthdate,
-      updatedHistory.length,
-      maxWeight,
-      maxReps
-    );
-    
-    // Update rank if eligible for promotion
-    if (eligibleRank !== updatedProfile.rank) {
-      updatedProfile.rank = eligibleRank;
-    }
-    
-    await saveUserData({
+    const updatedData = {
       ...userData,
       workouts: updatedWorkouts,
-      history: updatedHistory,
-      profile: updatedProfile
-    });
+      history: updatedHistory
+    };
+    
+    // Update rank if eligible for promotion
+    const updatedProfile = updateProfileRank(updatedData);
+    updatedData.profile = updatedProfile;
+    
+    await saveUserData(updatedData);
+    setUserData(updatedData);
   };
 
   const addLimitation = async (limitation: string) => {
