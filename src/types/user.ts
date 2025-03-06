@@ -5,7 +5,7 @@ export interface UserProfile {
   birthdate: string | null;
   height: number | null;
   weight: number | null;
-  experienceLevel: string | null;
+  experienceLevel: Rank | null;
   limitations: string[];
   rank: Rank;
 }

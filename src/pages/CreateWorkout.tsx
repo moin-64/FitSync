@@ -6,6 +6,7 @@ import { Exercise } from '../types/user';
 import { LocationState } from '@/types/exercise';
 import { generateAIWorkout } from '@/utils/workoutGenerationUtils';
 import { getUserMaxWeights } from '@/utils/userDataUtils';
+import { Rank } from '@/utils/rankingUtils';
 
 // Component imports
 import WorkoutHeader from '@/components/workout/WorkoutHeader';
@@ -40,9 +41,11 @@ const CreateWorkout = () => {
         try {
           await new Promise(resolve => setTimeout(resolve, 800));
           
+          const experienceLevel = profile?.experienceLevel as Rank || 'Beginner';
+          
           const aiExercises = generateAIWorkout(
             profile?.limitations || [],
-            profile?.experienceLevel || 'beginner',
+            experienceLevel,
             exerciseWeights
           );
           
