@@ -43,6 +43,22 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({
     return availableExercises.filter(ex => ex.category === exerciseFilter);
   };
 
+  // Handle exercise selection with equipment update
+  const handleExerciseSelect = (value: string) => {
+    const selectedExercise = availableExercises.find(ex => ex.name === value);
+    if (selectedExercise) {
+      updateExercise(exercise.id, { 
+        name: value,
+        equipment: selectedExercise.equipment || exercise.equipment,
+        videoUrl: selectedExercise.videoUrl || exercise.videoUrl,
+        // Set a default weight based on equipment type
+        weight: selectedExercise.equipment === 'none' || 
+               selectedExercise.equipment === 'body weight' ? 
+               0 : (exercise.weight || 10)
+      });
+    }
+  };
+
   return (
     <Card
       key={exercise.id}
@@ -80,14 +96,7 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({
             
             <Select
               value={exercise.name}
-              onValueChange={(value) => {
-                const selectedExercise = availableExercises.find(ex => ex.name === value);
-                updateExercise(exercise.id, { 
-                  name: value,
-                  equipment: selectedExercise?.equipment || exercise.equipment,
-                  videoUrl: selectedExercise?.videoUrl || exercise.videoUrl
-                });
-              }}
+              onValueChange={handleExerciseSelect}
             >
               <SelectTrigger className="w-full glass" id={`exercise-name-${exercise.id}`}>
                 <SelectValue placeholder="Wähle eine Übung" />
@@ -102,26 +111,30 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({
             </Select>
           </div>
           
-          {/* Weight field */}
-          <div>
-            <Label htmlFor={`weight-${exercise.id}`} className="mb-1 block flex items-center">
-              <Dumbbell className="h-4 w-4 mr-2" />
-              Gewicht (kg): {exercise.weight || 0}
-            </Label>
-            <div className="flex items-center gap-2">
-              <Input
-                id={`weight-${exercise.id}`}
-                type="number"
-                min="0"
-                step="2.5"
-                value={exercise.weight || 0}
-                onChange={(e) => 
-                  updateExercise(exercise.id, { weight: parseFloat(e.target.value) || 0 })
-                }
-                className="glass"
-              />
+          {/* Weight field - only show for weighted exercises */}
+          {exercise.equipment !== 'none' && 
+           exercise.equipment !== 'body weight' && 
+           exercise.duration === undefined && (
+            <div>
+              <Label htmlFor={`weight-${exercise.id}`} className="mb-1 block flex items-center">
+                <Dumbbell className="h-4 w-4 mr-2" />
+                Gewicht (kg): {exercise.weight || 0}
+              </Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id={`weight-${exercise.id}`}
+                  type="number"
+                  min="0"
+                  step="2.5"
+                  value={exercise.weight || 0}
+                  onChange={(e) => 
+                    updateExercise(exercise.id, { weight: parseFloat(e.target.value) || 0 })
+                  }
+                  className="glass"
+                />
+              </div>
             </div>
-          </div>
+          )}
           
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -140,21 +153,23 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({
               />
             </div>
             
-            <div>
-              <Label htmlFor={`reps-${exercise.id}`} className="mb-1 block">
-                Wiederholungen: {exercise.reps}
-              </Label>
-              <Slider
-                id={`reps-${exercise.id}`}
-                min={1}
-                max={20}
-                step={1}
-                value={[exercise.reps]}
-                onValueChange={(values) => 
-                  updateExercise(exercise.id, { reps: values[0] })
-                }
-              />
-            </div>
+            {exercise.duration === undefined && (
+              <div>
+                <Label htmlFor={`reps-${exercise.id}`} className="mb-1 block">
+                  Wiederholungen: {exercise.reps}
+                </Label>
+                <Slider
+                  id={`reps-${exercise.id}`}
+                  min={1}
+                  max={20}
+                  step={1}
+                  value={[exercise.reps]}
+                  onValueChange={(values) => 
+                    updateExercise(exercise.id, { reps: values[0] })
+                  }
+                />
+              </div>
+            )}
           </div>
           
           <div>

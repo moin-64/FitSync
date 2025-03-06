@@ -54,6 +54,21 @@ const ExerciseDisplay: React.FC<ExerciseDisplayProps> = ({
     return '/placeholder.svg';
   };
   
+  // Handle video playback based on pause state
+  useEffect(() => {
+    const videoElement = document.querySelector(`video[data-exercise-id="${exercise.id}"]`) as HTMLVideoElement;
+    
+    if (videoElement) {
+      if (isPaused) {
+        videoElement.pause();
+      } else {
+        videoElement.play().catch(e => {
+          console.log('Video play error (may be expected on mobile):', e);
+        });
+      }
+    }
+  }, [isPaused, exercise.id]);
+  
   return (
     <div className="flex-1 flex flex-col items-center justify-center my-8 relative">
       {struggleDetected && (
@@ -71,6 +86,7 @@ const ExerciseDisplay: React.FC<ExerciseDisplayProps> = ({
         <div className="w-full mb-4 bg-background/50 rounded-lg overflow-hidden aspect-video">
           <video 
             key={videoKey}
+            data-exercise-id={exercise.id}
             className="w-full h-full object-cover"
             src={getVideoUrl()}
             autoPlay={!isPaused}
@@ -88,7 +104,7 @@ const ExerciseDisplay: React.FC<ExerciseDisplayProps> = ({
             <Dumbbell className="h-4 w-4 mr-1 text-primary" />
             <span className="text-sm font-medium">
               {exercise.weight || 0} kg 
-              {maxWeight && maxWeight > 0 && ` (Your best: ${maxWeight} kg)`}
+              {maxWeight && maxWeight > 0 && maxWeight !== exercise.weight && ` (Your best: ${maxWeight} kg)`}
             </span>
           </div>
         )}

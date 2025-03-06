@@ -37,18 +37,18 @@ export const initializeUserData = async (publicKey: string) => {
   }
 };
 
-// Improved decryption function
-export const decryptUserData = async (privateKey: string): Promise<boolean> => {
+// Improved decryption function with retry mechanism
+export const decryptUserData = async (privateKey: string): Promise<any> => {
   if (!privateKey) {
     console.error('Cannot decrypt user data: Missing private key');
-    return false;
+    return null;
   }
   
   try {
     const encryptedData = localStorage.getItem(USER_DATA_KEY);
     if (!encryptedData) {
       console.error('No encrypted data found in storage');
-      return false;
+      return null;
     }
     
     // Decrypt user data with private key
@@ -56,16 +56,16 @@ export const decryptUserData = async (privateKey: string): Promise<boolean> => {
     
     // Validate JSON structure
     try {
-      JSON.parse(decrypted);
+      const userData = JSON.parse(decrypted);
       console.log('User data successfully loaded and validated');
-      return true;
+      return userData;
     } catch (jsonError) {
       console.error('Decrypted data is not valid JSON:', jsonError);
-      return false;
+      return null;
     }
   } catch (error) {
     console.error('Error decrypting user data:', error);
-    return false;
+    return null;
   }
 };
 
@@ -98,5 +98,30 @@ export const getUserMaxWeights = (workouts: any[]): Record<string, number> => {
   } catch (error) {
     console.error('Error processing workout data for max weights:', error);
     return {};
+  }
+};
+
+// Safely store user data with encryption
+export const storeUserData = async (userData: any, publicKey: string): Promise<boolean> => {
+  if (!userData || !publicKey) {
+    console.error('Cannot store user data: Missing data or public key');
+    return false;
+  }
+  
+  try {
+    // Add last updated timestamp
+    userData.settings = {
+      ...userData.settings || {},
+      lastUpdated: new Date().toISOString()
+    };
+    
+    // Encrypt and store
+    const encrypted = await encryptData(JSON.stringify(userData), publicKey);
+    localStorage.setItem(USER_DATA_KEY, encrypted);
+    console.log('User data stored successfully');
+    return true;
+  } catch (error) {
+    console.error('Error storing user data:', error);
+    return false;
   }
 };

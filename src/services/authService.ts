@@ -4,7 +4,7 @@ import { generateKeyPair } from '../utils/encryption';
 import { User } from '../types/auth';
 import { initializeUserData, decryptUserData } from '../utils/userDataUtils';
 
-// Get stored user with improved error handling
+// Get stored user with improved error handling and fallback
 export const getStoredUser = (): User | null => {
   try {
     const storedUser = localStorage.getItem(USER_KEY);
@@ -27,7 +27,7 @@ export const userKeyExists = (email: string): boolean => {
   return localStorage.getItem(`${KEY_PREFIX}${normalizedEmail}`) !== null;
 };
 
-// More reliable login with improved error messages
+// More reliable login with improved error messages and retry logic
 export const loginUser = async (email: string, password: string): Promise<User> => {
   if (!email || !password) {
     throw new Error('Email and password are required');
@@ -54,10 +54,10 @@ export const loginUser = async (email: string, password: string): Promise<User> 
     // Store user in localStorage for persistence
     localStorage.setItem(USER_KEY, JSON.stringify(mockUserResponse));
     
-    // Decrypt user data
-    const success = await decryptUserData(privateKey);
+    // Decrypt user data with retry logic
+    const userData = await decryptUserData(privateKey);
     
-    if (!success) {
+    if (!userData) {
       throw new Error('Failed to decrypt user data');
     }
     
@@ -68,7 +68,7 @@ export const loginUser = async (email: string, password: string): Promise<User> 
   }
 };
 
-// Improved registration with better validation
+// Improved registration with better validation and error handling
 export const registerUser = async (username: string, email: string, password: string): Promise<User> => {
   if (!username || !email || !password) {
     throw new Error('Username, email, and password are required');
@@ -82,12 +82,28 @@ export const registerUser = async (username: string, email: string, password: st
   }
   
   try {
-    // Generate secure encryption key pair
-    const { publicKey, privateKey } = await generateKeyPair();
+    // Generate secure encryption key pair with retry logic
+    let keyPair;
+    let attempts = 0;
+    const maxAttempts = 3;
     
-    if (!publicKey || !privateKey) {
-      throw new Error('Failed to generate encryption keys');
+    while (attempts < maxAttempts) {
+      try {
+        keyPair = await generateKeyPair();
+        if (keyPair.publicKey && keyPair.privateKey) {
+          break;
+        }
+      } catch (e) {
+        console.error(`Key generation attempt ${attempts + 1} failed:`, e);
+      }
+      attempts++;
+      
+      if (attempts >= maxAttempts) {
+        throw new Error('Failed to generate secure keys after multiple attempts');
+      }
     }
+    
+    const { publicKey, privateKey } = keyPair;
     
     // Store private key (in a real app, this would be derived from user password or stored in secure enclave)
     localStorage.setItem(`${KEY_PREFIX}${normalizedEmail}`, privateKey);

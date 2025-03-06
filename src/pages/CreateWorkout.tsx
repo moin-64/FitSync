@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
@@ -36,19 +35,49 @@ const CreateWorkout = () => {
       setWorkoutName('KI-generiertes Workout');
       
       // Get max weights from previous workouts
-      const exerciseWeights = getUserMaxWeights(workouts);
+      const exerciseWeights = getUserMaxWeights(workouts || []);
       
-      // Generate AI workout with rank and max weights
-      setTimeout(() => {
+      const generateWorkout = async () => {
         try {
+          // Add slight delay to avoid UI freezes
+          await new Promise(resolve => setTimeout(resolve, 800));
+          
           const aiExercises = generateAIWorkout(
-            profile.limitations,
-            profile.rank,
+            profile?.limitations || [],
+            profile?.experienceLevel || 'beginner',
             exerciseWeights
           );
           
           if (aiExercises && aiExercises.length > 0) {
-            setExercises(aiExercises);
+            // Modify AI workout to have more sets and fewer exercises
+            const modifiedExercises = [...aiExercises];
+            
+            // Keep only 3-5 exercises, but increase sets
+            if (modifiedExercises.length > 5) {
+              const selectedExercises = modifiedExercises.slice(0, 4);
+              // Increase sets for the selected exercises
+              selectedExercises.forEach(ex => {
+                if (ex.sets < 4) {
+                  ex.sets = Math.min(5, ex.sets + 2);
+                }
+                if (ex.reps < 12) {
+                  ex.reps = Math.min(15, ex.reps + 3);
+                }
+              });
+              setExercises(selectedExercises);
+            } else {
+              // Increase sets and reps for existing exercises
+              modifiedExercises.forEach(ex => {
+                if (ex.sets < 4) {
+                  ex.sets = Math.min(5, ex.sets + 1);
+                }
+                if (ex.reps < 12) {
+                  ex.reps = Math.min(15, ex.reps + 2);
+                }
+              });
+              setExercises(modifiedExercises);
+            }
+            
             setIsGenerating(false);
           } else {
             // If we get empty exercises, try again (up to 3 times)
@@ -87,7 +116,10 @@ const CreateWorkout = () => {
           });
           setIsGenerating(false);
         }
-      }, 1500);
+      };
+      
+      generateWorkout();
+      
     } else if (state?.type === 'manual') {
       // Start with a warm-up for manual workouts
       setExercises([
@@ -104,7 +136,7 @@ const CreateWorkout = () => {
       ]);
       setWorkoutName('Mein eigenes Workout');
     }
-  }, [state?.type, profile.limitations, profile.rank, workouts, generationAttempts]);
+  }, [state?.type, profile?.limitations, profile?.experienceLevel, workouts, generationAttempts]);
   
   const addExercise = () => {
     const newExercise: Exercise = {
@@ -156,20 +188,35 @@ const CreateWorkout = () => {
       setIsSaving(true);
       
       const newWorkout = {
+        id: `workout-${Date.now()}`,
         name: workoutName,
         type: state?.type || 'manual',
         exercises,
         completed: false,
+        createdAt: new Date().toISOString(),
       };
       
-      await addWorkout(newWorkout);
-      
-      toast({
-        title: 'Workout gespeichert',
-        description: 'Ihr Workout wurde erfolgreich gespeichert',
-      });
-      
-      navigate('/home');
+      // Use timeout to simulate network request
+      setTimeout(async () => {
+        try {
+          await addWorkout(newWorkout);
+          
+          toast({
+            title: 'Workout gespeichert',
+            description: 'Ihr Workout wurde erfolgreich gespeichert',
+          });
+          
+          navigate('/home');
+        } catch (error) {
+          console.error('Fehler beim Speichern des Workouts:', error);
+          toast({
+            title: 'Fehler',
+            description: 'Fehler beim Speichern des Workouts',
+            variant: 'destructive',
+          });
+          setIsSaving(false);
+        }
+      }, 800);
     } catch (error) {
       console.error('Fehler beim Speichern des Workouts:', error);
       toast({

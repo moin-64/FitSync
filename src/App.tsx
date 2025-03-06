@@ -17,18 +17,29 @@ import CreateWorkout from "./pages/CreateWorkout";
 import ExecuteWorkout from "./pages/ExecuteWorkout";
 import NotFound from "./pages/NotFound";
 
-// Auth guard component
+// Improved auth guard component with better error handling
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const isAuthenticated = localStorage.getItem('user') !== null;
+  // More robust auth check
+  const isAuthenticated = Boolean(localStorage.getItem('user'));
   
   if (!isAuthenticated) {
-    return <Navigate to="/login" />;
+    console.log("User not authenticated, redirecting to login");
+    return <Navigate to="/login" replace />;
   }
   
   return <>{children}</>;
 };
 
-const queryClient = new QueryClient();
+// Configure query client with better defaults for error handling
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 2,
+      refetchOnWindowFocus: false,
+      staleTime: 10 * 60 * 1000, // 10 minutes
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
