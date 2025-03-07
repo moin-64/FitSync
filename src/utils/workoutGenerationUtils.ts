@@ -1,5 +1,4 @@
-
-import { availableExercises } from '../constants/exerciseData';
+import { availableExercises, EQUIPMENT_TYPES } from '../constants/exerciseData';
 import { Rank } from './rankingUtils';
 
 // Helper function to determine weight based on rank and exercise
@@ -28,6 +27,16 @@ const determineWeight = (
     'Lat Pulldown': 0.8,
     'Leg Press': 1.5,
     'Cable Row': 0.7,
+    'Pec Deck Fly': 0.8,
+    'Chest Press Machine': 0.9,
+    'Leg Extension': 0.8,
+    'Leg Curl': 0.7,
+    'Seated Calf Raise': 0.5,
+    'Smith Machine Squat': 1.3,
+    'Smith Machine Bench': 0.9,
+    'Shoulder Press Machine': 0.6,
+    'Tricep Machine': 0.4,
+    'Bicep Curl Machine': 0.4,
   };
 
   // Default modifier if exercise not found
@@ -76,6 +85,16 @@ const getExerciseVideoUrl = (exerciseName: string): string => {
     'Lat Pulldown': 'https://storage.googleapis.com/workout-videos/lat-pulldown.mp4',
     'Leg Press': 'https://storage.googleapis.com/workout-videos/leg-press.mp4',
     'Cable Row': 'https://storage.googleapis.com/workout-videos/cable-row.mp4',
+    'Pec Deck Fly': 'https://storage.googleapis.com/workout-videos/pec-deck.mp4',
+    'Chest Press Machine': 'https://storage.googleapis.com/workout-videos/chest-press-machine.mp4',
+    'Leg Extension': 'https://storage.googleapis.com/workout-videos/leg-extension.mp4',
+    'Leg Curl': 'https://storage.googleapis.com/workout-videos/leg-curl.mp4',
+    'Seated Calf Raise': 'https://storage.googleapis.com/workout-videos/calf-raise.mp4',
+    'Smith Machine Squat': 'https://storage.googleapis.com/workout-videos/smith-machine-squat.mp4',
+    'Smith Machine Bench': 'https://storage.googleapis.com/workout-videos/smith-machine-bench.mp4',
+    'Shoulder Press Machine': 'https://storage.googleapis.com/workout-videos/shoulder-press-machine.mp4',
+    'Tricep Machine': 'https://storage.googleapis.com/workout-videos/tricep-machine.mp4',
+    'Bicep Curl Machine': 'https://storage.googleapis.com/workout-videos/bicep-curl-machine.mp4',
     'Cardio Warmup': 'https://storage.googleapis.com/workout-videos/cardio-warmup.mp4',
     'Equipment Change Rest': 'https://storage.googleapis.com/workout-videos/rest-period.mp4',
   };
@@ -165,6 +184,14 @@ export const generateAIWorkout = (
       
       // Determine weight based on rank and exercise name
       const weight = determineWeight(exercise.name, rank, maxWeights);
+      
+      // For machine exercises, add a bit more weight since machines tend to be easier
+      if (
+        exercise.equipment.includes('Machine') || 
+        EQUIPMENT_TYPES.slice(5, 18).includes(exercise.equipment)
+      ) {
+        weight = Math.round(weight * 1.15); // 15% more weight for machine exercises
+      }
       
       return {
         id: `ex-${Date.now()}-${exercise.id}`,

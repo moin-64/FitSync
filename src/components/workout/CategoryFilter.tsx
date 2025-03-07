@@ -22,9 +22,9 @@ const CategoryFilter: React.FC<CategoryFilterProps> = ({ exerciseFilter, setExer
       {EXERCISE_CATEGORIES.filter(cat => cat !== 'All').map(category => (
         <Button
           key={category}
-          variant={exerciseFilter === category ? "default" : "outline"}
+          variant={exerciseFilter === category.toLowerCase() ? "default" : "outline"}
           size="sm"
-          onClick={() => setExerciseFilter(category)}
+          onClick={() => setExerciseFilter(category.toLowerCase())}
           className="whitespace-nowrap"
         >
           {category}

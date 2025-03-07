@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -8,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ChevronDown, ChevronUp, Trash2, Dumbbell } from 'lucide-react';
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Exercise } from '@/types/exercise';
-import { availableExercises } from '@/constants/exerciseData';
+import { availableExercises, EQUIPMENT_TYPES } from '@/constants/exerciseData';
 import { formatDuration } from '@/utils/workoutGenerationUtils';
 import CategoryFilter from './CategoryFilter';
 
@@ -35,7 +34,6 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({
   exerciseFilter,
   setExerciseFilter
 }) => {
-  // Get filtered exercises based on category
   const getFilteredExercises = () => {
     if (exerciseFilter === 'all') {
       return availableExercises;
@@ -43,7 +41,6 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({
     return availableExercises.filter(ex => ex.category === exerciseFilter);
   };
 
-  // Handle exercise selection with equipment update
   const handleExerciseSelect = (value: string) => {
     const selectedExercise = availableExercises.find(ex => ex.name === value);
     if (selectedExercise) {
@@ -51,12 +48,15 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({
         name: value,
         equipment: selectedExercise.equipment || exercise.equipment,
         videoUrl: selectedExercise.videoUrl || exercise.videoUrl,
-        // Set a default weight based on equipment type
         weight: selectedExercise.equipment === 'none' || 
                selectedExercise.equipment === 'body weight' ? 
                0 : (exercise.weight || 10)
       });
     }
+  };
+
+  const isCardioEquipment = (equipment: string) => {
+    return ['Treadmill', 'Elliptical', 'Exercise Bike', 'Rowing Ergometer', 'Stairmaster'].includes(equipment);
   };
 
   return (
@@ -111,9 +111,10 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({
             </Select>
           </div>
           
-          {/* Weight field - only show for weighted exercises */}
           {exercise.equipment !== 'none' && 
            exercise.equipment !== 'body weight' && 
+           exercise.equipment !== 'Body Weight' &&
+           !isCardioEquipment(exercise.equipment) &&
            exercise.duration === undefined && (
             <div>
               <Label htmlFor={`weight-${exercise.id}`} className="mb-1 block flex items-center">
@@ -153,7 +154,7 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({
               />
             </div>
             
-            {exercise.duration === undefined && (
+            {exercise.duration === undefined && !isCardioEquipment(exercise.equipment) && (
               <div>
                 <Label htmlFor={`reps-${exercise.id}`} className="mb-1 block">
                   Wiederholungen: {exercise.reps}
@@ -188,19 +189,22 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({
             />
           </div>
           
-          {exercise.duration !== undefined && (
+          {(exercise.duration !== undefined || isCardioEquipment(exercise.equipment)) && (
             <div>
               <Label htmlFor={`duration-${exercise.id}`} className="mb-1 block">
-                Dauer: {formatDuration(exercise.duration)}
+                Dauer: {formatDuration(exercise.duration || 600)}
               </Label>
               <Slider
                 id={`duration-${exercise.id}`}
                 min={60}
                 max={900}
                 step={30}
-                value={[exercise.duration]}
+                value={[exercise.duration || 600]}
                 onValueChange={(values) => 
-                  updateExercise(exercise.id, { duration: values[0] })
+                  updateExercise(exercise.id, { 
+                    duration: values[0],
+                    ...(isCardioEquipment(exercise.equipment) ? { reps: 1 } : {})
+                  })
                 }
               />
             </div>
