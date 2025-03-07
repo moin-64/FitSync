@@ -43,7 +43,6 @@ const CreateWorkout = () => {
       <WorkoutHeader 
         type={state?.type}
         isSaving={isSaving}
-        onSaveWorkout={handleSaveWorkout}
       />
       
       <WorkoutForm

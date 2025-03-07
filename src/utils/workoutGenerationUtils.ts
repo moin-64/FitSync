@@ -1,3 +1,4 @@
+
 import { availableExercises, EQUIPMENT_TYPES } from '../constants/exerciseData';
 import { Rank } from './rankingUtils';
 
@@ -78,6 +79,20 @@ const repsByRank: Record<Rank, number> = {
   'Master': 25        // Same as before
 };
 
+// Get random cardio machine for warmup
+const getRandomCardioMachine = (): string => {
+  const cardioMachines = [
+    'Treadmill',
+    'Elliptical',
+    'Exercise Bike',
+    'Rowing Ergometer',
+    'Stairmaster'
+  ];
+  
+  const randomIndex = Math.floor(Math.random() * cardioMachines.length);
+  return cardioMachines[randomIndex];
+};
+
 // Get real exercise video URL
 const getExerciseVideoUrl = (exerciseName: string): string => {
   // Map of exercise names to real video URLs
@@ -103,6 +118,11 @@ const getExerciseVideoUrl = (exerciseName: string): string => {
     'Bicep Curl Machine': 'https://storage.googleapis.com/workout-videos/bicep-curl-machine.mp4',
     'Cardio Warmup': 'https://storage.googleapis.com/workout-videos/cardio-warmup.mp4',
     'Equipment Change Rest': 'https://storage.googleapis.com/workout-videos/rest-period.mp4',
+    'Treadmill': 'https://storage.googleapis.com/workout-videos/treadmill-run.mp4',
+    'Elliptical': 'https://storage.googleapis.com/workout-videos/elliptical.mp4',
+    'Exercise Bike': 'https://storage.googleapis.com/workout-videos/exercise-bike.mp4',
+    'Rowing Ergometer': 'https://storage.googleapis.com/workout-videos/rowing-machine.mp4',
+    'Stairmaster': 'https://storage.googleapis.com/workout-videos/stairmaster.mp4',
   };
   
   // Return actual video URL if available, otherwise a generic one
@@ -121,6 +141,8 @@ export const generateAIWorkout = (
     rank = 'Beginner';
   }
 
+  // Generate cardio warmup with random cardio machine
+  const cardioMachine = getRandomCardioMachine();
   const warmup = {
     id: `ex-warmup-${Date.now()}`,
     name: 'Cardio Warmup',
@@ -128,20 +150,20 @@ export const generateAIWorkout = (
     reps: 1,
     duration: 600, // 10 minutes in seconds
     restBetweenSets: 60,
-    equipment: 'Treadmill',
+    equipment: cardioMachine,
     weight: 0,
-    videoUrl: getExerciseVideoUrl('Cardio Warmup'),
+    videoUrl: getExerciseVideoUrl(cardioMachine),
   };
   
-  // Pick random exercises based on categories - EVEN FEWER DIFFERENT EXERCISES
+  // Pick random exercises based on categories
   const pickRandomExercises = (category: string, count: number) => {
     const categoryExercises = availableExercises.filter(ex => ex.category === category);
     const selected = [];
     
-    // Only pick 1-2 exercises maximum per category
-    const actualCount = Math.min(count, 1);
+    // Pick exercises from this category
+    const actualCount = Math.min(count, categoryExercises.length);
     
-    for (let i = 0; i < actualCount && i < categoryExercises.length; i++) {
+    for (let i = 0; i < actualCount; i++) {
       const randomIndex = Math.floor(Math.random() * categoryExercises.length);
       selected.push(categoryExercises[randomIndex]);
       categoryExercises.splice(randomIndex, 1); // Remove selected exercise to avoid duplicates
@@ -149,24 +171,23 @@ export const generateAIWorkout = (
     return selected;
   };
   
-  // REDUCED number of exercise categories - focus on fewer exercises with more sets/reps
-  // Only use 2 categories maximum
-  let exerciseCategories = ['Chest', 'Legs'];
+  // Select exercise categories based on limitations
+  let exerciseCategories = ['Chest', 'Legs', 'Back', 'Arms'];
   
   // Consider limitations
   if (limitations.length > 0) {
     if (limitations.some(l => l.toLowerCase().includes('arm') || l.toLowerCase().includes('wrist'))) {
       // Remove upper body exercises
-      exerciseCategories = exerciseCategories.filter(c => c !== 'Chest' && c !== 'Back');
+      exerciseCategories = exerciseCategories.filter(c => c !== 'Chest' && c !== 'Back' && c !== 'Arms');
       // Add more leg exercises
-      exerciseCategories = ['Legs'];
+      exerciseCategories = ['Legs', 'Core'];
     }
     
     if (limitations.some(l => l.toLowerCase().includes('leg') || l.toLowerCase().includes('knee'))) {
       // Remove leg exercises
       exerciseCategories = exerciseCategories.filter(c => c !== 'Legs');
       // Add more upper body exercises
-      exerciseCategories = ['Chest'];
+      exerciseCategories = ['Chest', 'Back', 'Arms'];
     }
   }
   
@@ -178,9 +199,11 @@ export const generateAIWorkout = (
   // Deduplicate categories
   exerciseCategories = [...new Set(exerciseCategories)];
   
-  // Create exercises with EVEN MORE SETS AND REPS
+  // Create exercises with MORE SETS AND REPS
   let exercises = exerciseCategories.flatMap(category => {
-    return pickRandomExercises(category, 1).map(exercise => {
+    // Get 1-2 exercises from each category
+    const exerciseCount = Math.min(2, Math.max(1, Math.floor(3 / exerciseCategories.length)));
+    return pickRandomExercises(category, exerciseCount).map(exercise => {
       // More reps with additional bonus
       const baseReps = repsByRank[rank];
       const reps = baseReps + Math.floor(Math.random() * 3); // Small variation
@@ -214,19 +237,56 @@ export const generateAIWorkout = (
     });
   });
   
-  // Ensure we have at least one exercise even if categories resulted in none
-  if (exercises.length === 0) {
-    const defaultExercise = {
-      id: `ex-default-${Date.now()}`,
-      name: 'Bodyweight Squat',
-      sets: setsByRank[rank],
-      reps: repsByRank[rank],
-      restBetweenSets: 60,
-      equipment: 'None',
-      weight: 0,
-      videoUrl: getExerciseVideoUrl('Squat')
-    };
-    exercises.push(defaultExercise);
+  // Ensure we have at least 3 exercises (plus warmup)
+  if (exercises.length < 3) {
+    // Add more exercises from random categories to reach minimum of 3
+    const additionalNeeded = 3 - exercises.length;
+    const allCategories = ['Chest', 'Legs', 'Back', 'Arms', 'Shoulders', 'Core'];
+    
+    // Filter out categories we already used
+    const remainingCategories = allCategories.filter(c => !exerciseCategories.includes(c));
+    
+    for (let i = 0; i < additionalNeeded; i++) {
+      // Get a random category
+      const randomCategoryIndex = Math.floor(Math.random() * remainingCategories.length);
+      const randomCategory = remainingCategories[randomCategoryIndex] || 'Core';
+      
+      // Get an exercise from this category
+      const additionalExercises = pickRandomExercises(randomCategory, 1);
+      
+      if (additionalExercises.length > 0) {
+        const exercise = additionalExercises[0];
+        
+        // Configure the exercise
+        const reps = repsByRank[rank] + Math.floor(Math.random() * 3);
+        const sets = setsByRank[rank] + (Math.random() > 0.5 ? 1 : 0);
+        
+        const isMachineExercise = 
+          exercise.equipment.includes('Machine') || 
+          EQUIPMENT_TYPES.slice(5, 18).includes(exercise.equipment);
+        
+        const weight = determineWeight(exercise.name, rank, maxWeights, isMachineExercise);
+        
+        exercises.push({
+          id: `ex-${Date.now()}-${Math.random().toString(36).substring(7)}-${exercise.id}`,
+          name: exercise.name,
+          sets: sets,
+          reps: reps,
+          restBetweenSets: rank === 'Beginner' ? 90 : (rank === 'Intermediate' ? 75 : 60),
+          equipment: exercise.equipment,
+          weight: weight,
+          videoUrl: getExerciseVideoUrl(exercise.name)
+        });
+      }
+      
+      // Remove this category so we don't pick from it again
+      remainingCategories.splice(randomCategoryIndex, 1);
+      
+      // If we ran out of categories, just use Core
+      if (remainingCategories.length === 0) {
+        remainingCategories.push('Core');
+      }
+    }
   }
   
   // Add equipment change rest period (2 minutes)

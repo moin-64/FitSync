@@ -43,7 +43,6 @@ const WorkoutForm: React.FC<WorkoutFormProps> = ({
         setExpandedExercise={setExpandedExercise}
         updateExercise={updateExercise}
         removeExercise={removeExercise}
-        addExercise={addExercise}
         exerciseFilter={exerciseFilter}
         setExerciseFilter={setExerciseFilter}
       />
