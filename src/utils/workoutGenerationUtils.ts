@@ -5,7 +5,8 @@ import { Rank } from './rankingUtils';
 const determineWeight = (
   exerciseName: string, 
   rank: Rank,
-  maxWeights: Record<string, number> = {}
+  maxWeights: Record<string, number> = {},
+  isForMachine: boolean = false
 ): number => {
   // Base weights by rank (in kg)
   const baseWeightsByRank: Record<Rank, number> = {
@@ -43,14 +44,19 @@ const determineWeight = (
   const modifier = exerciseModifiers[exerciseName] || 0.5;
   
   // Calculate base weight from rank
-  const baseWeight = baseWeightsByRank[rank] * modifier;
+  let baseWeight = baseWeightsByRank[rank] * modifier;
   
   // If user has a previous max for this exercise, recommend slightly higher
   if (maxWeights[exerciseName]) {
-    return Math.round(maxWeights[exerciseName] * 1.05); // 5% increase from last max
+    baseWeight = maxWeights[exerciseName] * 1.05; // 5% increase from last max
   }
   
-  // Otherwise use the rank-based calculation
+  // Apply machine modifier if needed
+  if (isForMachine) {
+    baseWeight *= 1.15; // 15% more weight for machine exercises
+  }
+  
+  // Return rounded weight
   return Math.round(baseWeight);
 };
 
@@ -182,16 +188,18 @@ export const generateAIWorkout = (
       // More sets based on rank with additional bonus
       const sets = setsByRank[rank] + (Math.random() > 0.5 ? 1 : 0); // Occasional extra set
       
-      // Determine weight based on rank and exercise name
-      const weight = determineWeight(exercise.name, rank, maxWeights);
-      
-      // For machine exercises, add a bit more weight since machines tend to be easier
-      if (
+      // Check if this is a machine exercise
+      const isMachineExercise = 
         exercise.equipment.includes('Machine') || 
-        EQUIPMENT_TYPES.slice(5, 18).includes(exercise.equipment)
-      ) {
-        weight = Math.round(weight * 1.15); // 15% more weight for machine exercises
-      }
+        EQUIPMENT_TYPES.slice(5, 18).includes(exercise.equipment);
+      
+      // Determine weight based on rank and exercise name, with machine adjustment
+      const weight = determineWeight(
+        exercise.name, 
+        rank, 
+        maxWeights, 
+        isMachineExercise
+      );
       
       return {
         id: `ex-${Date.now()}-${exercise.id}`,
