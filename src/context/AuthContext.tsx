@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -53,7 +52,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await checkAuth();
   };
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<void> => {
     setLoading(true);
     try {
       const userData = await loginUser(email, password);
@@ -65,7 +64,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       
       navigate('/home');
-      return true;
     } catch (error) {
       console.error('Login failed:', error);
       toast({
@@ -74,11 +72,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         variant: 'destructive',
       });
       setLoading(false);
-      return false;
+      throw error;
     }
   };
 
-  const register = async (username: string, email: string, password: string) => {
+  const register = async (username: string, email: string, password: string): Promise<void> => {
     setLoading(true);
     try {
       const userData = await registerUser(username, email, password);
@@ -90,7 +88,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       
       navigate('/onboarding');
-      return true;
     } catch (error) {
       console.error('Registration failed:', error);
       toast({
@@ -99,7 +96,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         variant: 'destructive',
       });
       setLoading(false);
-      return false;
+      throw error;
     }
   };
 
