@@ -41,7 +41,7 @@ const CreateWorkout = () => {
         try {
           await new Promise(resolve => setTimeout(resolve, 800));
           
-          const experienceLevel = profile?.experienceLevel as Rank || 'Beginner';
+          const experienceLevel: Rank = (profile?.experienceLevel as Rank) || 'Beginner';
           
           const aiExercises = generateAIWorkout(
             profile?.limitations || [],
@@ -50,29 +50,32 @@ const CreateWorkout = () => {
           );
           
           if (aiExercises && aiExercises.length > 0) {
-            const modifiedExercises = [...aiExercises];
-            
-            if (modifiedExercises.length > 5) {
-              const selectedExercises = modifiedExercises.slice(0, 4);
-              selectedExercises.forEach(ex => {
-                if (ex.sets < 4) {
-                  ex.sets = Math.min(5, ex.sets + 2);
+            if (aiExercises.length > 3) {
+              const warmup = aiExercises[0];
+              const mainExercises = aiExercises.slice(1, 3);
+              
+              mainExercises.forEach(ex => {
+                if (ex.sets) {
+                  ex.sets = Math.min(12, ex.sets + 1 + Math.floor(Math.random() * 2));
                 }
-                if (ex.reps < 12) {
-                  ex.reps = Math.min(15, ex.reps + 3);
+                if (ex.reps) {
+                  ex.reps = Math.min(25, ex.reps + 2 + Math.floor(Math.random() * 4));
                 }
               });
-              setExercises(selectedExercises);
+              
+              setExercises([warmup, ...mainExercises]);
             } else {
-              modifiedExercises.forEach(ex => {
-                if (ex.sets < 4) {
-                  ex.sets = Math.min(5, ex.sets + 1);
-                }
-                if (ex.reps < 12) {
-                  ex.reps = Math.min(15, ex.reps + 2);
+              aiExercises.forEach((ex, index) => {
+                if (index > 0) {
+                  if (ex.sets) {
+                    ex.sets = Math.min(12, ex.sets + 2);
+                  }
+                  if (ex.reps) {
+                    ex.reps = Math.min(25, ex.reps + 3);
+                  }
                 }
               });
-              setExercises(modifiedExercises);
+              setExercises(aiExercises);
             }
             
             setIsGenerating(false);
@@ -181,12 +184,10 @@ const CreateWorkout = () => {
       setIsSaving(true);
       
       const newWorkout = {
-        id: `workout-${Date.now()}`,
         name: workoutName,
         type: state?.type || 'manual',
         exercises,
         completed: false,
-        createdAt: new Date().toISOString(),
       };
       
       setTimeout(async () => {

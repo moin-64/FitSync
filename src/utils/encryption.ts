@@ -152,6 +152,7 @@ export const encryptData = async (data: string, publicKeyString: string): Promis
       encryptedDataKey: bufferToBase64(encryptedDataKey),
       iv: bufferToBase64(iv),
       encryptedData: bufferToBase64(encryptedData),
+      version: '1.1', // Added version tracking for future compatibility
     };
     
     // Return as JSON string
@@ -190,15 +191,29 @@ export const decryptData = async (encryptedPackage: string, privateKeyString: st
       ["decrypt"]
     );
     
-    // Decrypt the data key
-    const encryptedDataKeyBuffer = base64ToBuffer(encryptedDataKey);
-    const dataKeyBuffer = await window.crypto.subtle.decrypt(
-      {
-        name: "RSA-OAEP",
-      },
-      privateKey,
-      encryptedDataKeyBuffer
-    );
+    // Decrypt the data key with retries
+    let dataKeyBuffer;
+    let retryCount = 0;
+    const maxRetries = 3;
+    
+    while (retryCount < maxRetries) {
+      try {
+        const encryptedDataKeyBuffer = base64ToBuffer(encryptedDataKey);
+        dataKeyBuffer = await window.crypto.subtle.decrypt(
+          {
+            name: "RSA-OAEP",
+          },
+          privateKey,
+          encryptedDataKeyBuffer
+        );
+        break; // Success, exit the retry loop
+      } catch (decryptError) {
+        retryCount++;
+        console.warn(`Decryption attempt ${retryCount} failed, retrying...`);
+        if (retryCount >= maxRetries) throw decryptError;
+        await new Promise(resolve => setTimeout(resolve, 100)); // Small delay before retry
+      }
+    }
     
     // Import the data key for AES decryption
     const aesKey = await window.crypto.subtle.importKey(

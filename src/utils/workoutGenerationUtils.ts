@@ -1,3 +1,4 @@
+
 import { availableExercises } from '../constants/exerciseData';
 import { Rank } from './rankingUtils';
 
@@ -44,22 +45,22 @@ const determineWeight = (
   return Math.round(baseWeight);
 };
 
-// Define increased sets by rank
+// Define INCREASED sets by rank - higher than before
 const setsByRank: Record<Rank, number> = {
-  'Beginner': 4,
-  'Intermediate': 5,
-  'Advanced': 6,
-  'Expert': 7,
-  'Master': 8
+  'Beginner': 5,      // Increased from 4
+  'Intermediate': 6,  // Increased from 5 
+  'Advanced': 8,      // Increased from 6
+  'Expert': 10,       // Increased from 7
+  'Master': 12        // Increased from 8
 };
 
-// Define increased reps by rank
+// Define INCREASED reps by rank - higher than before
 const repsByRank: Record<Rank, number> = {
-  'Beginner': 10,
-  'Intermediate': 12,
-  'Advanced': 15,
-  'Expert': 18,
-  'Master': 25
+  'Beginner': 12,     // Increased from 10
+  'Intermediate': 15, // Increased from 12
+  'Advanced': 18,     // Increased from 15
+  'Expert': 20,       // Increased from 18
+  'Master': 25        // Same as before
 };
 
 // Get real exercise video URL
@@ -84,11 +85,17 @@ const getExerciseVideoUrl = (exerciseName: string): string => {
 };
 
 // Generates an AI workout based on user limitations, rank, and workout history
+// MODIFIED: Fewer different exercises, more sets and reps
 export const generateAIWorkout = (
   limitations: string[] = [], 
   rank: Rank = 'Beginner',
   maxWeights: Record<string, number> = {}
 ) => {
+  // Ensure rank is a valid Rank type
+  if (!['Beginner', 'Intermediate', 'Advanced', 'Expert', 'Master'].includes(rank)) {
+    rank = 'Beginner';
+  }
+
   const warmup = {
     id: `ex-warmup-${Date.now()}`,
     name: 'Cardio Warmup',
@@ -101,11 +108,15 @@ export const generateAIWorkout = (
     videoUrl: getExerciseVideoUrl('Cardio Warmup'),
   };
   
-  // Pick random exercises based on categories - FEWER DIFFERENT EXERCISES
+  // Pick random exercises based on categories - EVEN FEWER DIFFERENT EXERCISES
   const pickRandomExercises = (category: string, count: number) => {
     const categoryExercises = availableExercises.filter(ex => ex.category === category);
     const selected = [];
-    for (let i = 0; i < count && i < categoryExercises.length; i++) {
+    
+    // Only pick 1-2 exercises maximum per category
+    const actualCount = Math.min(count, 1);
+    
+    for (let i = 0; i < actualCount && i < categoryExercises.length; i++) {
       const randomIndex = Math.floor(Math.random() * categoryExercises.length);
       selected.push(categoryExercises[randomIndex]);
       categoryExercises.splice(randomIndex, 1); // Remove selected exercise to avoid duplicates
@@ -114,7 +125,8 @@ export const generateAIWorkout = (
   };
   
   // REDUCED number of exercise categories - focus on fewer exercises with more sets/reps
-  let exerciseCategories = ['Chest', 'Back', 'Legs'];
+  // Only use 2 categories maximum
+  let exerciseCategories = ['Chest', 'Legs'];
   
   // Consider limitations
   if (limitations.length > 0) {
@@ -122,34 +134,34 @@ export const generateAIWorkout = (
       // Remove upper body exercises
       exerciseCategories = exerciseCategories.filter(c => c !== 'Chest' && c !== 'Back');
       // Add more leg exercises
-      exerciseCategories.push('Legs');
+      exerciseCategories = ['Legs'];
     }
     
     if (limitations.some(l => l.toLowerCase().includes('leg') || l.toLowerCase().includes('knee'))) {
       // Remove leg exercises
       exerciseCategories = exerciseCategories.filter(c => c !== 'Legs');
       // Add more upper body exercises
-      exerciseCategories.push('Chest', 'Back');
+      exerciseCategories = ['Chest'];
     }
   }
   
-  // Make sure we have at least 2 categories
-  if (exerciseCategories.length < 2) {
+  // Make sure we have at least 1 category
+  if (exerciseCategories.length === 0) {
     exerciseCategories.push('Core');
   }
   
   // Deduplicate categories
   exerciseCategories = [...new Set(exerciseCategories)];
   
-  // Create exercises with MORE SETS AND REPS
+  // Create exercises with EVEN MORE SETS AND REPS
   let exercises = exerciseCategories.flatMap(category => {
     return pickRandomExercises(category, 1).map(exercise => {
-      // More reps with small random variation
+      // More reps with additional bonus
       const baseReps = repsByRank[rank];
-      const reps = baseReps + Math.floor(Math.random() * 5) - 2; // -2 to +2 variation
+      const reps = baseReps + Math.floor(Math.random() * 3); // Small variation
       
-      // More sets based on rank
-      const sets = setsByRank[rank];
+      // More sets based on rank with additional bonus
+      const sets = setsByRank[rank] + (Math.random() > 0.5 ? 1 : 0); // Occasional extra set
       
       // Determine weight based on rank and exercise name
       const weight = determineWeight(exercise.name, rank, maxWeights);
@@ -166,6 +178,21 @@ export const generateAIWorkout = (
       };
     });
   });
+  
+  // Ensure we have at least one exercise even if categories resulted in none
+  if (exercises.length === 0) {
+    const defaultExercise = {
+      id: `ex-default-${Date.now()}`,
+      name: 'Bodyweight Squat',
+      sets: setsByRank[rank],
+      reps: repsByRank[rank],
+      restBetweenSets: 60,
+      equipment: 'None',
+      weight: 0,
+      videoUrl: getExerciseVideoUrl('Squat')
+    };
+    exercises.push(defaultExercise);
+  }
   
   // Add equipment change rest period (2 minutes)
   let currentEquipment = "";

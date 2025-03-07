@@ -1,50 +1,94 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { User } from '../types/auth';
 import { UserData } from '../types/user';
 import { defaultUserData } from '../utils/userContext.utils';
+import { decryptUserData, storeUserData } from '@/utils/userDataUtils';
+import { KEY_PREFIX } from '@/constants/authConstants';
 
 export const useUserData = (user: User | null, isAuthenticated: boolean) => {
   const [userData, setUserData] = useState<UserData>(defaultUserData);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
-  useEffect(() => {
-    const loadUserData = async () => {
-      if (!isAuthenticated || !user) {
-        setLoading(false);
-        return;
+  // Improved data loading with retries
+  const loadUserData = useCallback(async () => {
+    if (!isAuthenticated || !user) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Get the user's private key from storage
+      const privateKey = localStorage.getItem(`${KEY_PREFIX}${user.email}`);
+      if (!privateKey) {
+        throw new Error('User encryption key not found');
       }
-
-      try {
-        setLoading(true);
-        
-        // In a real app, we would fetch the encrypted data from a server
-        // and decrypt it with the user's key
-        
-        // For demo, we're loading from localStorage
-        const encryptedData = localStorage.getItem('userData');
-        if (encryptedData) {
-          // Placeholder - in real app would use actual decryption with user's key
-          const userDataString = encryptedData; // This would be decrypted
-          try {
-            const parsedData = JSON.parse(userDataString);
-            setUserData(parsedData);
-          } catch (error) {
-            console.error('Error parsing user data:', error);
-            setUserData(defaultUserData);
+      
+      // Decrypt the user data with retry mechanism
+      const decryptedData = await decryptUserData(privateKey);
+      
+      if (decryptedData) {
+        // Validate and ensure the data has all required fields
+        const validatedData = {
+          ...defaultUserData,
+          ...decryptedData,
+          profile: {
+            ...defaultUserData.profile,
+            ...decryptedData.profile,
           }
-        } else {
-          setUserData(defaultUserData);
-        }
-      } catch (error) {
-        console.error('Failed to load user data:', error);
-      } finally {
-        setLoading(false);
+        };
+        
+        setUserData(validatedData);
+      } else {
+        console.warn('Failed to load user data, using default data');
+        setUserData(defaultUserData);
       }
-    };
-
-    loadUserData();
+    } catch (err) {
+      console.error('Failed to load user data:', err);
+      setError(err instanceof Error ? err : new Error('Unknown error loading user data'));
+      setUserData(defaultUserData);
+    } finally {
+      setLoading(false);
+    }
   }, [isAuthenticated, user]);
 
-  return { userData, setUserData, loading };
+  // Load data on auth state change
+  useEffect(() => {
+    loadUserData();
+  }, [loadUserData]);
+
+  // Enhanced setUserData with automatic persistence
+  const updateUserDataState = useCallback(async (newData: UserData) => {
+    try {
+      // Set state immediately for UI responsiveness
+      setUserData(newData);
+      
+      // Only persist if authenticated
+      if (isAuthenticated && user) {
+        const publicKey = localStorage.getItem(`${KEY_PREFIX}${user.email}`);
+        if (publicKey) {
+          await storeUserData(newData, publicKey);
+        }
+      }
+    } catch (err) {
+      console.error('Error saving updated user data:', err);
+    }
+  }, [isAuthenticated, user]);
+
+  // Reload data function for recovery from errors
+  const reloadData = useCallback(() => {
+    loadUserData();
+  }, [loadUserData]);
+
+  return { 
+    userData, 
+    setUserData: updateUserDataState, 
+    loading, 
+    error,
+    reloadData
+  };
 };

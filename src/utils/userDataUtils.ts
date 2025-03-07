@@ -1,6 +1,7 @@
 
 import { encryptData, decryptData } from './encryption';
 import { USER_DATA_KEY } from '../constants/authConstants';
+import { Rank } from './rankingUtils';
 
 // Initialize user data with improved error handling
 export const initializeUserData = async (publicKey: string) => {
@@ -15,13 +16,15 @@ export const initializeUserData = async (publicKey: string) => {
       birthdate: null,
       height: null,
       weight: null,
-      experienceLevel: null,
+      experienceLevel: 'Beginner' as Rank,
       limitations: [],
+      rank: 'Beginner' as Rank
     },
     workouts: [],
     history: [],
     settings: {
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
+      version: '1.0'
     }
   };
   
@@ -51,18 +54,51 @@ export const decryptUserData = async (privateKey: string): Promise<any> => {
       return null;
     }
     
-    // Decrypt user data with private key
-    const decrypted = await decryptData(encryptedData, privateKey);
+    // Decrypt user data with private key and retry mechanism
+    let attempts = 0;
+    const maxAttempts = 3;
+    let lastError = null;
     
-    // Validate JSON structure
-    try {
-      const userData = JSON.parse(decrypted);
-      console.log('User data successfully loaded and validated');
-      return userData;
-    } catch (jsonError) {
-      console.error('Decrypted data is not valid JSON:', jsonError);
-      return null;
+    while (attempts < maxAttempts) {
+      try {
+        // Decrypt user data with private key
+        const decrypted = await decryptData(encryptedData, privateKey);
+        
+        // Validate JSON structure
+        const userData = JSON.parse(decrypted);
+        console.log('User data successfully loaded and validated');
+        
+        // Ensure profile has correct experienceLevel and rank as Rank type
+        if (userData.profile) {
+          if (userData.profile.experienceLevel && typeof userData.profile.experienceLevel === 'string') {
+            // Capitalize first letter to match Rank type
+            userData.profile.experienceLevel = userData.profile.experienceLevel.charAt(0).toUpperCase() + 
+                                             userData.profile.experienceLevel.slice(1).toLowerCase();
+            // Ensure it's a valid Rank
+            if (!['Beginner', 'Intermediate', 'Advanced', 'Expert', 'Master'].includes(userData.profile.experienceLevel)) {
+              userData.profile.experienceLevel = 'Beginner';
+            }
+          } else {
+            userData.profile.experienceLevel = 'Beginner';
+          }
+          
+          // Ensure rank is properly set
+          if (!userData.profile.rank || typeof userData.profile.rank !== 'string') {
+            userData.profile.rank = userData.profile.experienceLevel || 'Beginner';
+          }
+        }
+        
+        return userData;
+      } catch (error) {
+        console.error(`Decryption attempt ${attempts + 1} failed:`, error);
+        lastError = error;
+        attempts++;
+        await new Promise(resolve => setTimeout(resolve, 300)); // Wait before retry
+      }
     }
+    
+    console.error('All decryption attempts failed:', lastError);
+    return null;
   } catch (error) {
     console.error('Error decrypting user data:', error);
     return null;
@@ -109,10 +145,35 @@ export const storeUserData = async (userData: any, publicKey: string): Promise<b
   }
   
   try {
+    // Validate and ensure proper types
+    if (userData.profile) {
+      // Ensure experienceLevel is a valid Rank
+      if (userData.profile.experienceLevel) {
+        if (typeof userData.profile.experienceLevel === 'string') {
+          const level = userData.profile.experienceLevel.charAt(0).toUpperCase() + 
+                       userData.profile.experienceLevel.slice(1).toLowerCase();
+          
+          if (['Beginner', 'Intermediate', 'Advanced', 'Expert', 'Master'].includes(level)) {
+            userData.profile.experienceLevel = level;
+          } else {
+            userData.profile.experienceLevel = 'Beginner';
+          }
+        } else {
+          userData.profile.experienceLevel = 'Beginner';
+        }
+      }
+      
+      // Ensure rank is set
+      if (!userData.profile.rank) {
+        userData.profile.rank = userData.profile.experienceLevel || 'Beginner';
+      }
+    }
+    
     // Add last updated timestamp
     userData.settings = {
       ...userData.settings || {},
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
+      version: '1.0'
     };
     
     // Encrypt and store

@@ -65,6 +65,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       
       navigate('/home');
+      return true;
     } catch (error) {
       console.error('Login failed:', error);
       toast({
@@ -72,9 +73,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: 'Please check your credentials and try again',
         variant: 'destructive',
       });
-      throw error;
-    } finally {
       setLoading(false);
+      return false;
     }
   };
 
@@ -90,6 +90,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       
       navigate('/onboarding');
+      return true;
     } catch (error) {
       console.error('Registration failed:', error);
       toast({
@@ -97,9 +98,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: error instanceof Error ? error.message : 'An unknown error occurred',
         variant: 'destructive',
       });
-      throw error;
-    } finally {
       setLoading(false);
+      return false;
     }
   };
 

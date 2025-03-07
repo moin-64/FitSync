@@ -46,7 +46,7 @@ export const loginUser = async (email: string, password: string): Promise<User> 
   try {
     // Mock server response with user data
     const mockUserResponse = {
-      id: `user-${Date.now()}`,
+      id: `user-${normalizedEmail.split('@')[0]}`,
       username: normalizedEmail.split('@')[0],
       email: normalizedEmail,
     };
@@ -54,17 +54,20 @@ export const loginUser = async (email: string, password: string): Promise<User> 
     // Store user in localStorage for persistence
     localStorage.setItem(USER_KEY, JSON.stringify(mockUserResponse));
     
-    // Decrypt user data with retry logic
+    // Verify we can decrypt user data
     const userData = await decryptUserData(privateKey);
     
     if (!userData) {
-      throw new Error('Failed to decrypt user data');
+      console.error('User data decryption failed - reinitializing');
+      
+      // If decryption fails, try to re-initialize user data
+      await initializeUserData(privateKey);
     }
     
     return mockUserResponse;
   } catch (error) {
     console.error('Login error:', error);
-    throw error;
+    throw new Error('Login failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
   }
 };
 
@@ -101,6 +104,9 @@ export const registerUser = async (username: string, email: string, password: st
       if (attempts >= maxAttempts) {
         throw new Error('Failed to generate secure keys after multiple attempts');
       }
+      
+      // Short delay before retry
+      await new Promise(resolve => setTimeout(resolve, 100 * attempts));
     }
     
     const { publicKey, privateKey } = keyPair;
@@ -110,7 +116,7 @@ export const registerUser = async (username: string, email: string, password: st
     
     // Create user data
     const userData = {
-      id: `user-${Date.now()}`,
+      id: `user-${normalizedEmail.split('@')[0]}`,
       username,
       email: normalizedEmail
     };
@@ -131,7 +137,7 @@ export const registerUser = async (username: string, email: string, password: st
     return userData;
   } catch (error) {
     console.error('Registration error:', error);
-    throw error;
+    throw new Error('Registration failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
   }
 };
 
