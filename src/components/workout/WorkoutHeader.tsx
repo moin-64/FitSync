@@ -1,13 +1,12 @@
 
 import React from 'react';
 import { Button } from "@/components/ui/button";
-import { SaveAll, ArrowLeft, Loader2, Mic, MicOff } from 'lucide-react';
+import { ArrowLeft, Loader2, Mic, MicOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface WorkoutHeaderProps {
   type?: 'ai' | 'manual' | 'scanned';
   isSaving?: boolean;
-  onSaveWorkout?: () => void;
   workoutName?: string;
   isRecording?: boolean;
   onBack?: () => void;
@@ -16,8 +15,7 @@ interface WorkoutHeaderProps {
 
 const WorkoutHeader: React.FC<WorkoutHeaderProps> = ({ 
   type = 'manual', 
-  isSaving = false, 
-  onSaveWorkout,
+  isSaving = false,
   workoutName,
   isRecording,
   onBack,
@@ -25,8 +23,7 @@ const WorkoutHeader: React.FC<WorkoutHeaderProps> = ({
 }) => {
   const navigate = useNavigate();
   
-  // Determine if we're in creation mode or execution mode
-  const isCreationMode = onSaveWorkout !== undefined;
+  // Determine if we're in execution mode
   const isExecutionMode = onToggleRecording !== undefined;
   
   const handleBack = () => {
@@ -55,26 +52,6 @@ const WorkoutHeader: React.FC<WorkoutHeaderProps> = ({
              type === 'ai' ? 'KI-Trainingsplan' : 'Workout erstellen'}
           </h1>
         </div>
-        
-        {isCreationMode && (
-          <Button
-            onClick={onSaveWorkout}
-            disabled={isSaving}
-            className="bg-primary hover:bg-primary/90"
-          >
-            {isSaving ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Speichern...
-              </>
-            ) : (
-              <>
-                <SaveAll className="h-4 w-4 mr-2" />
-                Workout speichern
-              </>
-            )}
-          </Button>
-        )}
         
         {isExecutionMode && (
           <Button

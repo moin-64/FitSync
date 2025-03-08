@@ -42,7 +42,8 @@ const CreateWorkout = () => {
     <div className="min-h-screen bg-background pb-20 animate-page-transition-in">
       <WorkoutHeader 
         type={state?.type}
-        isSaving={isSaving}
+        // Wir entfernen die Speichern-Funktionalität vom Header, behalten sie nur im Footer
+        isSaving={false}
       />
       
       <WorkoutForm
