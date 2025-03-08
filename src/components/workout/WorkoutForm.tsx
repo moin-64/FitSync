@@ -3,7 +3,6 @@ import React from 'react';
 import { Exercise } from '@/types/exercise';
 import WorkoutName from './WorkoutName';
 import ExerciseList from './ExerciseList';
-import ExerciseActions from './ExerciseActions';
 
 interface WorkoutFormProps {
   workoutName: string;
@@ -43,13 +42,10 @@ const WorkoutForm: React.FC<WorkoutFormProps> = ({
         setExpandedExercise={setExpandedExercise}
         updateExercise={updateExercise}
         removeExercise={removeExercise}
+        addExercise={addExercise}
         exerciseFilter={exerciseFilter}
         setExerciseFilter={setExerciseFilter}
       />
-      
-      <div className="mt-4">
-        <ExerciseActions addExercise={addExercise} />
-      </div>
     </main>
   );
 };
