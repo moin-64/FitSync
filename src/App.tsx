@@ -13,7 +13,6 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Onboarding from "./pages/Onboarding";
 import Home from "./pages/Home";
-import UserProfile from "./pages/UserProfile";
 import CreateWorkout from "./pages/CreateWorkout";
 import ExecuteWorkout from "./pages/ExecuteWorkout";
 import NotFound from "./pages/NotFound";
@@ -64,12 +63,6 @@ const App = () => (
               <Route path="/home" element={
                 <ProtectedRoute>
                   <Home />
-                </ProtectedRoute>
-              } />
-              
-              <Route path="/profile" element={
-                <ProtectedRoute>
-                  <UserProfile />
                 </ProtectedRoute>
               } />
               
