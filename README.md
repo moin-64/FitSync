@@ -24,10 +24,10 @@ Follow these steps:
 
 ```sh
 # Step 1: Clone the repository using the project's Git URL.
-git clone <(https://github.com/moin-64/FitSync.git)>
+git clone https://github.com/moin-64/FitSync.git
 
 # Step 2: Navigate to the project directory.
-cd <FitSync>
+cd FitSync
 
 # Step 3: Install the necessary dependencies.
 npm i
