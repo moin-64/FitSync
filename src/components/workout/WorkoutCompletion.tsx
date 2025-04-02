@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { ArrowLeft, Save } from 'lucide-react';
 import { formatDuration } from '@/utils/workoutGenerationUtils';
 import { useToast } from "@/hooks/use-toast";
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
 
 interface WorkoutCompletionProps {
   timeElapsed: number;
@@ -32,11 +33,6 @@ const WorkoutCompletion: React.FC<WorkoutCompletionProps> = ({
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-
-  // Initialize Supabase client for calling edge functions
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-  const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
   useEffect(() => {
     const getWorkoutAnalysis = async () => {

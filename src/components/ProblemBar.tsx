@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowRight } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ProblemBarProps {
   onLimitationAdded?: (limitation: string) => void;
@@ -16,11 +16,6 @@ const ProblemBar: React.FC<ProblemBarProps> = ({ onLimitationAdded }) => {
   const [submitting, setSubmitting] = useState(false);
   const { addLimitation } = useUser();
   const { toast } = useToast();
-
-  // Initialize Supabase client for calling edge functions
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-  const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
   const handleSubmit = async () => {
     if (!limitation.trim()) return;

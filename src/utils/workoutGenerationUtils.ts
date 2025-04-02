@@ -1,3 +1,4 @@
+
 import { EQUIPMENT_TYPES } from '../constants/exerciseData';
 import { Rank } from './rankingUtils';
 import { determineWeight } from './weightCalculationUtils';
@@ -12,12 +13,7 @@ import {
   repsByRank,
   formatDuration 
 } from './trainingParametersUtils';
-import { createClient } from '@supabase/supabase-js';
-
-// Initialize Supabase client for calling edge functions
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { supabase } from '@/integrations/supabase/client';
 
 // Enhanced AI workout generation that uses OpenRouter API via Supabase Edge Function
 export const generateAIWorkout = async (
