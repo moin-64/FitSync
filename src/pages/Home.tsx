@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Dumbbell, PlusSquare, Camera, LogOut, User } from 'lucide-react';
+import { Dumbbell, PlusSquare, Camera, LogOut, UserCircle } from 'lucide-react';
 import ProblemBar from '@/components/ProblemBar';
 import WorkoutCard from '@/components/WorkoutCard';
 import WorkoutScanner from '@/components/WorkoutScanner';
@@ -91,6 +91,16 @@ const Home = () => {
             <Button
               variant="ghost"
               size="icon"
+              onClick={() => navigate('/profile')}
+              className="rounded-full"
+              aria-label="User profile"
+            >
+              <UserCircle className="h-5 w-5" />
+            </Button>
+            
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => {
                 logout();
                 navigate('/login');
@@ -111,21 +121,6 @@ const Home = () => {
               <h2 className="text-2xl font-bold">Welcome, {user?.username}</h2>
               <p className="text-muted-foreground">Ready for your next workout?</p>
             </div>
-            
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => {
-                toast({
-                  title: 'User Profile',
-                  description: 'Profile management will be available in a future update.',
-                });
-              }}
-              className="rounded-full"
-              aria-label="User profile"
-            >
-              <User className="h-5 w-5" />
-            </Button>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
