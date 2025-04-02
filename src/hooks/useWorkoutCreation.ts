@@ -6,7 +6,6 @@ import { useUser } from '../context/UserContext';
 import { generateAIWorkout } from '@/utils/workoutGenerationUtils';
 import { getUserMaxWeights } from '@/utils/userDataUtils';
 import { Rank } from '@/utils/rankingUtils';
-import { createClient } from '@supabase/supabase-js';
 
 export const useWorkoutCreation = (state: LocationState | undefined) => {
   const { profile, workouts } = useUser();
@@ -19,10 +18,6 @@ export const useWorkoutCreation = (state: LocationState | undefined) => {
   const [isSaving, setIsSaving] = useState(false);
   const [exerciseFilter, setExerciseFilter] = useState('all');
   const [generationAttempts, setGenerationAttempts] = useState(0);
-  
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-  const supabase = createClient(supabaseUrl, supabaseAnonKey);
   
   useEffect(() => {
     if (state?.type === 'ai') {
