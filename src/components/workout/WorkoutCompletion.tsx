@@ -1,8 +1,12 @@
-
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useUser } from '@/context/UserContext';
-import { Award, Trophy } from 'lucide-react';
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ArrowLeft, Save } from 'lucide-react';
+import { formatDuration } from '@/utils/workoutGenerationUtils';
+import { useToast } from "@/hooks/use-toast";
+import { createClient } from '@supabase/supabase-js';
 
 interface WorkoutCompletionProps {
   timeElapsed: number;
@@ -23,105 +27,124 @@ const WorkoutCompletion: React.FC<WorkoutCompletionProps> = ({
   onHeartRateChange,
   onCaloriesBurnedChange,
   onOxygenSaturationChange,
-  onSaveWorkout
+  onSaveWorkout,
 }) => {
-  const { profile } = useUser();
-  const [initialRank, setInitialRank] = useState(profile.rank);
-  const [showRankUp, setShowRankUp] = useState(false);
-  
+  const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
+
+  // Initialize Supabase client for calling edge functions
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+  const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
   useEffect(() => {
-    // Check if rank changed after workout completion
-    if (profile.rank !== initialRank) {
-      setShowRankUp(true);
+    const getWorkoutAnalysis = async () => {
+      try {
+        setLoading(true);
+        
+        // Use the AI edge function to analyze workout data
+        const { data, error } = await supabase.functions.invoke('ai-workout', {
+          body: { 
+            type: "evaluation", 
+            data: { 
+              duration: timeElapsed,
+              heartRate: heartRate || 120,
+              calories: caloriesBurned || Math.round(timeElapsed / 60 * 5),
+              oxygen: oxygenSaturation || 98,
+              struggleDetected: false
+            }
+          }
+        });
+
+        if (error) {
+          console.error("Error analyzing workout:", error);
+        } else if (data?.result) {
+          setAiAnalysis(data.result);
+        }
+      } catch (error) {
+        console.error("Error getting workout analysis:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (timeElapsed > 0) {
+      getWorkoutAnalysis();
     }
-  }, [profile.rank, initialRank]);
-  
+  }, [timeElapsed, heartRate, caloriesBurned, oxygenSaturation]);
+
   return (
-    <div className="min-h-screen bg-background p-4 flex flex-col">
-      <div className="flex items-center mb-6">
-        <h1 className="text-xl font-bold">Workout Complete!</h1>
-      </div>
-      
-      {showRankUp && (
-        <div className="glass rounded-lg p-6 mb-6 bg-primary/10 border border-primary animate-pulse">
-          <div className="flex items-center justify-center mb-4">
-            <Trophy className="h-12 w-12 text-primary mr-2" />
-            <div>
-              <h2 className="text-lg font-semibold">Rank Up!</h2>
-              <p>Congratulations! You've advanced to {profile.rank} rank!</p>
+    <div className="min-h-screen bg-background p-4 flex flex-col items-center justify-center">
+      <Card className="w-full max-w-lg glass">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl font-bold">Workout Complete</CardTitle>
+          <p className="text-muted-foreground">Great job! Your workout lasted {formatDuration(timeElapsed)}</p>
+        </CardHeader>
+        
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-1 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="heartRate">Average Heart Rate (BPM)</Label>
+              <Input 
+                id="heartRate"
+                type="number"
+                value={heartRate || ''}
+                onChange={(e) => onHeartRateChange(e.target.value ? Number(e.target.value) : null)}
+                placeholder="e.g., 140"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="calories">Calories Burned</Label>
+              <Input 
+                id="calories"
+                type="number"
+                value={caloriesBurned || ''}
+                onChange={(e) => onCaloriesBurnedChange(e.target.value ? Number(e.target.value) : null)}
+                placeholder="e.g., 350"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="oxygen">Oxygen Saturation (%)</Label>
+              <Input 
+                id="oxygen"
+                type="number"
+                value={oxygenSaturation || ''}
+                onChange={(e) => onOxygenSaturationChange(e.target.value ? Number(e.target.value) : null)}
+                placeholder="e.g., 98"
+              />
             </div>
           </div>
-        </div>
-      )}
-      
-      <div className="glass rounded-lg p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4">Enter Your Stats</h2>
-        
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Heart Rate (BPM)
-            </label>
-            <input
-              type="number"
-              className="w-full p-2 rounded-md bg-background border border-border"
-              placeholder="120"
-              min="40"
-              max="220"
-              value={heartRate || ''}
-              onChange={(e) => onHeartRateChange(e.target.value ? Number(e.target.value) : null)}
-            />
-          </div>
           
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Calories Burned
-            </label>
-            <input
-              type="number"
-              className="w-full p-2 rounded-md bg-background border border-border"
-              placeholder={`${Math.round(timeElapsed / 60 * 5)}`}
-              min="0"
-              value={caloriesBurned || ''}
-              onChange={(e) => onCaloriesBurnedChange(e.target.value ? Number(e.target.value) : null)}
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Oxygen Saturation (%)
-            </label>
-            <input
-              type="number"
-              className="w-full p-2 rounded-md bg-background border border-border"
-              placeholder="98"
-              min="80"
-              max="100"
-              value={oxygenSaturation || ''}
-              onChange={(e) => onOxygenSaturationChange(e.target.value ? Number(e.target.value) : null)}
-            />
-          </div>
-        </div>
+          {loading ? (
+            <div className="text-center py-4">
+              <div className="animate-pulse">Analyzing your workout...</div>
+            </div>
+          ) : aiAnalysis ? (
+            <Card className="bg-primary/10 border-primary/20">
+              <CardHeader className="py-3">
+                <CardTitle className="text-base">AI Workout Analysis</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm">{aiAnalysis}</p>
+              </CardContent>
+            </Card>
+          ) : null}
+        </CardContent>
         
-        <div className="mt-6">
-          <Button 
-            className="w-full"
-            onClick={onSaveWorkout}
-          >
+        <CardFooter className="flex justify-between">
+          <Button variant="outline" size="sm" onClick={() => window.history.back()}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Button>
+          <Button onClick={onSaveWorkout}>
+            <Save className="h-4 w-4 mr-2" />
             Save Workout
           </Button>
-        </div>
-      </div>
-      
-      <div className="glass rounded-lg p-6">
-        <div className="flex items-center mb-4">
-          <Award className="h-6 w-6 text-primary mr-2" />
-          <h3 className="font-semibold">Current Rank: {profile.rank}</h3>
-        </div>
-        <p className="text-sm text-muted-foreground">
-          Complete more workouts and increase your strength to advance to the next rank.
-        </p>
-      </div>
+        </CardFooter>
+      </Card>
     </div>
   );
 };

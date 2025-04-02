@@ -4,6 +4,8 @@ import { useUser } from '../context/UserContext';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowRight } from 'lucide-react';
+import { useToast } from "@/hooks/use-toast";
+import { createClient } from '@supabase/supabase-js';
 
 interface ProblemBarProps {
   onLimitationAdded?: (limitation: string) => void;
@@ -13,12 +15,40 @@ const ProblemBar: React.FC<ProblemBarProps> = ({ onLimitationAdded }) => {
   const [limitation, setLimitation] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const { addLimitation } = useUser();
+  const { toast } = useToast();
+
+  // Initialize Supabase client for calling edge functions
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+  const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
   const handleSubmit = async () => {
     if (!limitation.trim()) return;
     
     try {
       setSubmitting(true);
+
+      // Get AI analysis of the limitation
+      const { data, error } = await supabase.functions.invoke('ai-workout', {
+        body: { 
+          type: "problem", 
+          data: { 
+            limitation: limitation 
+          }
+        }
+      });
+
+      if (error) {
+        console.error("Error analyzing limitation:", error);
+      } else if (data?.result) {
+        // Show the AI analysis as a toast
+        toast({
+          title: "Limitation Analysis",
+          description: data.result.substring(0, 255) + (data.result.length > 255 ? "..." : ""),
+        });
+      }
+      
+      // Add the limitation to the user profile
       await addLimitation(limitation);
       
       if (onLimitationAdded) {
@@ -28,6 +58,11 @@ const ProblemBar: React.FC<ProblemBarProps> = ({ onLimitationAdded }) => {
       setLimitation('');
     } catch (error) {
       console.error('Failed to add limitation:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add limitation",
+        variant: "destructive",
+      });
     } finally {
       setSubmitting(false);
     }
