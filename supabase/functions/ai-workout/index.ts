@@ -32,7 +32,7 @@ serve(async (req) => {
       userPrompt = `Evaluate this workout performance: Duration: ${data.duration}s, Heart Rate: ${data.heartRate}bpm, Calories: ${data.calories}, Oxygen: ${data.oxygen}%, Struggle Detected: ${data.struggleDetected}. Provide insights and recommendations.`
     }
 
-    // Make request to OpenRouter API
+    // Make request to OpenRouter API using the Qwen model
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -42,7 +42,7 @@ serve(async (req) => {
         "X-Title": "Fitness Trainer App",
       },
       body: JSON.stringify({
-        model: "anthropic/claude-3-haiku",
+        model: "qwen/qwen2.5-vl-72b-instruct:free",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
