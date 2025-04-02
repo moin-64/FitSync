@@ -135,7 +135,7 @@ const Profile = () => {
                   </div>
                   <div>
                     <h3 className="text-xl font-bold">{user?.username}</h3>
-                    <p className="text-muted-foreground">Joined {new Date(user?.createdAt || Date.now()).toLocaleDateString()}</p>
+                    <p className="text-muted-foreground">Joined {new Date().toLocaleDateString()}</p>
                   </div>
                 </div>
                 
