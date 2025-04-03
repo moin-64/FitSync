@@ -24,8 +24,8 @@ const Register = () => {
     
     if (!username || !email || !password) {
       toast({
-        title: 'Missing information',
-        description: 'Please fill out all fields',
+        title: 'Fehlende Informationen',
+        description: 'Bitte füllen Sie alle Felder aus',
         variant: 'destructive',
       });
       return;
@@ -33,8 +33,8 @@ const Register = () => {
     
     if (password !== confirmPassword) {
       toast({
-        title: 'Passwords do not match',
-        description: 'Please make sure your passwords match',
+        title: 'Passwörter stimmen nicht überein',
+        description: 'Bitte stellen Sie sicher, dass Ihre Passwörter übereinstimmen',
         variant: 'destructive',
       });
       return;
@@ -45,10 +45,10 @@ const Register = () => {
       await register(username, email, password);
       navigate('/onboarding');
     } catch (error) {
-      console.error('Registration failed:', error);
+      console.error('Registrierung fehlgeschlagen:', error);
       toast({
-        title: 'Registration failed',
-        description: 'There was a problem creating your account',
+        title: 'Registrierung fehlgeschlagen',
+        description: 'Es gab ein Problem bei der Erstellung Ihres Kontos',
         variant: 'destructive',
       });
     } finally {
@@ -69,22 +69,22 @@ const Register = () => {
               <User className="h-6 w-6 text-primary" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold text-center">Create an account</CardTitle>
+          <CardTitle className="text-2xl font-bold text-center">Konto erstellen</CardTitle>
           <CardDescription className="text-center">
-            Start your personalized fitness journey with FitSync
+            Beginnen Sie Ihre persönliche Fitnessreise mit FitSync
           </CardDescription>
         </CardHeader>
         
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="username">Benutzername</Label>
               <div className="relative">
                 <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="username"
                   type="text"
-                  placeholder="johndoe"
+                  placeholder="maxmustermann"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="pl-10"
@@ -94,13 +94,13 @@ const Register = () => {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">E-Mail</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="email"
                   type="email"
-                  placeholder="name@example.com"
+                  placeholder="name@beispiel.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-10"
@@ -110,7 +110,7 @@ const Register = () => {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">Passwort</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -125,7 +125,7 @@ const Register = () => {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Label htmlFor="confirmPassword">Passwort bestätigen</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -146,13 +146,13 @@ const Register = () => {
               className="w-full bg-primary hover:bg-primary/90" 
               disabled={isLoading}
             >
-              {isLoading ? 'Creating account...' : 'Create account'}
+              {isLoading ? 'Konto wird erstellt...' : 'Konto erstellen'}
             </Button>
             
             <div className="text-center text-sm">
-              Already have an account?{' '}
+              Haben Sie bereits ein Konto?{' '}
               <Link to="/login" className="text-primary hover:underline">
-                Sign in
+                Anmelden
               </Link>
             </div>
           </CardFooter>

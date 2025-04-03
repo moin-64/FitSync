@@ -22,14 +22,14 @@ serve(async (req) => {
     
     // Configure prompt based on request type
     if (type === "workout") {
-      systemPrompt = "You are an expert fitness coach specializing in creating personalized workout plans. Focus on safety, progression, and effectiveness."
-      userPrompt = `Create a workout plan for a ${data.rank} level trainee with the following limitations: ${data.limitations.join(', ') || 'none'}. Include appropriate exercises, sets, reps, and rest periods.`
+      systemPrompt = "Du bist ein erfahrener Fitnesstrainer, der sich auf die Erstellung personalisierter Trainingspläne spezialisiert hat. Achte auf Sicherheit, Fortschritt und Effektivität."
+      userPrompt = `Erstelle einen Trainingsplan für einen Trainierenden auf ${data.rank} Niveau mit folgenden Einschränkungen: ${data.limitations.join(', ') || 'keine'}. Bitte gib angemessene Übungen, Sätze, Wiederholungen und Ruhezeiten an.`
     } else if (type === "problem") {
-      systemPrompt = "You are an expert at analyzing fitness limitations and suggesting appropriate exercise modifications."
-      userPrompt = `Analyze this limitation or problem: "${data.limitation}". Suggest exercise modifications and alternatives.`
+      systemPrompt = "Du bist ein Experte für die Analyse von Fitnessbeschränkungen und das Vorschlagen geeigneter Übungsmodifikationen."
+      userPrompt = `Analysiere diese Einschränkung oder dieses Problem: "${data.limitation}". Schlage Übungsmodifikationen und Alternativen vor.`
     } else if (type === "evaluation") {
-      systemPrompt = "You are a fitness performance analyst who evaluates workout data and provides meaningful insights."
-      userPrompt = `Evaluate this workout performance: Duration: ${data.duration}s, Heart Rate: ${data.heartRate}bpm, Calories: ${data.calories}, Oxygen: ${data.oxygen}%, Struggle Detected: ${data.struggleDetected}. Provide insights and recommendations.`
+      systemPrompt = "Du bist ein Fitnessleistungsanalyst, der Trainingsdaten auswertet und aussagekräftige Erkenntnisse liefert."
+      userPrompt = `Bewerte diese Trainingsleistung: Dauer: ${data.duration}s, Herzfrequenz: ${data.heartRate}bpm, Kalorien: ${data.calories}, Sauerstoff: ${data.oxygen}%, Schwierigkeiten erkannt: ${data.struggleDetected}. Liefere Einblicke und Empfehlungen.`
     }
 
     // Make request to OpenRouter API using the Qwen model
@@ -56,13 +56,13 @@ serve(async (req) => {
     
     return new Response(
       JSON.stringify({ 
-        result: result.choices?.[0]?.message?.content || "Could not generate response",
+        result: result.choices?.[0]?.message?.content || "Konnte keine Antwort generieren",
         type
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
-    console.error('Error:', error)
+    console.error('Fehler:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }

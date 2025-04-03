@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Exercise } from '@/types/exercise';
 import { LocationState } from '@/types/exercise';
@@ -81,12 +82,12 @@ export const useWorkoutCreation = (state: LocationState | undefined) => {
               setExercises([
                 {
                   id: `ex-warmup-${Date.now()}`,
-                  name: 'Cardio Warmup',
+                  name: 'Cardio Aufwärmen',
                   sets: 1,
                   reps: 1,
                   duration: 600,
                   restBetweenSets: 60,
-                  equipment: 'Treadmill',
+                  equipment: 'Laufband',
                   weight: 0,
                 }
               ]);
@@ -94,7 +95,7 @@ export const useWorkoutCreation = (state: LocationState | undefined) => {
             }
           }
         } catch (error) {
-          console.error('Error generating AI workout:', error);
+          console.error('Fehler bei der Generierung des KI-Workouts:', error);
           toast({
             title: 'Fehler',
             description: 'Bei der Erstellung des Workouts ist ein Fehler aufgetreten.',
@@ -110,12 +111,12 @@ export const useWorkoutCreation = (state: LocationState | undefined) => {
       setExercises([
         {
           id: `ex-warmup-${Date.now()}`,
-          name: 'Cardio Warmup',
+          name: 'Cardio Aufwärmen',
           sets: 1,
           reps: 1,
           duration: 600,
           restBetweenSets: 60,
-          equipment: 'Treadmill',
+          equipment: 'Laufband',
           weight: 0,
         }
       ]);

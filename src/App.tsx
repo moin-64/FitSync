@@ -18,26 +18,26 @@ import CreateWorkout from "./pages/CreateWorkout";
 import ExecuteWorkout from "./pages/ExecuteWorkout";
 import NotFound from "./pages/NotFound";
 
-// Improved auth guard component with better error handling
+// Verbesserte Komponente für geschützte Routen mit besserer Fehlerbehandlung
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  // More robust auth check
+  // Robustere Authentifizierungsprüfung
   const isAuthenticated = Boolean(localStorage.getItem('user'));
   
   if (!isAuthenticated) {
-    console.log("User not authenticated, redirecting to login");
+    console.log("Benutzer nicht authentifiziert, Weiterleitung zur Anmeldeseite");
     return <Navigate to="/login" replace />;
   }
   
   return <>{children}</>;
 };
 
-// Configure query client with better defaults for error handling
+// Query-Client mit besseren Standardwerten für die Fehlerbehandlung konfigurieren
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 2,
       refetchOnWindowFocus: false,
-      staleTime: 10 * 60 * 1000, // 10 minutes
+      staleTime: 10 * 60 * 1000, // 10 Minuten
     },
   },
 });
