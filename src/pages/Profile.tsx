@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useUser } from '../context/UserContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button"; // Add this import
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import ProfileInfo from '@/components/profile/ProfileInfo';
 import FitnessStats from '@/components/profile/FitnessStats';
