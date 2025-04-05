@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -18,11 +17,22 @@ import CreateWorkout from "./pages/CreateWorkout";
 import ExecuteWorkout from "./pages/ExecuteWorkout";
 import NotFound from "./pages/NotFound";
 
-// Verbesserte Komponente für geschützte Routen mit besserer Fehlerbehandlung
+// Verbesserte Komponente für geschützte Routen mit besserer Fehlerbehandlung und Ladeanimation
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  // Robustere Authentifizierungsprüfung
-  const isAuthenticated = Boolean(localStorage.getItem('user'));
+  const { isAuthenticated, loading } = useAuth();
   
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-lg font-medium">Überprüfe Anmeldung...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Robustere Authentifizierungsprüfung
   if (!isAuthenticated) {
     console.log("Benutzer nicht authentifiziert, Weiterleitung zur Anmeldeseite");
     return <Navigate to="/login" replace />;
@@ -38,6 +48,7 @@ const queryClient = new QueryClient({
       retry: 2,
       refetchOnWindowFocus: false,
       staleTime: 10 * 60 * 1000, // 10 Minuten
+      gcTime: 15 * 60 * 1000, // 15 Minuten
     },
   },
 });

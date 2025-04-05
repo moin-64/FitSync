@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useUser } from '../context/UserContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from "@/hooks/use-toast";
@@ -13,6 +13,7 @@ import FriendsList from '@/components/profile/FriendsList';
 import FriendStats from '@/components/profile/FriendStats';
 import { Friend } from '@/types/user';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Loader2 } from 'lucide-react';
 
 const Profile = () => {
   const { 
@@ -36,6 +37,15 @@ const Profile = () => {
   const [showFriendSearch, setShowFriendSearch] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
+  const [friendsLoading, setFriendsLoading] = useState(false);
+  
+  // Use effect to update state values when profile changes
+  useEffect(() => {
+    if (profile) {
+      setWeight(profile.weight);
+      setHeight(profile.height);
+    }
+  }, [profile]);
   
   const friends = getFriends();
   const friendRequests = getFriendRequests();
@@ -62,10 +72,23 @@ const Profile = () => {
   };
   
   const handleSendFriendRequest = async (username: string) => {
+    if (!username.trim()) {
+      toast({
+        title: 'Fehler',
+        description: 'Bitte gib einen Benutzernamen ein',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     setIsSearching(true);
     try {
       await addFriend(username);
       setShowFriendSearch(false);
+      toast({
+        title: 'Freundschaftsanfrage gesendet',
+        description: `Deine Anfrage an ${username} wurde erfolgreich gesendet`,
+      });
     } catch (error) {
       console.error('Failed to send friend request:', error);
       toast({
@@ -79,11 +102,38 @@ const Profile = () => {
   };
   
   const handleAcceptRequest = (requestId: string) => {
-    acceptFriendRequest(requestId);
+    setFriendsLoading(true);
+    try {
+      acceptFriendRequest(requestId);
+      toast({
+        title: 'Freundschaftsanfrage angenommen',
+        description: 'Ihr seid jetzt Freunde',
+      });
+    } catch (error) {
+      toast({
+        title: 'Fehler',
+        description: 'Die Anfrage konnte nicht akzeptiert werden',
+        variant: 'destructive',
+      });
+    } finally {
+      setFriendsLoading(false);
+    }
   };
   
   const handleDeclineRequest = (requestId: string) => {
-    declineFriendRequest(requestId);
+    try {
+      declineFriendRequest(requestId);
+      toast({
+        title: 'Freundschaftsanfrage abgelehnt',
+        description: 'Die Anfrage wurde abgelehnt',
+      });
+    } catch (error) {
+      toast({
+        title: 'Fehler',
+        description: 'Die Anfrage konnte nicht abgelehnt werden',
+        variant: 'destructive',
+      });
+    }
   };
   
   const handleViewFriendStats = (friendId: string) => {
@@ -93,10 +143,10 @@ const Profile = () => {
     }
   };
   
-  // Create mock user stats for comparison
+  // Create mock user stats for comparison with improved calculation
   const userStats = {
-    workoutsCompleted: profile.friends?.length || 0 + 5,
-    maxWeight: weight ? weight * 0.5 : 50,
+    workoutsCompleted: profile.friends?.length ? profile.friends.length + 5 : 5,
+    maxWeight: weight ? Math.round(weight * 0.5) : 50,
     avgWorkoutDuration: 1800, // 30 minutes in seconds
     rank: profile.rank
   };
@@ -175,10 +225,16 @@ const Profile = () => {
                 <TabsContent value="friends">
                   <div className="mb-4">
                     <h2 className="text-xl font-bold mb-4">Deine Freunde</h2>
-                    <FriendsList 
-                      friends={friends} 
-                      onViewStats={handleViewFriendStats}
-                    />
+                    {friendsLoading ? (
+                      <div className="flex justify-center py-8">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      </div>
+                    ) : (
+                      <FriendsList 
+                        friends={friends} 
+                        onViewStats={handleViewFriendStats}
+                      />
+                    )}
                   </div>
                 </TabsContent>
               </Tabs>

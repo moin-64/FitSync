@@ -14,12 +14,13 @@ export const getStoredUser = (): User | null => {
     return null;
   } catch (error) {
     console.error('Fehler beim Parsen der gespeicherten Benutzerdaten:', error);
+    // Clear corrupt data
     localStorage.removeItem(USER_KEY);
     return null;
   }
 };
 
-// Prüfen, ob Benutzerschlüssel existiert mit robuster Prüfung
+// Prüfen, ob Benutzerschlüssel existiert mit robuster Prüfung und Normalisierung
 export const userKeyExists = (email: string): boolean => {
   if (!email) return false;
   
@@ -58,7 +59,7 @@ export const loginUser = async (email: string, password: string): Promise<User> 
     const userData = await decryptUserData(privateKey);
     
     if (!userData) {
-      console.error('Entschlüsselung der Benutzerdaten fehlgeschlagen - Neuinitialisierung');
+      console.log('Entschlüsselung der Benutzerdaten fehlgeschlagen - Neuinitialisierung');
       
       // Wenn die Entschlüsselung fehlschlägt, versuchen, Benutzerdaten neu zu initialisieren
       await initializeUserData(privateKey);
@@ -77,11 +78,21 @@ export const registerUser = async (username: string, email: string, password: st
     throw new Error('Benutzername, E-Mail und Passwort sind erforderlich');
   }
   
+  if (password.length < 6) {
+    throw new Error('Das Passwort muss mindestens 6 Zeichen lang sein');
+  }
+  
   const normalizedEmail = email.toLowerCase().trim();
+  
+  // E-Mail-Format validieren
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(normalizedEmail)) {
+    throw new Error('Bitte gib eine gültige E-Mail-Adresse ein');
+  }
   
   // Überprüfen, ob Benutzer bereits existiert
   if (userKeyExists(normalizedEmail)) {
-    throw new Error('Benutzer existiert bereits');
+    throw new Error('Ein Benutzer mit dieser E-Mail existiert bereits');
   }
   
   try {
@@ -93,7 +104,7 @@ export const registerUser = async (username: string, email: string, password: st
     while (attempts < maxAttempts) {
       try {
         keyPair = await generateKeyPair();
-        if (keyPair.publicKey && keyPair.privateKey) {
+        if (keyPair && keyPair.publicKey && keyPair.privateKey) {
           break;
         }
       } catch (e) {
@@ -107,6 +118,10 @@ export const registerUser = async (username: string, email: string, password: st
       
       // Kurze Verzögerung vor dem Wiederholungsversuch
       await new Promise(resolve => setTimeout(resolve, 100 * attempts));
+    }
+    
+    if (!keyPair) {
+      throw new Error('Schlüsselgenerierung fehlgeschlagen');
     }
     
     const { publicKey, privateKey } = keyPair;
@@ -137,19 +152,43 @@ export const registerUser = async (username: string, email: string, password: st
     return userData;
   } catch (error) {
     console.error('Registrierungsfehler:', error);
-    throw new Error('Registrierung fehlgeschlagen: ' + (error instanceof Error ? error.message : 'Unbekannter Fehler'));
+    throw error instanceof Error ? error : new Error('Registrierung fehlgeschlagen: Unbekannter Fehler');
   }
 };
 
-// Benutzer abmelden mit vollständiger Bereinigung
+// Benutzer abmelden mit vollständiger Bereinigung und Session-Management
 export const logoutUser = (): void => {
   try {
+    // Nur Authentifizierungsdaten entfernen, nicht die Verschlüsselungsschlüssel
     localStorage.removeItem(USER_KEY);
-    // Wir entfernen den Schlüssel nicht, da wir dem Benutzer ermöglichen möchten, sich erneut anzumelden
-    // Aber wir könnten hier eine vollständige Kontolöschungsfunktion hinzufügen, falls nötig
+    
+    // Session-Cookies löschen (falls vorhanden)
+    document.cookie.split(';').forEach(cookie => {
+      const [name] = cookie.split('=');
+      if (name.trim().startsWith('session')) {
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
+      }
+    });
     
     console.log('Benutzer erfolgreich abgemeldet');
   } catch (error) {
     console.error('Fehler bei der Abmeldung:', error);
   }
+};
+
+// Session-Ablaufzeit überprüfen
+export const isSessionValid = (): boolean => {
+  const lastActivity = localStorage.getItem('lastActivityTimestamp');
+  if (!lastActivity) return false;
+  
+  const now = Date.now();
+  const lastActivityTime = parseInt(lastActivity, 10);
+  const sessionTimeout = 4 * 60 * 60 * 1000; // 4 Stunden
+  
+  return now - lastActivityTime < sessionTimeout;
+};
+
+// Sitzungsaktivität aktualisieren
+export const updateSessionActivity = (): void => {
+  localStorage.setItem('lastActivityTimestamp', Date.now().toString());
 };
