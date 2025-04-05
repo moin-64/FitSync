@@ -1,4 +1,3 @@
-
 import { UserData, UserProfile, Friend, FriendRequest } from '../types/user';
 import { calculateEligibleRank, calculateMaxWeight, calculateMaxReps } from './rankingUtils';
 

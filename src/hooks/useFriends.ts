@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { Friend, FriendRequest, UserProfile } from '@/types/user';
 import { useToast } from '@/hooks/use-toast';
@@ -75,7 +74,7 @@ export function useFriends(
       const newRequest: FriendRequest = {
         id: `req-${Date.now()}`,
         fromUsername: profile.username || 'anonymous',
-        fromId: profile.id || 'unknown',
+        fromUserId: profile.id,
         sentAt: new Date().toISOString(),
         status: 'pending'
       };
@@ -123,14 +122,13 @@ export function useFriends(
       
       // Add to friends list
       const newFriend: Friend = {
-        id: request.fromId,
+        id: request.fromUserId || request.id,
         username: request.fromUsername,
-        since: new Date().toISOString(),
         stats: {
           workoutsCompleted: Math.floor(Math.random() * 20),
           maxWeight: Math.floor(Math.random() * 100) + 20,
           avgWorkoutDuration: Math.floor(Math.random() * 3600) + 600,
-          rank: ['Beginner', 'Intermediate', 'Advanced', 'Expert'][Math.floor(Math.random() * 4)]
+          rank: ['Beginner', 'Intermediate', 'Advanced', 'Expert'][Math.floor(Math.random() * 4)] as Rank
         }
       };
       

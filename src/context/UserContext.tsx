@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext } from 'react';
 import { useAuth } from './AuthContext';
 import { UserContextType, UserProfile, Workout, WorkoutHistory, Friend, FriendRequest } from '../types/user';
@@ -56,14 +55,12 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const completeWorkout = async (id: string, stats: Omit<WorkoutHistory, 'id' | 'workoutId' | 'date'>) => {
-    // Mark workout as completed
     const workoutIndex = userData.workouts.findIndex(w => w.id === id);
     if (workoutIndex === -1) throw new Error('Workout not found');
     
     const updatedWorkouts = [...userData.workouts];
     updatedWorkouts[workoutIndex] = { ...updatedWorkouts[workoutIndex], completed: true };
     
-    // Add to workout history
     const workoutHistory: WorkoutHistory = {
       id: `history-${Date.now()}`,
       workoutId: id,
@@ -73,14 +70,12 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     const updatedHistory = [...userData.history, workoutHistory];
     
-    // Calculate new rank based on workout achievements
     const updatedData = {
       ...userData,
       workouts: updatedWorkouts,
       history: updatedHistory
     };
     
-    // Update rank if eligible for promotion
     const updatedProfile = updateProfileRank(updatedData);
     updatedData.profile = updatedProfile;
     
@@ -100,13 +95,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await updateProfile({ limitations: updatedLimitations });
   };
 
-  // Friend-related functions
   const addFriend = async (username: string) => {
     try {
-      // In a real app, this would involve making API calls to find the user and send a request
-      // For now, we're simulating it
-
-      // Check if friend request already exists
       if (userData.profile.friendRequests?.some(req => req.fromUsername === username)) {
         toast({
           title: "Anfrage existiert bereits",
@@ -116,12 +106,12 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
-      // Create a mock request (in a real app, this would be stored at the recipient's end)
       const mockFriendRequest: FriendRequest = {
         id: `request-${Date.now()}`,
         fromUserId: user?.id || "current-user",
         fromUsername: user?.username || "current-user",
         sentAt: new Date().toISOString(),
+        status: 'pending'
       };
 
       toast({
@@ -145,10 +135,20 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('Freundschaftsanfrage nicht gefunden');
       }
 
-      // Add to friends list
-      const updatedFriends = [...(userData.profile.friends || []), request.fromUserId];
+      const newFriend: Friend = {
+        id: request.fromUserId || request.id,
+        username: request.fromUsername,
+        since: new Date().toISOString(),
+        stats: {
+          rank: 'Beginner',
+          workoutsCompleted: 0,
+          maxWeight: 0,
+          avgWorkoutDuration: 0
+        }
+      };
       
-      // Remove from requests
+      const updatedFriends = [...(userData.profile.friends || []), newFriend];
+      
       const updatedRequests = userData.profile.friendRequests?.filter(
         req => req.id !== requestId
       ) || [];
@@ -195,26 +195,15 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
     }
   };
-  
+
   const getFriends = (): Friend[] => {
-    // In a real app, this would fetch actual user data from a database
-    // For now, we'll create mock data based on friend IDs
-    
     if (!userData.profile.friends || userData.profile.friends.length === 0) {
       return [];
     }
     
-    return userData.profile.friends.map(friendId => ({
-      id: friendId,
-      username: `User_${friendId.split('-')[1]}`,
-      rank: Math.random() > 0.5 ? 'Beginner' : 'Intermediate',
-      workoutsCompleted: Math.floor(Math.random() * 20),
-      maxWeight: Math.floor(Math.random() * 100) + 20,
-      avgWorkoutDuration: (Math.floor(Math.random() * 30) + 15) * 60, // 15-45 minutes in seconds
-      lastActive: Math.random() > 0.3 ? new Date().toISOString() : undefined,
-    }));
+    return userData.profile.friends;
   };
-  
+
   const getFriendRequests = (): FriendRequest[] => {
     return userData.profile.friendRequests || [];
   };

@@ -1,14 +1,15 @@
-
 import { Rank } from '../utils/rankingUtils';
 
 export interface UserProfile {
+  id?: string;
+  username?: string;
   birthdate: string | null;
   height: number | null;
   weight: number | null;
   experienceLevel: Rank | null;
   limitations: string[];
   rank: Rank;
-  friends: string[];
+  friends: Friend[];
   friendRequests: FriendRequest[];
 }
 
@@ -73,18 +74,22 @@ export interface UserContextType {
 export interface Friend {
   id: string;
   username: string;
-  rank: Rank;
-  workoutsCompleted: number;
-  maxWeight: number;
-  avgWorkoutDuration: number;
-  lastActive?: string;
+  since?: string;
+  stats?: {
+    rank: Rank;
+    workoutsCompleted: number;
+    maxWeight: number;
+    avgWorkoutDuration: number;
+    lastActive?: string;
+  };
 }
 
 export interface FriendRequest {
   id: string;
-  fromUserId: string;
+  fromUserId?: string;
   fromUsername: string;
   sentAt: string;
+  status?: 'pending' | 'accepted' | 'declined';
 }
 
 export interface FriendNotification {
