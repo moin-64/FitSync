@@ -1,8 +1,9 @@
+
 import React, { createContext, useContext } from 'react';
 import { useAuth } from './AuthContext';
 import { UserContextType, UserProfile, Workout, WorkoutHistory, Friend, FriendRequest } from '../types/user';
 import { useUserData } from '../hooks/useUserData';
-import { saveUserData, updateProfileRank } from '../utils/userContext.utils';
+import { saveUserData, updateProfileRank, findFriendByUsername, hasPendingRequest } from '../utils/userContext.utils';
 import { useToast } from '@/hooks/use-toast';
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -97,7 +98,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const addFriend = async (username: string) => {
     try {
-      if (userData.profile.friends.some(friend => friend.username === username)) {
+      // Check if we already have this friend
+      if (findFriendByUsername(userData.profile.friends || [], username)) {
         toast({
           title: "Bereits Freunde",
           description: `Du bist bereits mit ${username} befreundet.`,
@@ -106,7 +108,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
-      if (userData.profile.friendRequests.some(req => req.fromUsername === username)) {
+      // Check if there's already a pending request
+      if (hasPendingRequest(userData.profile.friendRequests || [], username)) {
         toast({
           title: "Anfrage existiert bereits",
           description: `Du hast bereits eine Anfrage von ${username} erhalten.`,
@@ -115,14 +118,24 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
+      // Create a mock friend request (in a real app, this would be sent to the other user)
       const mockFriendRequest: FriendRequest = {
         id: `request-${Date.now()}`,
-        fromUserId: user?.id,
+        fromUserId: user?.id || 'anonymous',
         fromUsername: username,
         sentAt: new Date().toISOString(),
         status: 'pending'
       };
 
+      // In a real app, we would send this request to the recipient's inbox
+      // For demo, we'll simulate a request coming in
+      const updatedFriendRequests = [
+        ...(userData.profile.friendRequests || []),
+        mockFriendRequest
+      ];
+
+      await updateProfile({ friendRequests: updatedFriendRequests });
+      
       toast({
         title: "Anfrage gesendet",
         description: `Deine Freundschaftsanfrage wurde an ${username} gesendet.`,
@@ -144,12 +157,14 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('Freundschaftsanfrage nicht gefunden');
       }
 
+      // Create mock stats for the new friend
       const workoutsCompleted = Math.floor(Math.random() * 20);
       const maxWeight = Math.floor(Math.random() * 100) + 20;
       const avgWorkoutDuration = Math.floor(Math.random() * 3600) + 600;
       const rank = userData.profile.rank;
       const lastActive = new Date().toISOString();
 
+      // Create the new friend object with both direct properties and stats object
       const newFriend: Friend = {
         id: request.fromUserId || request.id,
         username: request.fromUsername,
@@ -168,11 +183,9 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       };
       
-      const updatedFriends = [...userData.profile.friends, newFriend];
-      
-      const updatedRequests = userData.profile.friendRequests.filter(
-        req => req.id !== requestId
-      );
+      // Add to friends list and remove from requests
+      const updatedFriends = [...(userData.profile.friends || []), newFriend];
+      const updatedRequests = userData.profile.friendRequests.filter(req => req.id !== requestId);
       
       await updateProfile({
         friends: updatedFriends,
@@ -195,9 +208,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const declineFriendRequest = async (requestId: string) => {
     try {
-      const updatedRequests = userData.profile.friendRequests.filter(
-        req => req.id !== requestId
-      );
+      const updatedRequests = userData.profile.friendRequests.filter(req => req.id !== requestId);
       
       await updateProfile({
         friendRequests: updatedRequests,

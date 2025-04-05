@@ -86,10 +86,6 @@ const Profile = () => {
     try {
       await addFriend(username);
       setShowFriendSearch(false);
-      toast({
-        title: 'Freundschaftsanfrage gesendet',
-        description: `Deine Anfrage an ${username} wurde erfolgreich gesendet`,
-      });
     } catch (error) {
       console.error('Failed to send friend request:', error);
       toast({
@@ -106,10 +102,6 @@ const Profile = () => {
     setFriendsLoading(true);
     try {
       acceptFriendRequest(requestId);
-      toast({
-        title: 'Freundschaftsanfrage angenommen',
-        description: 'Ihr seid jetzt Freunde',
-      });
     } catch (error) {
       toast({
         title: 'Fehler',
@@ -124,10 +116,6 @@ const Profile = () => {
   const handleDeclineRequest = (requestId: string) => {
     try {
       declineFriendRequest(requestId);
-      toast({
-        title: 'Freundschaftsanfrage abgelehnt',
-        description: 'Die Anfrage wurde abgelehnt',
-      });
     } catch (error) {
       toast({
         title: 'Fehler',
@@ -182,6 +170,7 @@ const Profile = () => {
                 onSendFriendRequest={handleSendFriendRequest} 
                 isSearching={isSearching}
                 friends={friends}
+                friendRequests={friendRequests}
               />
               <div className="mt-4 flex justify-end">
                 <Button 

@@ -5,12 +5,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { Friend } from "@/types/user";
+import { Friend, FriendRequest } from "@/types/user";
+import { findFriendByUsername, hasPendingRequest } from "@/utils/userContext.utils";
 
 interface FriendSearchProps {
   onSendFriendRequest: (username: string) => void;
   isSearching: boolean;
   friends: Friend[];
+  friendRequests: FriendRequest[];
 }
 
 interface UserSearchResult {
@@ -20,7 +22,7 @@ interface UserSearchResult {
   hasPendingRequest: boolean;
 }
 
-const FriendSearch = ({ onSendFriendRequest, isSearching, friends }: FriendSearchProps) => {
+const FriendSearch = ({ onSendFriendRequest, isSearching, friends, friendRequests }: FriendSearchProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
   const { toast } = useToast();
@@ -39,16 +41,15 @@ const FriendSearch = ({ onSendFriendRequest, isSearching, friends }: FriendSearc
     // For now, we'll simulate search results
     setTimeout(() => {
       // Check if user is already a friend
-      const isFriend = friends.some(
-        friend => friend.username.toLowerCase() === searchQuery.toLowerCase()
-      );
+      const isFriend = !!findFriendByUsername(friends, searchQuery.trim());
+      const hasPendingReq = hasPendingRequest(friendRequests, searchQuery.trim());
       
       const mockResults: UserSearchResult[] = [
         {
           id: `user-${Date.now()}`,
-          username: searchQuery,
+          username: searchQuery.trim(),
           isFriend,
-          hasPendingRequest: false,
+          hasPendingRequest: hasPendingReq,
         },
       ];
       setSearchResults(mockResults);
