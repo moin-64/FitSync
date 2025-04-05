@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { Friend, FriendRequest, UserProfile } from '@/types/user';
 import { useToast } from '@/hooks/use-toast';
 import { findFriendByUsername, hasPendingRequest } from '@/utils/userContext.utils';
+import { Rank } from '@/utils/rankingUtils';
 
 export function useFriends(
   profile: UserProfile,
@@ -120,15 +121,29 @@ export function useFriends(
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 500));
       
+      // Generate random stats for the new friend
+      const workoutsCompleted = Math.floor(Math.random() * 20);
+      const maxWeight = Math.floor(Math.random() * 100) + 20;
+      const avgWorkoutDuration = Math.floor(Math.random() * 3600) + 600;
+      const friendRank: Rank = ['Beginner', 'Intermediate', 'Advanced', 'Expert'][Math.floor(Math.random() * 4)] as Rank;
+      const lastActive = new Date(Date.now() - Math.floor(Math.random() * 7 * 24 * 60 * 60 * 1000)).toISOString();
+      
       // Add to friends list
       const newFriend: Friend = {
         id: request.fromUserId || request.id,
         username: request.fromUsername,
+        since: new Date().toISOString(),
+        workoutsCompleted,
+        maxWeight,
+        avgWorkoutDuration,
+        rank: friendRank,
+        lastActive,
         stats: {
-          workoutsCompleted: Math.floor(Math.random() * 20),
-          maxWeight: Math.floor(Math.random() * 100) + 20,
-          avgWorkoutDuration: Math.floor(Math.random() * 3600) + 600,
-          rank: ['Beginner', 'Intermediate', 'Advanced', 'Expert'][Math.floor(Math.random() * 4)] as Rank
+          workoutsCompleted,
+          maxWeight,
+          avgWorkoutDuration,
+          rank: friendRank,
+          lastActive
         }
       };
       

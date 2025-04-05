@@ -1,3 +1,4 @@
+
 import { Rank } from '../utils/rankingUtils';
 
 export interface UserProfile {
@@ -82,6 +83,12 @@ export interface Friend {
     avgWorkoutDuration: number;
     lastActive?: string;
   };
+  // Add direct properties to support existing component access
+  rank?: Rank;
+  workoutsCompleted?: number;
+  maxWeight?: number;
+  avgWorkoutDuration?: number;
+  lastActive?: string;
 }
 
 export interface FriendRequest {

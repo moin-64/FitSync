@@ -14,17 +14,23 @@ interface FriendStatsProps {
 }
 
 const FriendStats = ({ friend, userProfile, onBack }: FriendStatsProps) => {
+  // Get friend stats from either top-level properties or stats object
+  const friendWorkoutsCompleted = friend.workoutsCompleted || (friend.stats?.workoutsCompleted || 0);
+  const friendMaxWeight = friend.maxWeight || (friend.stats?.maxWeight || 0);
+  const friendAvgWorkoutDuration = friend.avgWorkoutDuration || (friend.stats?.avgWorkoutDuration || 0);
+  const friendRank = friend.rank || (friend.stats?.rank || 'Beginner');
+  
   // Calculate comparison percentages
-  const workoutCompletion = friend.workoutsCompleted > 0 
-    ? Math.round((userProfile.workoutsCompleted / friend.workoutsCompleted) * 100) 
+  const workoutCompletion = friendWorkoutsCompleted > 0 
+    ? Math.round((userProfile.workoutsCompleted / friendWorkoutsCompleted) * 100) 
     : 100;
   
-  const weightLiftingProgress = friend.maxWeight > 0
-    ? Math.round((userProfile.maxWeight / friend.maxWeight) * 100)
+  const weightLiftingProgress = friendMaxWeight > 0
+    ? Math.round((userProfile.maxWeight / friendMaxWeight) * 100)
     : 100;
   
-  const enduranceProgress = friend.avgWorkoutDuration > 0
-    ? Math.round((userProfile.avgWorkoutDuration / friend.avgWorkoutDuration) * 100)
+  const enduranceProgress = friendAvgWorkoutDuration > 0
+    ? Math.round((userProfile.avgWorkoutDuration / friendAvgWorkoutDuration) * 100)
     : 100;
 
   return (
@@ -50,7 +56,7 @@ const FriendStats = ({ friend, userProfile, onBack }: FriendStatsProps) => {
             <div className="flex justify-between mb-1">
               <span className="text-sm font-medium">Abgeschlossene Workouts</span>
               <span className="text-sm text-muted-foreground">
-                Du: {userProfile.workoutsCompleted} | {friend.username}: {friend.workoutsCompleted}
+                Du: {userProfile.workoutsCompleted} | {friend.username}: {friendWorkoutsCompleted}
               </span>
             </div>
             <Progress value={workoutCompletion} className="h-2" />
@@ -62,7 +68,7 @@ const FriendStats = ({ friend, userProfile, onBack }: FriendStatsProps) => {
             <div className="flex justify-between mb-1">
               <span className="text-sm font-medium">Max. Gewicht (kg)</span>
               <span className="text-sm text-muted-foreground">
-                Du: {userProfile.maxWeight} | {friend.username}: {friend.maxWeight}
+                Du: {userProfile.maxWeight} | {friend.username}: {friendMaxWeight}
               </span>
             </div>
             <Progress value={weightLiftingProgress} className="h-2" />
@@ -74,7 +80,7 @@ const FriendStats = ({ friend, userProfile, onBack }: FriendStatsProps) => {
             <div className="flex justify-between mb-1">
               <span className="text-sm font-medium">Durchschn. Workout-Dauer (min)</span>
               <span className="text-sm text-muted-foreground">
-                Du: {Math.round(userProfile.avgWorkoutDuration / 60)} | {friend.username}: {Math.round(friend.avgWorkoutDuration / 60)}
+                Du: {Math.round(userProfile.avgWorkoutDuration / 60)} | {friend.username}: {Math.round(friendAvgWorkoutDuration / 60)}
               </span>
             </div>
             <Progress value={enduranceProgress} className="h-2" />
@@ -97,7 +103,7 @@ const FriendStats = ({ friend, userProfile, onBack }: FriendStatsProps) => {
             
             <div>
               <h4 className="font-semibold">{friend.username}s Rang</h4>
-              <p className="text-lg font-bold">{friend.rank}</p>
+              <p className="text-lg font-bold">{friendRank}</p>
             </div>
           </div>
         </CardContent>

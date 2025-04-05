@@ -43,7 +43,7 @@ const FriendsList = ({ friends, onViewStats }: FriendsListProps) => {
                 <div>
                   <p className="font-medium">{friend.username}</p>
                   <p className="text-xs text-muted-foreground">
-                    Rang: {friend.rank}
+                    Rang: {friend.rank || friend.stats?.rank || 'Beginner'}
                   </p>
                 </div>
               </div>
@@ -63,34 +63,40 @@ const FriendsList = ({ friends, onViewStats }: FriendsListProps) => {
       
       <TabsContent value="active" className="space-y-3">
         {friends
-          .filter(friend => friend.lastActive && (new Date().getTime() - new Date(friend.lastActive).getTime()) < 7 * 24 * 60 * 60 * 1000)
-          .map(friend => (
-            <Card key={friend.id}>
-              <CardContent className="p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Avatar className="relative">
-                    <div className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-green-500 ring-1 ring-white"></div>
-                    <AvatarFallback>{friend.username.charAt(0).toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-medium">{friend.username}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Zuletzt aktiv: {friend.lastActive ? new Date(friend.lastActive).toLocaleDateString() : 'Unbekannt'}
-                    </p>
+          .filter(friend => {
+            const lastActive = friend.lastActive || friend.stats?.lastActive;
+            return lastActive && (new Date().getTime() - new Date(lastActive).getTime()) < 7 * 24 * 60 * 60 * 1000;
+          })
+          .map(friend => {
+            const lastActive = friend.lastActive || friend.stats?.lastActive;
+            return (
+              <Card key={friend.id}>
+                <CardContent className="p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="relative">
+                      <div className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-green-500 ring-1 ring-white"></div>
+                      <AvatarFallback>{friend.username.charAt(0).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-medium">{friend.username}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Zuletzt aktiv: {lastActive ? new Date(lastActive).toLocaleDateString() : 'Unbekannt'}
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <Button 
-                  size="sm" 
-                  variant="outline"
-                  className="gap-1"
-                  onClick={() => onViewStats(friend.id)}
-                >
-                  <BarChart2 className="h-4 w-4" />
-                  <span className="hidden sm:inline">Statistiken</span>
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    className="gap-1"
+                    onClick={() => onViewStats(friend.id)}
+                  >
+                    <BarChart2 className="h-4 w-4" />
+                    <span className="hidden sm:inline">Statistiken</span>
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          })}
       </TabsContent>
     </Tabs>
   );
