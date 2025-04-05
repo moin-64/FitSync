@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { Friend, FriendRequest, UserProfile } from '@/types/user';
 import { useToast } from '@/hooks/use-toast';
@@ -32,10 +33,10 @@ export function useFriends(
       return false;
     }
     
-    const normalizedUsername = username.trim().toLowerCase();
+    const normalizedUsername = username.trim();
     
     // Check if trying to add self
-    if (profile.username && normalizedUsername === profile.username.toLowerCase()) {
+    if (profile.username && normalizedUsername === profile.username) {
       toast({
         title: 'Fehler',
         description: 'Du kannst dich nicht selbst als Freund hinzufügen',

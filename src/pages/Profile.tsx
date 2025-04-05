@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useUser } from '../context/UserContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button"; // Add this import
+import { Button } from "@/components/ui/button";
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import ProfileInfo from '@/components/profile/ProfileInfo';
 import FitnessStats from '@/components/profile/FitnessStats';
@@ -14,6 +14,7 @@ import FriendStats from '@/components/profile/FriendStats';
 import { Friend } from '@/types/user';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2 } from 'lucide-react';
+import FriendRequests from '@/components/profile/FriendRequests';
 
 const Profile = () => {
   const { 
@@ -180,6 +181,7 @@ const Profile = () => {
               <FriendSearch 
                 onSendFriendRequest={handleSendFriendRequest} 
                 isSearching={isSearching}
+                friends={friends}
               />
               <div className="mt-4 flex justify-end">
                 <Button 
@@ -207,9 +209,10 @@ const Profile = () => {
               />
               
               <Tabs defaultValue="stats" className="mb-8">
-                <TabsList className="grid grid-cols-2 mb-4">
+                <TabsList className="grid grid-cols-3 mb-4">
                   <TabsTrigger value="stats">Statistiken</TabsTrigger>
                   <TabsTrigger value="friends">Freunde</TabsTrigger>
+                  <TabsTrigger value="requests">Anfragen {friendRequests.length > 0 && `(${friendRequests.length})`}</TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="stats">
@@ -235,6 +238,17 @@ const Profile = () => {
                         onViewStats={handleViewFriendStats}
                       />
                     )}
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="requests">
+                  <div className="mb-4">
+                    <h2 className="text-xl font-bold mb-4">Freundschaftsanfragen</h2>
+                    <FriendRequests
+                      requests={friendRequests}
+                      onAccept={handleAcceptRequest}
+                      onDecline={handleDeclineRequest}
+                    />
                   </div>
                 </TabsContent>
               </Tabs>

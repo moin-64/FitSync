@@ -97,10 +97,19 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const addFriend = async (username: string) => {
     try {
-      if (userData.profile.friendRequests?.some(req => req.fromUsername === username)) {
+      if (userData.profile.friends.some(friend => friend.username === username)) {
+        toast({
+          title: "Bereits Freunde",
+          description: `Du bist bereits mit ${username} befreundet.`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (userData.profile.friendRequests.some(req => req.fromUsername === username)) {
         toast({
           title: "Anfrage existiert bereits",
-          description: `Du hast bereits eine Anfrage an ${username} gesendet.`,
+          description: `Du hast bereits eine Anfrage von ${username} erhalten.`,
           variant: "destructive",
         });
         return;
@@ -108,8 +117,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const mockFriendRequest: FriendRequest = {
         id: `request-${Date.now()}`,
-        fromUserId: user?.id || "current-user",
-        fromUsername: user?.username || "current-user",
+        fromUserId: user?.id,
+        fromUsername: username,
         sentAt: new Date().toISOString(),
         status: 'pending'
       };
@@ -130,28 +139,40 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const acceptFriendRequest = async (requestId: string) => {
     try {
-      const request = userData.profile.friendRequests?.find(req => req.id === requestId);
+      const request = userData.profile.friendRequests.find(req => req.id === requestId);
       if (!request) {
         throw new Error('Freundschaftsanfrage nicht gefunden');
       }
+
+      const workoutsCompleted = Math.floor(Math.random() * 20);
+      const maxWeight = Math.floor(Math.random() * 100) + 20;
+      const avgWorkoutDuration = Math.floor(Math.random() * 3600) + 600;
+      const rank = userData.profile.rank;
+      const lastActive = new Date().toISOString();
 
       const newFriend: Friend = {
         id: request.fromUserId || request.id,
         username: request.fromUsername,
         since: new Date().toISOString(),
+        workoutsCompleted,
+        maxWeight,
+        avgWorkoutDuration,
+        rank,
+        lastActive,
         stats: {
-          rank: 'Beginner',
-          workoutsCompleted: 0,
-          maxWeight: 0,
-          avgWorkoutDuration: 0
+          rank,
+          workoutsCompleted,
+          maxWeight,
+          avgWorkoutDuration,
+          lastActive
         }
       };
       
-      const updatedFriends = [...(userData.profile.friends || []), newFriend];
+      const updatedFriends = [...userData.profile.friends, newFriend];
       
-      const updatedRequests = userData.profile.friendRequests?.filter(
+      const updatedRequests = userData.profile.friendRequests.filter(
         req => req.id !== requestId
-      ) || [];
+      );
       
       await updateProfile({
         friends: updatedFriends,
@@ -174,9 +195,9 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const declineFriendRequest = async (requestId: string) => {
     try {
-      const updatedRequests = userData.profile.friendRequests?.filter(
+      const updatedRequests = userData.profile.friendRequests.filter(
         req => req.id !== requestId
-      ) || [];
+      );
       
       await updateProfile({
         friendRequests: updatedRequests,
@@ -197,11 +218,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const getFriends = (): Friend[] => {
-    if (!userData.profile.friends || userData.profile.friends.length === 0) {
-      return [];
-    }
-    
-    return userData.profile.friends;
+    return userData.profile.friends || [];
   };
 
   const getFriendRequests = (): FriendRequest[] => {

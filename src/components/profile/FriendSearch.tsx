@@ -5,10 +5,12 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
+import { Friend } from "@/types/user";
 
 interface FriendSearchProps {
   onSendFriendRequest: (username: string) => void;
   isSearching: boolean;
+  friends: Friend[];
 }
 
 interface UserSearchResult {
@@ -18,7 +20,7 @@ interface UserSearchResult {
   hasPendingRequest: boolean;
 }
 
-const FriendSearch = ({ onSendFriendRequest, isSearching }: FriendSearchProps) => {
+const FriendSearch = ({ onSendFriendRequest, isSearching, friends }: FriendSearchProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
   const { toast } = useToast();
@@ -36,11 +38,16 @@ const FriendSearch = ({ onSendFriendRequest, isSearching }: FriendSearchProps) =
     // In a real app, this would query Supabase for matching usernames
     // For now, we'll simulate search results
     setTimeout(() => {
+      // Check if user is already a friend
+      const isFriend = friends.some(
+        friend => friend.username.toLowerCase() === searchQuery.toLowerCase()
+      );
+      
       const mockResults: UserSearchResult[] = [
         {
           id: `user-${Date.now()}`,
           username: searchQuery,
-          isFriend: false,
+          isFriend,
           hasPendingRequest: false,
         },
       ];
@@ -85,7 +92,7 @@ const FriendSearch = ({ onSendFriendRequest, isSearching }: FriendSearchProps) =
               </div>
               <Button
                 size="sm"
-                disabled={user.isFriend || user.hasPendingRequest}
+                disabled={user.isFriend || user.hasPendingRequest || isSearching}
                 onClick={() => onSendFriendRequest(user.username)}
               >
                 {user.isFriend
