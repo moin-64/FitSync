@@ -2,13 +2,25 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, Save } from 'lucide-react';
+import { ChevronLeft, Save, UserPlus } from 'lucide-react';
+import NotificationsCenter from '@/components/notifications/NotificationsCenter';
+import { FriendRequest } from '@/types/user';
 
 interface ProfileHeaderProps {
   onSave: () => void;
+  friendRequests: FriendRequest[];
+  onAcceptRequest: (requestId: string) => void;
+  onDeclineRequest: (requestId: string) => void;
+  onShowFriendSearch: () => void;
 }
 
-const ProfileHeader = ({ onSave }: ProfileHeaderProps) => {
+const ProfileHeader = ({ 
+  onSave, 
+  friendRequests, 
+  onAcceptRequest, 
+  onDeclineRequest,
+  onShowFriendSearch
+}: ProfileHeaderProps) => {
   const navigate = useNavigate();
   
   return (
@@ -29,10 +41,27 @@ const ProfileHeader = ({ onSave }: ProfileHeaderProps) => {
           </h1>
         </div>
         
-        <Button onClick={onSave} size="sm" className="gap-1">
-          <Save className="h-4 w-4" />
-          Save Changes
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="icon"
+            onClick={onShowFriendSearch}
+            title="Freunde hinzufügen"
+          >
+            <UserPlus className="h-5 w-5" />
+          </Button>
+          
+          <NotificationsCenter 
+            friendRequests={friendRequests}
+            onAcceptRequest={onAcceptRequest}
+            onDeclineRequest={onDeclineRequest}
+          />
+          
+          <Button onClick={onSave} size="sm" className="gap-1">
+            <Save className="h-4 w-4" />
+            Änderungen speichern
+          </Button>
+        </div>
       </div>
     </header>
   );

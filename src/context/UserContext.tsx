@@ -1,15 +1,17 @@
 
 import React, { createContext, useContext } from 'react';
 import { useAuth } from './AuthContext';
-import { UserContextType, UserProfile, Workout, WorkoutHistory } from '../types/user';
+import { UserContextType, UserProfile, Workout, WorkoutHistory, Friend, FriendRequest } from '../types/user';
 import { useUserData } from '../hooks/useUserData';
 import { saveUserData, updateProfileRank } from '../utils/userContext.utils';
+import { useToast } from '@/hooks/use-toast';
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isAuthenticated } = useAuth();
   const { userData, setUserData, loading } = useUserData(user, isAuthenticated);
+  const { toast } = useToast();
 
   const updateProfile = async (data: Partial<UserProfile>) => {
     const updatedProfile = { ...userData.profile, ...data };
@@ -98,6 +100,125 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await updateProfile({ limitations: updatedLimitations });
   };
 
+  // Friend-related functions
+  const addFriend = async (username: string) => {
+    try {
+      // In a real app, this would involve making API calls to find the user and send a request
+      // For now, we're simulating it
+
+      // Check if friend request already exists
+      if (userData.profile.friendRequests?.some(req => req.fromUsername === username)) {
+        toast({
+          title: "Anfrage existiert bereits",
+          description: `Du hast bereits eine Anfrage an ${username} gesendet.`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Create a mock request (in a real app, this would be stored at the recipient's end)
+      const mockFriendRequest: FriendRequest = {
+        id: `request-${Date.now()}`,
+        fromUserId: user?.id || "current-user",
+        fromUsername: user?.username || "current-user",
+        sentAt: new Date().toISOString(),
+      };
+
+      toast({
+        title: "Anfrage gesendet",
+        description: `Deine Freundschaftsanfrage wurde an ${username} gesendet.`,
+      });
+    } catch (error) {
+      console.error('Failed to send friend request:', error);
+      toast({
+        title: "Fehler",
+        description: "Die Anfrage konnte nicht gesendet werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const acceptFriendRequest = async (requestId: string) => {
+    try {
+      const request = userData.profile.friendRequests?.find(req => req.id === requestId);
+      if (!request) {
+        throw new Error('Freundschaftsanfrage nicht gefunden');
+      }
+
+      // Add to friends list
+      const updatedFriends = [...(userData.profile.friends || []), request.fromUserId];
+      
+      // Remove from requests
+      const updatedRequests = userData.profile.friendRequests?.filter(
+        req => req.id !== requestId
+      ) || [];
+      
+      await updateProfile({
+        friends: updatedFriends,
+        friendRequests: updatedRequests,
+      });
+      
+      toast({
+        title: "Anfrage angenommen",
+        description: `Du bist jetzt mit ${request.fromUsername} befreundet.`,
+      });
+    } catch (error) {
+      console.error('Failed to accept friend request:', error);
+      toast({
+        title: "Fehler",
+        description: "Die Anfrage konnte nicht angenommen werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const declineFriendRequest = async (requestId: string) => {
+    try {
+      const updatedRequests = userData.profile.friendRequests?.filter(
+        req => req.id !== requestId
+      ) || [];
+      
+      await updateProfile({
+        friendRequests: updatedRequests,
+      });
+      
+      toast({
+        title: "Anfrage abgelehnt",
+        description: "Die Freundschaftsanfrage wurde abgelehnt.",
+      });
+    } catch (error) {
+      console.error('Failed to decline friend request:', error);
+      toast({
+        title: "Fehler",
+        description: "Die Anfrage konnte nicht abgelehnt werden.",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  const getFriends = (): Friend[] => {
+    // In a real app, this would fetch actual user data from a database
+    // For now, we'll create mock data based on friend IDs
+    
+    if (!userData.profile.friends || userData.profile.friends.length === 0) {
+      return [];
+    }
+    
+    return userData.profile.friends.map(friendId => ({
+      id: friendId,
+      username: `User_${friendId.split('-')[1]}`,
+      rank: Math.random() > 0.5 ? 'Beginner' : 'Intermediate',
+      workoutsCompleted: Math.floor(Math.random() * 20),
+      maxWeight: Math.floor(Math.random() * 100) + 20,
+      avgWorkoutDuration: (Math.floor(Math.random() * 30) + 15) * 60, // 15-45 minutes in seconds
+      lastActive: Math.random() > 0.3 ? new Date().toISOString() : undefined,
+    }));
+  };
+  
+  const getFriendRequests = (): FriendRequest[] => {
+    return userData.profile.friendRequests || [];
+  };
+
   return (
     <UserContext.Provider
       value={{
@@ -111,7 +232,12 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         deleteWorkout,
         completeWorkout,
         addLimitation,
-        removeLimitation
+        removeLimitation,
+        addFriend,
+        acceptFriendRequest,
+        declineFriendRequest,
+        getFriends,
+        getFriendRequests
       }}
     >
       {children}

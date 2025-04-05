@@ -8,7 +8,9 @@ export const defaultUserProfile: UserProfile = {
   weight: null,
   experienceLevel: null,
   limitations: [],
-  rank: 'Beginner'
+  rank: 'Beginner',
+  friends: [],
+  friendRequests: []
 };
 
 export const defaultUserData: UserData = {

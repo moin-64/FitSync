@@ -8,6 +8,8 @@ export interface UserProfile {
   experienceLevel: Rank | null;
   limitations: string[];
   rank: Rank;
+  friends: string[];
+  friendRequests: FriendRequest[];
 }
 
 export interface Workout {
@@ -61,4 +63,34 @@ export interface UserContextType {
   completeWorkout: (id: string, stats: Omit<WorkoutHistory, 'id' | 'workoutId' | 'date'>) => Promise<void>;
   addLimitation: (limitation: string) => Promise<void>;
   removeLimitation: (limitation: string) => Promise<void>;
+  addFriend: (username: string) => Promise<void>;
+  acceptFriendRequest: (requestId: string) => Promise<void>;
+  declineFriendRequest: (requestId: string) => Promise<void>;
+  getFriends: () => Friend[];
+  getFriendRequests: () => FriendRequest[];
+}
+
+export interface Friend {
+  id: string;
+  username: string;
+  rank: Rank;
+  workoutsCompleted: number;
+  maxWeight: number;
+  avgWorkoutDuration: number;
+  lastActive?: string;
+}
+
+export interface FriendRequest {
+  id: string;
+  fromUserId: string;
+  fromUsername: string;
+  sentAt: string;
+}
+
+export interface FriendNotification {
+  id: string;
+  type: 'request' | 'accepted';
+  fromUsername: string;
+  timestamp: string;
+  read: boolean;
 }
