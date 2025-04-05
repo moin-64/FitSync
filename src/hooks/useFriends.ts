@@ -81,7 +81,13 @@ export function useFriends(
         status: 'pending'
       };
       
-      // Update the profile (in a real app this would happen on the server)
+      const existingRequests = getFriendRequests();
+      const updatedRequests = [...existingRequests, newRequest];
+      
+      await updateProfileFn({
+        friendRequests: updatedRequests
+      });
+      
       toast({
         title: 'Erfolg',
         description: `Freundschaftsanfrage an ${username} gesendet`,
@@ -99,7 +105,7 @@ export function useFriends(
     } finally {
       setIsLoading(false);
     }
-  }, [profile, getFriends, getFriendRequests, toast]);
+  }, [profile, getFriends, getFriendRequests, toast, updateProfileFn]);
 
   // Accept a friend request
   const acceptFriendRequest = useCallback(async (requestId: string): Promise<boolean> => {
@@ -221,59 +227,12 @@ export function useFriends(
     }
   }, [getFriendRequests, updateProfileFn, toast]);
 
-  // Remove an existing friend
-  const removeFriend = useCallback(async (friendId: string): Promise<boolean> => {
-    const friends = getFriends();
-    const friendToRemove = friends.find(f => f.id === friendId);
-    
-    if (!friendToRemove) {
-      toast({
-        title: 'Fehler',
-        description: 'Freund nicht gefunden',
-        variant: 'destructive',
-      });
-      return false;
-    }
-    
-    setIsLoading(true);
-    
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // In a real app, we would update this on the server
-      const updatedFriends = friends.filter(f => f.id !== friendId);
-      
-      await updateProfileFn({
-        friends: updatedFriends
-      });
-      
-      toast({
-        title: 'Information',
-        description: `${friendToRemove.username} wurde aus deiner Freundesliste entfernt`,
-      });
-      
-      return true;
-    } catch (error) {
-      console.error('Failed to remove friend:', error);
-      toast({
-        title: 'Fehler',
-        description: 'Freund konnte nicht entfernt werden',
-        variant: 'destructive',
-      });
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [getFriends, updateProfileFn, toast]);
-
   return {
     isLoading,
     getFriends,
     getFriendRequests,
     addFriend,
     acceptFriendRequest,
-    declineFriendRequest,
-    removeFriend
+    declineFriendRequest
   };
 }
