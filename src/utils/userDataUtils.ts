@@ -3,7 +3,7 @@ import { USER_DATA_KEY } from '../constants/authConstants';
 import { Rank } from './rankingUtils';
 import { saveToStorage, getFromStorage } from './localStorage';
 
-// Verbesserte Funktion zur Initialisierung der Benutzerdaten mit Fehlerbehandlung
+// Improved function for initializing user data with error handling
 export const initializeUserData = async (publicKey: string) => {
   if (!publicKey) {
     console.error('Cannot initialize user data: Missing public key');
@@ -46,7 +46,7 @@ export const initializeUserData = async (publicKey: string) => {
   }
 };
 
-// Verbesserte Entschlüsselungsfunktion mit Retry-Mechanismus und Backup
+// Improved decryption function with retry mechanism and backup
 export const decryptUserData = async (privateKey: string): Promise<any> => {
   if (!privateKey) {
     console.error('Cannot decrypt user data: Missing private key');
@@ -145,7 +145,7 @@ export const decryptUserData = async (privateKey: string): Promise<any> => {
   }
 };
 
-// Funktion zum sicheren Speichern der Benutzerdaten mit Verschlüsselung und Backup
+// Function for securely storing user data with encryption and backup
 export const storeUserData = async (userData: any, publicKey: string): Promise<boolean> => {
   if (!userData || !publicKey) {
     console.error('Cannot store user data: Missing data or public key');
@@ -207,7 +207,7 @@ export const storeUserData = async (userData: any, publicKey: string): Promise<b
   }
 };
 
-// Hilfe zum Extrahieren der maximalen Gewichte für Übungstypen
+// Helper function for extracting maximum weights for exercise types
 export const getUserMaxWeights = (workouts: any): Record<string, number> => {
   const maxWeights: Record<string, number> = {};
   
@@ -216,7 +216,7 @@ export const getUserMaxWeights = (workouts: any): Record<string, number> => {
       return maxWeights;
     }
     
-    // Durchlaufe alle Workouts und Übungen, um die maximalen Gewichte zu finden
+    // Iterate through all workouts and exercises to find maximum weights
     workouts.forEach(workout => {
       if (workout && workout.exercises && Array.isArray(workout.exercises)) {
         workout.exercises.forEach(exercise => {

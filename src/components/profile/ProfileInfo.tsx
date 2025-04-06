@@ -17,7 +17,7 @@ interface ProfileInfoProps {
 const ProfileInfo = ({ user, height, weight, setHeight, setWeight }: ProfileInfoProps) => {
   const formatJoinedDate = () => {
     try {
-      // Verwende das aktuelle Datum als Fallback
+      // Use current date as fallback
       return new Date().toLocaleDateString();
     } catch (error) {
       console.error('Error formatting joined date:', error);
