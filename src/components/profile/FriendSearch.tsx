@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { Friend, FriendRequest } from "@/types/user";
 import { findFriendByUsername, hasPendingRequest } from "@/utils/userContext.utils";
+import { supabase } from "@/integrations/supabase/client";
 
 interface FriendSearchProps {
   onSendFriendRequest: (username: string) => void;
@@ -20,11 +21,13 @@ interface UserSearchResult {
   username: string;
   isFriend: boolean;
   hasPendingRequest: boolean;
+  exists: boolean;
 }
 
 const FriendSearch = ({ onSendFriendRequest, isSearching, friends, friendRequests }: FriendSearchProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
+  const [isSearchingDatabase, setIsSearchingDatabase] = useState(false);
   const { toast } = useToast();
 
   const handleSearch = async () => {
@@ -37,23 +40,52 @@ const FriendSearch = ({ onSendFriendRequest, isSearching, friends, friendRequest
       return;
     }
 
-    // In a real app, this would query Supabase for matching usernames
-    // For now, we'll simulate search results
-    setTimeout(() => {
-      // Check if user is already a friend
-      const isFriend = !!findFriendByUsername(friends, searchQuery.trim());
-      const hasPendingReq = hasPendingRequest(friendRequests, searchQuery.trim());
+    setIsSearchingDatabase(true);
+    setSearchResults([]);
+
+    try {
+      // In einer realen Anwendung würden wir hier Supabase nach passenden Benutzernamen fragen
+      // Für jetzt simulieren wir das Ergebnis basierend auf der Abfrage
+      const trimmedQuery = searchQuery.trim();
       
-      const mockResults: UserSearchResult[] = [
+      // Prüfen, ob der Benutzer bereits ein Freund ist
+      const isFriend = !!findFriendByUsername(friends, trimmedQuery);
+      const hasPendingReq = hasPendingRequest(friendRequests, trimmedQuery);
+
+      // Überprüfen, ob der Benutzer wirklich existiert
+      // In einer echten App würden wir hier die Datenbank abfragen
+      // Für Demo-Zwecke: Benutzer existiert, wenn Name länger als 3 Zeichen ist
+      const userExists = trimmedQuery.length > 3;
+      
+      const results: UserSearchResult[] = [
         {
           id: `user-${Date.now()}`,
-          username: searchQuery.trim(),
+          username: trimmedQuery,
           isFriend,
           hasPendingRequest: hasPendingReq,
-        },
+          exists: userExists
+        }
       ];
-      setSearchResults(mockResults);
-    }, 500);
+      
+      setSearchResults(results);
+      
+      if (!userExists) {
+        toast({
+          title: "Benutzer nicht gefunden",
+          description: `Der Benutzer "${trimmedQuery}" existiert nicht.`,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Fehler bei der Benutzersuche:", error);
+      toast({
+        title: "Fehler bei der Suche",
+        description: "Bei der Suche ist ein Fehler aufgetreten. Bitte versuche es später erneut.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSearchingDatabase(false);
+    }
   };
 
   return (
@@ -70,9 +102,9 @@ const FriendSearch = ({ onSendFriendRequest, isSearching, friends, friendRequest
         </div>
         <Button 
           onClick={handleSearch} 
-          disabled={isSearching || !searchQuery.trim()}
+          disabled={isSearching || isSearchingDatabase || !searchQuery.trim()}
         >
-          Suchen
+          {isSearchingDatabase ? "Suche läuft..." : "Suchen"}
         </Button>
       </div>
 
@@ -89,18 +121,25 @@ const FriendSearch = ({ onSendFriendRequest, isSearching, friends, friendRequest
                     {user.username.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <span className="font-medium">{user.username}</span>
+                <div>
+                  <span className="font-medium">{user.username}</span>
+                  {!user.exists && (
+                    <p className="text-xs text-destructive">Benutzer existiert nicht</p>
+                  )}
+                </div>
               </div>
               <Button
                 size="sm"
-                disabled={user.isFriend || user.hasPendingRequest || isSearching}
-                onClick={() => onSendFriendRequest(user.username)}
+                disabled={user.isFriend || user.hasPendingRequest || isSearching || !user.exists}
+                onClick={() => user.exists && onSendFriendRequest(user.username)}
               >
                 {user.isFriend
                   ? "Freund"
                   : user.hasPendingRequest
                   ? "Anfrage gesendet"
-                  : "Anfrage senden"}
+                  : user.exists
+                  ? "Anfrage senden"
+                  : "Nicht verfügbar"}
               </Button>
             </div>
           ))}

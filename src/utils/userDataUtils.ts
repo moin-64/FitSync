@@ -2,15 +2,16 @@
 import { encryptData, decryptData } from './encryption';
 import { USER_DATA_KEY } from '../constants/authConstants';
 import { Rank } from './rankingUtils';
+import { saveToStorage, getFromStorage } from './localStorage';
 
-// Initialize user data with improved error handling
+// Verbesserte Funktion zur Initialisierung der Benutzerdaten mit Fehlerbehandlung
 export const initializeUserData = async (publicKey: string) => {
   if (!publicKey) {
     console.error('Cannot initialize user data: Missing public key');
     return false;
   }
   
-  // Initialize empty encrypted user data
+  // Initialisiere leere verschlüsselte Benutzerdaten
   const emptyUserData = {
     profile: {
       birthdate: null,
@@ -18,7 +19,9 @@ export const initializeUserData = async (publicKey: string) => {
       weight: null,
       experienceLevel: 'Beginner' as Rank,
       limitations: [],
-      rank: 'Beginner' as Rank
+      rank: 'Beginner' as Rank,
+      friends: [],
+      friendRequests: []
     },
     workouts: [],
     history: [],
@@ -29,9 +32,13 @@ export const initializeUserData = async (publicKey: string) => {
   };
   
   try {
-    // Encrypt with public key and store
+    // Verschlüssele mit öffentlichem Schlüssel und speichere
     const encrypted = await encryptData(JSON.stringify(emptyUserData), publicKey);
     localStorage.setItem(USER_DATA_KEY, encrypted);
+    
+    // Speichere auch eine Backup-Kopie im unverschlüsselten Format
+    saveToStorage('userData_backup', emptyUserData);
+    
     console.log('User data initialized successfully');
     return true;
   } catch (error) {
@@ -40,7 +47,7 @@ export const initializeUserData = async (publicKey: string) => {
   }
 };
 
-// Improved decryption function with retry mechanism
+// Verbesserte Entschlüsselungsfunktion mit Retry-Mechanismus und Backup
 export const decryptUserData = async (privateKey: string): Promise<any> => {
   if (!privateKey) {
     console.error('Cannot decrypt user data: Missing private key');
@@ -50,31 +57,37 @@ export const decryptUserData = async (privateKey: string): Promise<any> => {
   try {
     const encryptedData = localStorage.getItem(USER_DATA_KEY);
     if (!encryptedData) {
-      console.error('No encrypted data found in storage');
+      console.warn('No encrypted data found in storage, checking backup');
+      // Wenn keine verschlüsselten Daten vorhanden sind, versuche das Backup zu laden
+      const backupData = getFromStorage('userData_backup', null);
+      if (backupData) {
+        console.log('Loaded data from backup');
+        return backupData;
+      }
       return null;
     }
     
-    // Decrypt user data with private key and retry mechanism
+    // Entschlüssele Benutzerdaten mit privatem Schlüssel und Retry-Mechanismus
     let attempts = 0;
     const maxAttempts = 3;
     let lastError = null;
     
     while (attempts < maxAttempts) {
       try {
-        // Decrypt user data with private key
+        // Entschlüssele Benutzerdaten mit privatem Schlüssel
         const decrypted = await decryptData(encryptedData, privateKey);
         
-        // Validate JSON structure
+        // Validiere JSON-Struktur
         const userData = JSON.parse(decrypted);
         console.log('User data successfully loaded and validated');
         
-        // Ensure profile has correct experienceLevel and rank as Rank type
+        // Stelle sicher, dass das Profil korrekte experienceLevel- und rank-Werte vom Typ Rank hat
         if (userData.profile) {
           if (userData.profile.experienceLevel && typeof userData.profile.experienceLevel === 'string') {
-            // Capitalize first letter to match Rank type
+            // Großschreibe den ersten Buchstaben, um den Typ Rank zu entsprechen
             userData.profile.experienceLevel = userData.profile.experienceLevel.charAt(0).toUpperCase() + 
                                              userData.profile.experienceLevel.slice(1).toLowerCase();
-            // Ensure it's a valid Rank
+            // Stelle sicher, dass es ein gültiger Rank ist
             if (!['Beginner', 'Intermediate', 'Advanced', 'Expert', 'Master'].includes(userData.profile.experienceLevel)) {
               userData.profile.experienceLevel = 'Beginner';
             }
@@ -82,62 +95,58 @@ export const decryptUserData = async (privateKey: string): Promise<any> => {
             userData.profile.experienceLevel = 'Beginner';
           }
           
-          // Ensure rank is properly set
+          // Stelle sicher, dass Rank richtig gesetzt ist
           if (!userData.profile.rank || typeof userData.profile.rank !== 'string') {
             userData.profile.rank = userData.profile.experienceLevel || 'Beginner';
           }
+          
+          // Stelle sicher, dass friends und friendRequests existieren
+          if (!Array.isArray(userData.profile.friends)) {
+            userData.profile.friends = [];
+          }
+          
+          if (!Array.isArray(userData.profile.friendRequests)) {
+            userData.profile.friendRequests = [];
+          }
         }
+        
+        // Speichere auch eine Backup-Kopie im unverschlüsselten Format
+        saveToStorage('userData_backup', userData);
         
         return userData;
       } catch (error) {
         console.error(`Decryption attempt ${attempts + 1} failed:`, error);
         lastError = error;
         attempts++;
-        await new Promise(resolve => setTimeout(resolve, 300)); // Wait before retry
+        await new Promise(resolve => setTimeout(resolve, 300)); // Warte vor dem nächsten Versuch
       }
     }
     
     console.error('All decryption attempts failed:', lastError);
+    
+    // Wenn alle Entschlüsselungsversuche fehlschlagen, versuche das Backup zu laden
+    const backupData = getFromStorage('userData_backup', null);
+    if (backupData) {
+      console.log('Loaded data from backup after decryption failure');
+      return backupData;
+    }
+    
     return null;
   } catch (error) {
     console.error('Error decrypting user data:', error);
+    
+    // Bei Fehlern versuche das Backup zu laden
+    const backupData = getFromStorage('userData_backup', null);
+    if (backupData) {
+      console.log('Loaded data from backup after error');
+      return backupData;
+    }
+    
     return null;
   }
 };
 
-// Enhanced function to get max weights with better error handling
-export const getUserMaxWeights = (workouts: any[]): Record<string, number> => {
-  if (!workouts || !Array.isArray(workouts)) {
-    console.warn('Invalid workouts data provided to getUserMaxWeights');
-    return {};
-  }
-  
-  const maxWeights: Record<string, number> = {};
-  
-  try {
-    // Extract all exercises from completed workouts
-    const allExercises = workouts
-      .filter(w => w && w.completed)
-      .flatMap(w => w.exercises || []);
-    
-    // Find max weight for each exercise
-    allExercises.forEach(exercise => {
-      if (exercise && exercise.name && exercise.weight && exercise.weight > 0) {
-        const currentMax = maxWeights[exercise.name] || 0;
-        if (exercise.weight > currentMax) {
-          maxWeights[exercise.name] = exercise.weight;
-        }
-      }
-    });
-    
-    return maxWeights;
-  } catch (error) {
-    console.error('Error processing workout data for max weights:', error);
-    return {};
-  }
-};
-
-// Safely store user data with encryption
+// Funktion zum sicheren Speichern der Benutzerdaten mit Verschlüsselung und Backup
 export const storeUserData = async (userData: any, publicKey: string): Promise<boolean> => {
   if (!userData || !publicKey) {
     console.error('Cannot store user data: Missing data or public key');
@@ -145,9 +154,9 @@ export const storeUserData = async (userData: any, publicKey: string): Promise<b
   }
   
   try {
-    // Validate and ensure proper types
+    // Validiere und stelle sicher, dass die Typen korrekt sind
     if (userData.profile) {
-      // Ensure experienceLevel is a valid Rank
+      // Stelle sicher, dass experienceLevel ein gültiger Rank ist
       if (userData.profile.experienceLevel) {
         if (typeof userData.profile.experienceLevel === 'string') {
           const level = userData.profile.experienceLevel.charAt(0).toUpperCase() + 
@@ -163,23 +172,35 @@ export const storeUserData = async (userData: any, publicKey: string): Promise<b
         }
       }
       
-      // Ensure rank is set
+      // Stelle sicher, dass Rank gesetzt ist
       if (!userData.profile.rank) {
         userData.profile.rank = userData.profile.experienceLevel || 'Beginner';
       }
+      
+      // Stelle sicher, dass friends und friendRequests existieren
+      if (!Array.isArray(userData.profile.friends)) {
+        userData.profile.friends = [];
+      }
+      
+      if (!Array.isArray(userData.profile.friendRequests)) {
+        userData.profile.friendRequests = [];
+      }
     }
     
-    // Add last updated timestamp
+    // Füge einen letzten Aktualisierungs-Zeitstempel hinzu
     userData.settings = {
       ...userData.settings || {},
       lastUpdated: new Date().toISOString(),
       version: '1.0'
     };
     
-    // Encrypt and store
+    // Speichere auch eine Backup-Kopie im unverschlüsselten Format
+    saveToStorage('userData_backup', userData);
+    
+    // Verschlüssele und speichere
     const encrypted = await encryptData(JSON.stringify(userData), publicKey);
     localStorage.setItem(USER_DATA_KEY, encrypted);
-    console.log('User data stored successfully');
+    console.log('User data stored successfully (encrypted and backup)');
     return true;
   } catch (error) {
     console.error('Error storing user data:', error);

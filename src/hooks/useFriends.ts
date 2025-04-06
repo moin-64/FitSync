@@ -4,6 +4,7 @@ import { Friend, FriendRequest, UserProfile } from '@/types/user';
 import { useToast } from '@/hooks/use-toast';
 import { findFriendByUsername, hasPendingRequest } from '@/utils/userContext.utils';
 import { Rank } from '@/utils/rankingUtils';
+import { saveToStorage, getFromStorage } from '@/utils/localStorage';
 
 export function useFriends(
   profile: UserProfile,
@@ -12,17 +13,17 @@ export function useFriends(
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  // Get friends list with proper error handling
+  // Freundesliste mit korrekter Fehlerbehandlung abrufen
   const getFriends = useCallback((): Friend[] => {
     return Array.isArray(profile.friends) ? profile.friends : [];
   }, [profile.friends]);
 
-  // Get friend requests with proper error handling
+  // Freundschaftsanfragen mit korrekter Fehlerbehandlung abrufen
   const getFriendRequests = useCallback((): FriendRequest[] => {
     return Array.isArray(profile.friendRequests) ? profile.friendRequests : [];
   }, [profile.friendRequests]);
 
-  // Add a friend (send friend request)
+  // Einen Freund hinzufügen (Freundschaftsanfrage senden)
   const addFriend = useCallback(async (username: string): Promise<boolean> => {
     if (!username.trim()) {
       toast({
@@ -35,7 +36,7 @@ export function useFriends(
     
     const normalizedUsername = username.trim();
     
-    // Check if trying to add self
+    // Prüfe, ob versucht wird, sich selbst hinzuzufügen
     if (profile.username && normalizedUsername === profile.username) {
       toast({
         title: 'Fehler',
@@ -45,7 +46,7 @@ export function useFriends(
       return false;
     }
     
-    // Check if already friends
+    // Prüfe, ob bereits befreundet
     if (findFriendByUsername(getFriends(), normalizedUsername)) {
       toast({
         title: 'Information',
@@ -54,7 +55,7 @@ export function useFriends(
       return false;
     }
     
-    // Check if request already sent
+    // Prüfe, ob Anfrage bereits gesendet
     if (hasPendingRequest(getFriendRequests(), normalizedUsername)) {
       toast({
         title: 'Information',
@@ -66,13 +67,13 @@ export function useFriends(
     setIsLoading(true);
     
     try {
-      // Simulate API call
+      // API-Aufruf simulieren
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // In a real app, we would send this to a server
-      // For demo, we'll just update the local state
+      // In einer echten App würden wir dies an einen Server senden
+      // Für die Demo aktualisieren wir nur den lokalen Zustand
       
-      // Create a mock friend request for the recipient
+      // Eine simulierte Freundschaftsanfrage für den Empfänger erstellen
       const newRequest: FriendRequest = {
         id: `req-${Date.now()}`,
         fromUsername: profile.username || 'anonymous',
@@ -87,6 +88,13 @@ export function useFriends(
       await updateProfileFn({
         friendRequests: updatedRequests
       });
+      
+      // Speichere zusätzlich im localStorage für bessere Persistenz
+      try {
+        saveToStorage('pendingFriendRequests', updatedRequests);
+      } catch (storageError) {
+        console.error('Failed to save friend requests to storage:', storageError);
+      }
       
       toast({
         title: 'Erfolg',
@@ -107,7 +115,7 @@ export function useFriends(
     }
   }, [profile, getFriends, getFriendRequests, toast, updateProfileFn]);
 
-  // Accept a friend request
+  // Eine Freundschaftsanfrage annehmen
   const acceptFriendRequest = useCallback(async (requestId: string): Promise<boolean> => {
     const requests = getFriendRequests();
     const requestIndex = requests.findIndex(r => r.id === requestId);
@@ -125,17 +133,17 @@ export function useFriends(
     setIsLoading(true);
     
     try {
-      // Simulate API call
+      // API-Aufruf simulieren
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Generate random stats for the new friend
+      // Zufällige Statistiken für den neuen Freund generieren
       const workoutsCompleted = Math.floor(Math.random() * 20);
       const maxWeight = Math.floor(Math.random() * 100) + 20;
       const avgWorkoutDuration = Math.floor(Math.random() * 3600) + 600;
       const friendRank: Rank = ['Beginner', 'Intermediate', 'Advanced', 'Expert'][Math.floor(Math.random() * 4)] as Rank;
       const lastActive = new Date(Date.now() - Math.floor(Math.random() * 7 * 24 * 60 * 60 * 1000)).toISOString();
       
-      // Add to friends list
+      // Zur Freundesliste hinzufügen
       const newFriend: Friend = {
         id: request.fromUserId || request.id,
         username: request.fromUsername,
@@ -154,7 +162,7 @@ export function useFriends(
         }
       };
       
-      // In a real app, we would update this on the server
+      // In einer echten App würden wir dies auf dem Server aktualisieren
       const updatedFriends = [...getFriends(), newFriend];
       const updatedRequests = requests.filter(r => r.id !== requestId);
       
@@ -162,6 +170,14 @@ export function useFriends(
         friends: updatedFriends,
         friendRequests: updatedRequests
       });
+      
+      // Speichere zusätzlich im localStorage für bessere Persistenz
+      try {
+        saveToStorage('userFriends', updatedFriends);
+        saveToStorage('pendingFriendRequests', updatedRequests);
+      } catch (storageError) {
+        console.error('Failed to save friends data to storage:', storageError);
+      }
       
       toast({
         title: 'Erfolg',
@@ -182,7 +198,7 @@ export function useFriends(
     }
   }, [getFriends, getFriendRequests, updateProfileFn, toast]);
 
-  // Decline a friend request
+  // Eine Freundschaftsanfrage ablehnen
   const declineFriendRequest = useCallback(async (requestId: string): Promise<boolean> => {
     const requests = getFriendRequests();
     
@@ -198,15 +214,22 @@ export function useFriends(
     setIsLoading(true);
     
     try {
-      // Simulate API call
+      // API-Aufruf simulieren
       await new Promise(resolve => setTimeout(resolve, 300));
       
-      // In a real app, we would update this on the server
+      // In einer echten App würden wir dies auf dem Server aktualisieren
       const updatedRequests = requests.filter(r => r.id !== requestId);
       
       await updateProfileFn({
         friendRequests: updatedRequests
       });
+      
+      // Speichere zusätzlich im localStorage für bessere Persistenz
+      try {
+        saveToStorage('pendingFriendRequests', updatedRequests);
+      } catch (storageError) {
+        console.error('Failed to save friend requests to storage:', storageError);
+      }
       
       toast({
         title: 'Information',
