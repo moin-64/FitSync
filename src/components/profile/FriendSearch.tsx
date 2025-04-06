@@ -44,18 +44,40 @@ const FriendSearch = ({ onSendFriendRequest, isSearching, friends, friendRequest
     setSearchResults([]);
 
     try {
-      // In einer realen Anwendung würden wir hier Supabase nach passenden Benutzernamen fragen
-      // Für jetzt simulieren wir das Ergebnis basierend auf der Abfrage
+      // Check if the user already exists in localStorage to simulate a database check
+      // In a real app, we would query the database here
       const trimmedQuery = searchQuery.trim();
       
-      // Prüfen, ob der Benutzer bereits ein Freund ist
+      // Check if the user is already a friend
       const isFriend = !!findFriendByUsername(friends, trimmedQuery);
       const hasPendingReq = hasPendingRequest(friendRequests, trimmedQuery);
 
-      // Überprüfen, ob der Benutzer wirklich existiert
-      // In einer echten App würden wir hier die Datenbank abfragen
-      // Für Demo-Zwecke: Benutzer existiert, wenn Name länger als 3 Zeichen ist
-      const userExists = trimmedQuery.length > 3;
+      // Check if user exists in localStorage
+      // Simulate database check by looking for users with similar usernames
+      const storageKeys = Object.keys(localStorage);
+      const usernameKeys = storageKeys.filter(key => 
+        key.includes('user_') || 
+        key.includes('username_') || 
+        key.includes('auth')
+      );
+      
+      // Check if the username exists in any of the potential user storage keys
+      let userExists = false;
+      for (const key of usernameKeys) {
+        try {
+          const storedValue = localStorage.getItem(key);
+          if (storedValue && storedValue.toLowerCase().includes(trimmedQuery.toLowerCase())) {
+            userExists = true;
+            break;
+          }
+        } catch (e) {
+          console.error('Error checking username:', e);
+        }
+      }
+      
+      // For demo purposes: Consider users with names at least 3 characters long as existing
+      // but combine with our "database" check
+      userExists = userExists || (trimmedQuery.length > 3 && Math.random() > 0.5);
       
       const results: UserSearchResult[] = [
         {
