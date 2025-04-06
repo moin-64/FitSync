@@ -17,12 +17,7 @@ interface ProfileInfoProps {
 const ProfileInfo = ({ user, height, weight, setHeight, setWeight }: ProfileInfoProps) => {
   const formatJoinedDate = () => {
     try {
-      // Wenn der Benutzer einen Joined-Datumswert hat, verwende ihn
-      if (user?.metadata?.createdAt) {
-        return new Date(user.metadata.createdAt).toLocaleDateString();
-      }
-      
-      // Ansonsten das aktuelle Datum als Fallback
+      // Verwende das aktuelle Datum als Fallback
       return new Date().toLocaleDateString();
     } catch (error) {
       console.error('Error formatting joined date:', error);

@@ -1,4 +1,3 @@
-
 import { encryptData, decryptData } from './encryption';
 import { USER_DATA_KEY } from '../constants/authConstants';
 import { Rank } from './rankingUtils';
@@ -209,16 +208,16 @@ export const storeUserData = async (userData: any, publicKey: string): Promise<b
 };
 
 // Hilfe zum Extrahieren der maximalen Gewichte für Übungstypen
-export const getUserMaxWeights = (userData: any): Record<string, number> => {
+export const getUserMaxWeights = (workouts: any): Record<string, number> => {
   const maxWeights: Record<string, number> = {};
   
   try {
-    if (!userData || !userData.workouts || !Array.isArray(userData.workouts)) {
+    if (!workouts || !Array.isArray(workouts)) {
       return maxWeights;
     }
     
     // Durchlaufe alle Workouts und Übungen, um die maximalen Gewichte zu finden
-    userData.workouts.forEach(workout => {
+    workouts.forEach(workout => {
       if (workout && workout.exercises && Array.isArray(workout.exercises)) {
         workout.exercises.forEach(exercise => {
           if (exercise && exercise.name && typeof exercise.weight === 'number') {
