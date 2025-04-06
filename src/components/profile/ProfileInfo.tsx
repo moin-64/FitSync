@@ -15,6 +15,21 @@ interface ProfileInfoProps {
 }
 
 const ProfileInfo = ({ user, height, weight, setHeight, setWeight }: ProfileInfoProps) => {
+  const formatJoinedDate = () => {
+    try {
+      // Wenn der Benutzer einen Joined-Datumswert hat, verwende ihn
+      if (user?.metadata?.createdAt) {
+        return new Date(user.metadata.createdAt).toLocaleDateString();
+      }
+      
+      // Ansonsten das aktuelle Datum als Fallback
+      return new Date().toLocaleDateString();
+    } catch (error) {
+      console.error('Error formatting joined date:', error);
+      return new Date().toLocaleDateString();
+    }
+  };
+  
   return (
     <Card className="glass mb-8">
       <CardHeader>
@@ -30,7 +45,7 @@ const ProfileInfo = ({ user, height, weight, setHeight, setWeight }: ProfileInfo
             </div>
             <div>
               <h3 className="text-xl font-bold">{user?.username}</h3>
-              <p className="text-muted-foreground">Joined {new Date().toLocaleDateString()}</p>
+              <p className="text-muted-foreground">Joined {formatJoinedDate()}</p>
             </div>
           </div>
           
