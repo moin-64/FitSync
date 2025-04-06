@@ -51,8 +51,9 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         completeWorkout,
         addLimitation,
         removeLimitation,
+        // Functions from useFriends now match the updated type
         addFriend,
-        acceptFriendRequest,
+        acceptFriendRequest, 
         declineFriendRequest,
         getFriends,
         getFriendRequests

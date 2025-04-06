@@ -65,9 +65,10 @@ export interface UserContextType {
   completeWorkout: (id: string, stats: Omit<WorkoutHistory, 'id' | 'workoutId' | 'date'>) => Promise<void>;
   addLimitation: (limitation: string) => Promise<void>;
   removeLimitation: (limitation: string) => Promise<void>;
-  addFriend: (username: string) => Promise<void>;
-  acceptFriendRequest: (requestId: string) => Promise<void>;
-  declineFriendRequest: (requestId: string) => Promise<void>;
+  // Updated these return types to match the implementation in useFriends
+  addFriend: (username: string) => Promise<boolean>;
+  acceptFriendRequest: (requestId: string) => Promise<boolean>;
+  declineFriendRequest: (requestId: string) => Promise<boolean>;
   getFriends: () => Friend[];
   getFriendRequests: () => FriendRequest[];
 }
