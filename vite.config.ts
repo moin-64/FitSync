@@ -9,8 +9,8 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
-    // Erlaube alle Hosts, einschließlich der speziellen Lovable-Domains
-    allowedHosts: 'all',
+    // Allow all hosts as a boolean value instead of a string
+    allowedHosts: true,
   },
   plugins: [
     react(),
