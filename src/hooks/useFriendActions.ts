@@ -1,10 +1,11 @@
 
 import { useState, useCallback } from 'react';
-import { Friend, FriendRequest, UserProfile } from '@/types/user';
+import { Friend, FriendRequest, UserProfile, Notification } from '@/types/user';
 import { useToast } from '@/hooks/use-toast';
 import { useFriendsList } from './useFriendsList';
 import { useFriendRequests } from './useFriendRequests';
-import { findFriendByUsername, hasPendingRequest } from '@/utils/userContext.utils';
+import { findFriendByUsername, hasPendingRequest, createFriendRequestNotification } from '@/utils/userContext.utils';
+import { useNotifications } from './useNotifications';
 
 export function useFriendActions(
   profile: UserProfile,
@@ -13,7 +14,7 @@ export function useFriendActions(
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   
-  // Use the new hooks for Friends and Requests
+  // Use the hooks for Friends, Requests and Notifications
   const { 
     getFriends, 
     addFriendToList
@@ -24,6 +25,11 @@ export function useFriendActions(
     addFriendRequest, 
     removeFriendRequest 
   } = useFriendRequests(profile);
+
+  const {
+    getNotifications,
+    addNotification
+  } = useNotifications(profile, updateProfileFn);
 
   // Add a friend (send friend request) with improved error handling
   const addFriend = useCallback(async (username: string): Promise<boolean> => {
@@ -83,6 +89,24 @@ export function useFriendActions(
         status: 'pending'
       };
       
+      // In a real app with a proper backend:
+      // We would find the target user and create the request directly in their profile
+      // For now, our demo will simulate by storing requests in localStorage
+      
+      // Create a notification for the recipient
+      const notification = createFriendRequestNotification(newRequest);
+      
+      // In a real app, we would save this notification to the recipient's profile
+      // For our demo, we'll just store in localStorage to simulate a pending request
+      const existingNotifications = JSON.parse(localStorage.getItem('pendingNotifications') || '[]');
+      existingNotifications.push({
+        username: normalizedUsername,
+        notification,
+        request: newRequest
+      });
+      localStorage.setItem('pendingNotifications', JSON.stringify(existingNotifications));
+      
+      // Add to current user's outgoing requests
       const updatedRequests = addFriendRequest(newRequest);
       
       await updateProfileFn({
@@ -155,13 +179,27 @@ export function useFriendActions(
         }
       };
       
+      // Add notification that friend was accepted
+      const acceptNotification: Notification = {
+        id: `notif-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        type: 'friendAccepted',
+        title: 'Freundschaftsanfrage angenommen',
+        message: `Du hast die Freundschaftsanfrage von ${request.fromUsername} angenommen`,
+        createdAt: new Date().toISOString(),
+        read: false,
+        fromUsername: request.fromUsername
+      };
+      
+      const updatedNotifications = addNotification(acceptNotification);
+      
       // In a real app we would update this on the server
       const updatedFriends = addFriendToList(newFriend);
       const updatedRequests = removeFriendRequest(requestId);
       
       await updateProfileFn({
         friends: updatedFriends,
-        friendRequests: updatedRequests
+        friendRequests: updatedRequests,
+        notifications: updatedNotifications
       });
       
       toast({
@@ -181,7 +219,7 @@ export function useFriendActions(
     } finally {
       setIsLoading(false);
     }
-  }, [getFriendRequests, updateProfileFn, toast, addFriendToList, removeFriendRequest]);
+  }, [getFriendRequests, updateProfileFn, toast, addFriendToList, removeFriendRequest, addNotification]);
 
   // Decline a friend request
   const declineFriendRequest = useCallback(async (requestId: string): Promise<boolean> => {
@@ -234,6 +272,7 @@ export function useFriendActions(
     acceptFriendRequest,
     declineFriendRequest,
     getFriends,
-    getFriendRequests
+    getFriendRequests,
+    getNotifications
   };
 }

@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useWorkoutManagement } from '@/hooks/useWorkoutManagement';
 import { useFriends } from '@/hooks/useFriends';
 import { useProfileManagement } from '@/hooks/useProfileManagement';
+import { useNotifications } from '@/hooks/useNotifications';
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
@@ -37,6 +38,12 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     getFriendRequests
   } = useFriends(userData.profile, updateProfile);
 
+  const {
+    getNotifications,
+    markNotificationAsRead,
+    clearNotification
+  } = useNotifications(userData.profile, updateProfile);
+
   return (
     <UserContext.Provider
       value={{
@@ -51,12 +58,16 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         completeWorkout,
         addLimitation,
         removeLimitation,
-        // Functions from useFriends now match the updated type
+        // Functions from useFriends
         addFriend,
         acceptFriendRequest, 
         declineFriendRequest,
         getFriends,
-        getFriendRequests
+        getFriendRequests,
+        // Functions from useNotifications
+        getNotifications,
+        markNotificationAsRead,
+        clearNotification
       }}
     >
       {children}

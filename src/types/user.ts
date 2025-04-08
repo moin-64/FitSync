@@ -12,6 +12,7 @@ export interface UserProfile {
   rank: Rank;
   friends: Friend[];
   friendRequests: FriendRequest[];
+  notifications: Notification[]; // Added notifications array
 }
 
 export interface Workout {
@@ -71,6 +72,9 @@ export interface UserContextType {
   declineFriendRequest: (requestId: string) => Promise<boolean>;
   getFriends: () => Friend[];
   getFriendRequests: () => FriendRequest[];
+  getNotifications: () => Notification[];
+  markNotificationAsRead: (notificationId: string) => Promise<void>;
+  clearNotification: (notificationId: string) => Promise<void>;
 }
 
 export interface Friend {
@@ -106,4 +110,17 @@ export interface FriendNotification {
   fromUsername: string;
   timestamp: string;
   read: boolean;
+}
+
+// New notification type for various system notifications
+export interface Notification {
+  id: string;
+  type: 'friendRequest' | 'friendAccepted' | 'workout' | 'system';
+  title: string;
+  message: string;
+  createdAt: string;
+  read: boolean;
+  requestId?: string; // Optional ID for related friend request
+  workoutId?: string; // Optional ID for related workout
+  fromUsername?: string; // Optional username who triggered the notification
 }

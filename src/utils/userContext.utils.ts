@@ -1,5 +1,5 @@
 
-import { UserData, UserProfile, Friend, FriendRequest } from '../types/user';
+import { UserData, UserProfile, Friend, FriendRequest, Notification } from '../types/user';
 import { calculateEligibleRank, calculateMaxWeight, calculateMaxReps } from './rankingUtils';
 
 export const defaultUserProfile: UserProfile = {
@@ -10,7 +10,8 @@ export const defaultUserProfile: UserProfile = {
   limitations: [],
   rank: 'Beginner',
   friends: [],
-  friendRequests: []
+  friendRequests: [],
+  notifications: []
 };
 
 export const defaultUserData: UserData = {
@@ -80,4 +81,18 @@ export const hasPendingRequest = (requests: FriendRequest[], username: string): 
     request && request.fromUsername && 
     request.fromUsername.toLowerCase() === username.toLowerCase()
   );
+};
+
+// Create a notification from a friend request
+export const createFriendRequestNotification = (request: FriendRequest): Notification => {
+  return {
+    id: `notif-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+    type: 'friendRequest',
+    title: 'Neue Freundschaftsanfrage',
+    message: `${request.fromUsername} möchte mit dir befreundet sein`,
+    createdAt: new Date().toISOString(),
+    read: false,
+    requestId: request.id,
+    fromUsername: request.fromUsername
+  };
 };

@@ -14,13 +14,15 @@ export function useFriends(
     acceptFriendRequest,
     declineFriendRequest,
     getFriends,
-    getFriendRequests
+    getFriendRequests,
+    getNotifications
   } = useFriendActions(profile, updateProfileFn);
 
   return {
     isLoading,
     getFriends,
     getFriendRequests,
+    getNotifications,
     addFriend,
     acceptFriendRequest,
     declineFriendRequest
