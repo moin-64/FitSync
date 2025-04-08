@@ -3,18 +3,10 @@ import React, { useState, useEffect } from 'react';
 import { useUser } from '../context/UserContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
 import ProfileHeader from '@/components/profile/ProfileHeader';
-import ProfileInfo from '@/components/profile/ProfileInfo';
-import FitnessStats from '@/components/profile/FitnessStats';
-import LimitationsManager from '@/components/profile/LimitationsManager';
-import FriendSearch from '@/components/profile/FriendSearch';
-import FriendsList from '@/components/profile/FriendsList';
-import FriendStats from '@/components/profile/FriendStats';
+import ProfileContent from '@/components/profile/ProfileContent';
+import ProfileTabs from '@/components/profile/ProfileTabs';
 import { Friend } from '@/types/user';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2 } from 'lucide-react';
-import FriendRequests from '@/components/profile/FriendRequests';
 
 const Profile = () => {
   const { 
@@ -163,85 +155,35 @@ const Profile = () => {
       
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-3xl mx-auto">
-          {showFriendSearch ? (
-            <div className="mb-8">
-              <h2 className="text-xl font-bold mb-4">Freunde finden</h2>
-              <FriendSearch 
-                onSendFriendRequest={handleSendFriendRequest} 
-                isSearching={isSearching}
-                friends={friends}
-                friendRequests={friendRequests}
-              />
-              <div className="mt-4 flex justify-end">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setShowFriendSearch(false)}
-                >
-                  Zurück zum Profil
-                </Button>
-              </div>
-            </div>
-          ) : selectedFriend ? (
-            <FriendStats
-              friend={selectedFriend}
-              userProfile={userStats}
-              onBack={() => setSelectedFriend(null)}
+          <ProfileContent 
+            user={user}
+            height={height}
+            weight={weight}
+            setHeight={setHeight}
+            setWeight={setWeight}
+            showFriendSearch={showFriendSearch}
+            setShowFriendSearch={setShowFriendSearch}
+            selectedFriend={selectedFriend}
+            setSelectedFriend={setSelectedFriend}
+            isSearching={isSearching}
+            handleSendFriendRequest={handleSendFriendRequest}
+            friends={friends}
+            friendRequests={friendRequests}
+            userStats={userStats}
+          />
+          
+          {!showFriendSearch && !selectedFriend && (
+            <ProfileTabs 
+              profile={profile}
+              friendRequests={friendRequests}
+              friends={friends}
+              friendsLoading={friendsLoading}
+              onViewFriendStats={handleViewFriendStats}
+              addLimitation={addLimitation}
+              removeLimitation={removeLimitation}
+              onAcceptRequest={handleAcceptRequest}
+              onDeclineRequest={handleDeclineRequest}
             />
-          ) : (
-            <>
-              <ProfileInfo 
-                user={user}
-                height={height}
-                weight={weight}
-                setHeight={setHeight}
-                setWeight={setWeight}
-              />
-              
-              <Tabs defaultValue="stats" className="mb-8">
-                <TabsList className="grid grid-cols-3 mb-4">
-                  <TabsTrigger value="stats">Statistiken</TabsTrigger>
-                  <TabsTrigger value="friends">Freunde</TabsTrigger>
-                  <TabsTrigger value="requests">Anfragen {friendRequests.length > 0 && `(${friendRequests.length})`}</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="stats">
-                  <FitnessStats profile={profile} />
-                  
-                  <LimitationsManager
-                    limitations={profile.limitations}
-                    addLimitation={addLimitation}
-                    removeLimitation={removeLimitation}
-                  />
-                </TabsContent>
-                
-                <TabsContent value="friends">
-                  <div className="mb-4">
-                    <h2 className="text-xl font-bold mb-4">Deine Freunde</h2>
-                    {friendsLoading ? (
-                      <div className="flex justify-center py-8">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                      </div>
-                    ) : (
-                      <FriendsList 
-                        friends={friends} 
-                        onViewStats={handleViewFriendStats}
-                      />
-                    )}
-                  </div>
-                </TabsContent>
-                
-                <TabsContent value="requests">
-                  <div className="mb-4">
-                    <h2 className="text-xl font-bold mb-4">Freundschaftsanfragen</h2>
-                    <FriendRequests
-                      requests={friendRequests}
-                      onAccept={handleAcceptRequest}
-                      onDecline={handleDeclineRequest}
-                    />
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </>
           )}
         </div>
       </main>
