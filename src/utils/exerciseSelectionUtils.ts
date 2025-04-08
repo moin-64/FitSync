@@ -45,6 +45,12 @@ export const getExerciseVideoUrl = (exerciseName: string): string => {
     'Exercise Bike': 'https://storage.googleapis.com/workout-videos/exercise-bike.mp4',
     'Rowing Ergometer': 'https://storage.googleapis.com/workout-videos/rowing-machine.mp4',
     'Stairmaster': 'https://storage.googleapis.com/workout-videos/stairmaster.mp4',
+    // Add new equipment videos
+    'Stehender Schulterdruck': 'https://storage.googleapis.com/workout-videos/shoulder-press-dlc115.mp4',
+    'Seitliches Heben': 'https://storage.googleapis.com/workout-videos/lateral-raise-dlc125.mp4',
+    'Butterfly': 'https://storage.googleapis.com/workout-videos/butterfly-dlc220.mp4',
+    'Latzug Radial': 'https://storage.googleapis.com/workout-videos/lat-pulldown-dlc315.mp4',
+    'Lateral Rudern': 'https://storage.googleapis.com/workout-videos/rowing-dlc325.mp4',
   };
   
   // Return actual video URL if available, otherwise a generic one
@@ -80,31 +86,88 @@ export const getEquipmentCategory = (equipment: string): string => {
     'Exercise Bike': 'Cardio',
     'Rowing Ergometer': 'Cardio',
     'Stairmaster': 'Cardio',
+    // New equipment categories
+    'DLC115 Shoulder Press': 'Shoulder Machines',
+    'DLC125 Lateral Raise': 'Shoulder Machines',
+    'DLC220 Butterfly': 'Chest Machines',
+    'DLC315 Lat Pulldown': 'Back Machines',
+    'DLC325 Rowing Machine': 'Back Machines',
+    'DLC330 Lat Press': 'Back Machines',
+    'DLC345 Pull Over': 'Back Machines',
+    'DLC355 Back Extension': 'Back Machines',
+    'DLC415 Bicep Machine': 'Arm Machines',
+    'DLC435 Dip Machine': 'Arm Machines',
+    'DLC635 Squat Machine': 'Leg Machines',
+    'DLC665 Kick Machine': 'Leg Machines',
+    'DLC685 Calf Machine': 'Leg Machines',
+    'K613 Leg Press': 'Leg Machines',
+    'K617 Vario Leg Press': 'Leg Machines',
+    'K688 Leg Combo': 'Leg Machines',
+    'K721 Bench Press': 'Chest Machines',
+    'K724 Incline Bench': 'Chest Machines',
+    'K733 Hyperextension': 'Back Machines',
+    'K740 Bicep Bench': 'Arm Machines',
+    'K753 Ab Bench': 'Core Machines',
+    'K760 Squat Rack': 'Leg Machines',
+    'T310 Lat Station': 'Back Machines',
+    'T320 Rowing Station': 'Back Machines',
+    'T322 Seated Row': 'Back Machines',
+    'T414 Bicep-Tricep': 'Arm Machines',
+    'T613 Rolling Leg Press': 'Leg Machines'
   };
 
   return equipmentCategories[equipment] || 'Other';
 };
 
-// Updated function to pick a diverse set of exercises
+// Updated function to pick a diverse set of exercises with improved limitation handling
 export const pickExercisesForWorkout = (limitations: string[] = [], minExercises: number = 3) => {
+  // Parse limitations to identify specific body parts or conditions
+  const limitationsLower = limitations.map(l => l.toLowerCase());
+  
+  // Detect specific body part limitations
+  const hasArmLimitation = limitationsLower.some(l => 
+    l.includes('arm') || l.includes('wrist') || l.includes('hand') || l.includes('elbow') || l.includes('schulter')
+  );
+  
+  const hasLegLimitation = limitationsLower.some(l =>
+    l.includes('bein') || l.includes('leg') || l.includes('knie') || l.includes('knee') || 
+    l.includes('fuß') || l.includes('foot') || l.includes('ankle') || l.includes('sprunggelenk')
+  );
+  
+  const hasBackLimitation = limitationsLower.some(l =>
+    l.includes('back') || l.includes('rücken') || l.includes('wirbel') || l.includes('spine')
+  );
+  
+  const hasChestLimitation = limitationsLower.some(l =>
+    l.includes('brust') || l.includes('chest') || l.includes('pec') || l.includes('schulter')
+  );
+  
   // Select exercise categories based on limitations
   let exerciseCategories = ['Chest', 'Legs', 'Back', 'Arms', 'Shoulders', 'Core'];
   
-  // Consider limitations
-  if (limitations.length > 0) {
-    if (limitations.some(l => l.toLowerCase().includes('arm') || l.toLowerCase().includes('wrist'))) {
-      // Remove upper body exercises
-      exerciseCategories = exerciseCategories.filter(c => c !== 'Chest' && c !== 'Back' && c !== 'Arms' && c !== 'Shoulders');
-      // Add more leg exercises
-      exerciseCategories = ['Legs', 'Core', 'Glutes'];
-    }
-    
-    if (limitations.some(l => l.toLowerCase().includes('leg') || l.toLowerCase().includes('knee'))) {
-      // Remove leg exercises
-      exerciseCategories = exerciseCategories.filter(c => c !== 'Legs' && c !== 'Glutes');
-      // Add more upper body exercises
-      exerciseCategories = ['Chest', 'Back', 'Arms', 'Shoulders', 'Core'];
-    }
+  // Apply limitations to filter out categories
+  if (hasArmLimitation) {
+    exerciseCategories = exerciseCategories.filter(c => 
+      c !== 'Arms' && c !== 'Chest' && c !== 'Back' && c !== 'Shoulders'
+    );
+  }
+  
+  if (hasLegLimitation) {
+    exerciseCategories = exerciseCategories.filter(c => 
+      c !== 'Legs' && c !== 'Glutes'
+    );
+  }
+  
+  if (hasBackLimitation) {
+    exerciseCategories = exerciseCategories.filter(c => 
+      c !== 'Back' && c !== 'Core'
+    );
+  }
+  
+  if (hasChestLimitation) {
+    exerciseCategories = exerciseCategories.filter(c => 
+      c !== 'Chest' && c !== 'Shoulders'
+    );
   }
   
   // Make sure we have at least 1 category

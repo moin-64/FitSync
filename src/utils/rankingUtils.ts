@@ -73,8 +73,12 @@ export const getAgeCategory = (age: number): AgeCategory => {
 export const calculateMaxWeight = (exercises: { weight?: number }[]): number => {
   let maxWeight = 0;
   
+  if (!Array.isArray(exercises)) {
+    return 0;
+  }
+  
   exercises.forEach(exercise => {
-    if (exercise.weight && exercise.weight > maxWeight) {
+    if (exercise?.weight && !isNaN(exercise.weight) && exercise.weight > maxWeight) {
       maxWeight = exercise.weight;
     }
   });
@@ -86,8 +90,12 @@ export const calculateMaxWeight = (exercises: { weight?: number }[]): number => 
 export const calculateMaxReps = (exercises: { reps: number }[]): number => {
   let maxReps = 0;
   
+  if (!Array.isArray(exercises)) {
+    return 0;
+  }
+  
   exercises.forEach(exercise => {
-    if (exercise.reps > maxReps) {
+    if (exercise?.reps && !isNaN(exercise.reps) && exercise.reps > maxReps) {
       maxReps = exercise.reps;
     }
   });
@@ -103,11 +111,21 @@ export const calculateEligibleRank = (
   maxWeight: number,
   maxReps: number
 ): Rank => {
+  // Ensure current rank is a valid value
+  if (!rankProgression.includes(currentRank)) {
+    return 'Beginner';
+  }
+  
   const age = calculateAge(birthdate);
   const ageCategory = getAgeCategory(age);
   
   // Find current rank index
   const currentRankIndex = rankProgression.indexOf(currentRank);
+  
+  // Safety check for invalid ranks
+  if (currentRankIndex === -1) {
+    return 'Beginner';
+  }
   
   // Check if user can progress to next rank
   if (currentRankIndex < rankProgression.length - 1) {

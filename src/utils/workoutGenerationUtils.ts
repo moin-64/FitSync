@@ -71,7 +71,7 @@ export const generateAIWorkout = async (
       // Check if this is a machine exercise for weight adjustment
       const isMachineExercise = 
         exercise.equipment.includes('Machine') || 
-        EQUIPMENT_TYPES.slice(5, 18).includes(exercise.equipment);
+        EQUIPMENT_TYPES.slice(5, EQUIPMENT_TYPES.length).some(eq => exercise.equipment.includes(eq));
       
       // Determine weight based on rank, exercise name, and equipment type
       const weight = determineWeight(
@@ -163,7 +163,7 @@ export const generateAIWorkout = async (
       // Check if this is a machine exercise for weight adjustment
       const isMachineExercise = 
         exercise.equipment.includes('Machine') || 
-        EQUIPMENT_TYPES.slice(5, 18).includes(exercise.equipment);
+        EQUIPMENT_TYPES.slice(5, EQUIPMENT_TYPES.length).some(eq => exercise.equipment.includes(eq));
       
       // Determine weight based on rank, exercise name, and equipment type
       const weight = determineWeight(

@@ -132,7 +132,7 @@ export function useFriendActions(
       const workoutsCompleted = Math.floor(Math.random() * 20);
       const maxWeight = Math.floor(Math.random() * 100) + 20;
       const avgWorkoutDuration = Math.floor(Math.random() * 3600) + 600;
-      const friendRank: Rank = ['Beginner', 'Intermediate', 'Advanced', 'Expert'][Math.floor(Math.random() * 4)] as Rank;
+      const friendRank: Rank = ['Beginner', 'Intermediate', 'Advanced', 'Expert', 'Master'][Math.floor(Math.random() * 5)] as Rank;
       const lastActive = new Date(Date.now() - Math.floor(Math.random() * 7 * 24 * 60 * 60 * 1000)).toISOString();
       
       // Add to friend list

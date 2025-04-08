@@ -12,7 +12,7 @@ export const useUserData = (user: User | null, isAuthenticated: boolean) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  // Verbesserte Datenladung mit Retries und Backup-Strategie
+  // Improved data loading with retries and backup strategy
   const loadUserData = useCallback(async () => {
     if (!isAuthenticated || !user) {
       setLoading(false);
@@ -23,11 +23,11 @@ export const useUserData = (user: User | null, isAuthenticated: boolean) => {
       setLoading(true);
       setError(null);
       
-      // Hole den privaten Schlüssel des Benutzers aus dem Speicher
+      // Get the user's private key from storage
       const privateKey = localStorage.getItem(`${KEY_PREFIX}${user.email}`);
       if (!privateKey) {
         console.warn('User encryption key not found, trying backup data');
-        // Versuche, Backup-Daten zu laden
+        // Try to load backup data
         const backupData = getFromStorage('userData_backup', null);
         if (backupData) {
           console.log('Loaded user data from backup');
@@ -38,11 +38,11 @@ export const useUserData = (user: User | null, isAuthenticated: boolean) => {
         throw new Error('User encryption key not found');
       }
       
-      // Entschlüssele die Benutzerdaten mit Retry-Mechanismus
+      // Decrypt user data with retry mechanism
       const decryptedData = await decryptUserData(privateKey);
       
       if (decryptedData) {
-        // Validiere und stelle sicher, dass die Daten alle erforderlichen Felder haben
+        // Validate and ensure data has all required fields
         const validatedData = {
           ...defaultUserData,
           ...decryptedData,
@@ -54,11 +54,11 @@ export const useUserData = (user: User | null, isAuthenticated: boolean) => {
         
         setUserData(validatedData);
         
-        // Speichere auch eine Backup-Kopie im unverschlüsselten Format
+        // Also store a backup copy in unencrypted format
         saveToStorage('userData_backup', validatedData);
       } else {
         console.warn('Failed to load encrypted user data, checking for backup');
-        // Versuche, Backup-Daten zu laden
+        // Try to load backup data
         const backupData = getFromStorage('userData_backup', null);
         if (backupData) {
           console.log('Loaded user data from backup after decryption failure');
@@ -72,7 +72,7 @@ export const useUserData = (user: User | null, isAuthenticated: boolean) => {
       console.error('Failed to load user data:', err);
       setError(err instanceof Error ? err : new Error('Unknown error loading user data'));
       
-      // Versuche, Backup-Daten zu laden
+      // Try to load backup data
       const backupData = getFromStorage('userData_backup', null);
       if (backupData) {
         console.log('Loaded user data from backup after error');
@@ -85,21 +85,21 @@ export const useUserData = (user: User | null, isAuthenticated: boolean) => {
     }
   }, [isAuthenticated, user]);
 
-  // Lade Daten bei Änderung des Auth-Status
+  // Load data when auth status changes
   useEffect(() => {
     loadUserData();
   }, [loadUserData]);
 
-  // Verbesserte setUserData mit automatischer Persistenz
+  // Improved setUserData with automatic persistence
   const updateUserDataState = useCallback(async (newData: UserData) => {
     try {
-      // Setze den Zustand sofort für UI-Responsiveness
+      // Set state immediately for UI responsiveness
       setUserData(newData);
       
-      // Speichere Backup-Daten sofort
+      // Store backup data immediately
       saveToStorage('userData_backup', newData);
       
-      // Persistiere nur, wenn authentifiziert
+      // Only persist if authenticated
       if (isAuthenticated && user) {
         const publicKey = localStorage.getItem(`${KEY_PREFIX}${user.email}`);
         if (publicKey) {
@@ -111,7 +111,7 @@ export const useUserData = (user: User | null, isAuthenticated: boolean) => {
     }
   }, [isAuthenticated, user]);
 
-  // Lade Daten neu für die Wiederherstellung nach Fehlern
+  // Reload data for recovery after errors
   const reloadData = useCallback(() => {
     loadUserData();
   }, [loadUserData]);
