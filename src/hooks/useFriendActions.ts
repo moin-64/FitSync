@@ -14,7 +14,7 @@ export function useFriendActions(
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   
-  // Verwende die neuen Hooks für Friends und Requests
+  // Use the new hooks for Friends and Requests
   const { 
     getFriends, 
     addFriendToList
@@ -26,7 +26,7 @@ export function useFriendActions(
     removeFriendRequest 
   } = useFriendRequests(profile);
 
-  // Einen Freund hinzufügen (Freundschaftsanfrage senden)
+  // Add a friend (send friend request)
   const addFriend = useCallback(async (username: string): Promise<boolean> => {
     if (!username.trim()) {
       toast({
@@ -39,7 +39,7 @@ export function useFriendActions(
     
     const normalizedUsername = username.trim();
     
-    // Prüfe, ob versucht wird, sich selbst hinzuzufügen
+    // Check if trying to add self
     if (profile.username && normalizedUsername === profile.username) {
       toast({
         title: 'Fehler',
@@ -49,7 +49,7 @@ export function useFriendActions(
       return false;
     }
     
-    // Prüfe, ob bereits befreundet
+    // Check if already friends
     if (findFriendByUsername(getFriends(), normalizedUsername)) {
       toast({
         title: 'Information',
@@ -58,7 +58,7 @@ export function useFriendActions(
       return false;
     }
     
-    // Prüfe, ob Anfrage bereits gesendet
+    // Check if request already sent
     if (hasPendingRequest(getFriendRequests(), normalizedUsername)) {
       toast({
         title: 'Information',
@@ -70,10 +70,10 @@ export function useFriendActions(
     setIsLoading(true);
     
     try {
-      // API-Aufruf simulieren
+      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Eine simulierte Freundschaftsanfrage für den Empfänger erstellen
+      // Create a simulated friend request for the recipient
       const newRequest: FriendRequest = {
         id: `req-${Date.now()}`,
         fromUsername: profile.username || 'anonymous',
@@ -107,7 +107,7 @@ export function useFriendActions(
     }
   }, [profile, getFriends, getFriendRequests, updateProfileFn, toast, addFriendRequest]);
 
-  // Eine Freundschaftsanfrage annehmen
+  // Accept a friend request
   const acceptFriendRequest = useCallback(async (requestId: string): Promise<boolean> => {
     const requests = getFriendRequests();
     const requestIndex = requests.findIndex(r => r.id === requestId);
@@ -125,17 +125,17 @@ export function useFriendActions(
     setIsLoading(true);
     
     try {
-      // API-Aufruf simulieren
+      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Zufällige Statistiken für den neuen Freund generieren
+      // Generate random stats for the new friend
       const workoutsCompleted = Math.floor(Math.random() * 20);
       const maxWeight = Math.floor(Math.random() * 100) + 20;
       const avgWorkoutDuration = Math.floor(Math.random() * 3600) + 600;
       const friendRank: Rank = ['Beginner', 'Intermediate', 'Advanced', 'Expert'][Math.floor(Math.random() * 4)] as Rank;
       const lastActive = new Date(Date.now() - Math.floor(Math.random() * 7 * 24 * 60 * 60 * 1000)).toISOString();
       
-      // Zur Freundesliste hinzufügen
+      // Add to friend list
       const newFriend: Friend = {
         id: request.fromUserId || request.id,
         username: request.fromUsername,
@@ -154,7 +154,7 @@ export function useFriendActions(
         }
       };
       
-      // In einer echten App würden wir dies auf dem Server aktualisieren
+      // In a real app we would update this on the server
       const updatedFriends = addFriendToList(newFriend);
       const updatedRequests = removeFriendRequest(requestId);
       
@@ -182,7 +182,7 @@ export function useFriendActions(
     }
   }, [getFriendRequests, updateProfileFn, toast, addFriendToList, removeFriendRequest]);
 
-  // Eine Freundschaftsanfrage ablehnen
+  // Decline a friend request
   const declineFriendRequest = useCallback(async (requestId: string): Promise<boolean> => {
     const requests = getFriendRequests();
     
@@ -198,10 +198,10 @@ export function useFriendActions(
     setIsLoading(true);
     
     try {
-      // API-Aufruf simulieren
+      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 300));
       
-      // In einer echten App würden wir dies auf dem Server aktualisieren
+      // In a real app we would update this on the server
       const updatedRequests = removeFriendRequest(requestId);
       
       await updateProfileFn({
