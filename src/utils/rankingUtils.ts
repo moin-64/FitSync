@@ -69,7 +69,7 @@ export const getAgeCategory = (age: number): AgeCategory => {
   return 'adult';
 };
 
-// Calculate max weight lifted across workouts
+// Enhanced max weight calculation with error protection
 export const calculateMaxWeight = (exercises: { weight?: number }[]): number => {
   let maxWeight = 0;
   
@@ -78,7 +78,11 @@ export const calculateMaxWeight = (exercises: { weight?: number }[]): number => 
   }
   
   exercises.forEach(exercise => {
-    if (exercise?.weight && !isNaN(exercise.weight) && exercise.weight > maxWeight) {
+    // Only process valid numbers and ignore unusually high values (potential errors)
+    if (exercise?.weight && 
+        !isNaN(exercise.weight) && 
+        exercise.weight > maxWeight &&
+        exercise.weight < 1000) { // Reasonable upper limit check
       maxWeight = exercise.weight;
     }
   });
@@ -86,7 +90,7 @@ export const calculateMaxWeight = (exercises: { weight?: number }[]): number => 
   return maxWeight;
 };
 
-// Calculate max reps in a set
+// Enhanced max reps calculation with error protection
 export const calculateMaxReps = (exercises: { reps: number }[]): number => {
   let maxReps = 0;
   
@@ -95,7 +99,11 @@ export const calculateMaxReps = (exercises: { reps: number }[]): number => {
   }
   
   exercises.forEach(exercise => {
-    if (exercise?.reps && !isNaN(exercise.reps) && exercise.reps > maxReps) {
+    // Only process valid numbers and ignore unusually high values (potential errors)
+    if (exercise?.reps && 
+        !isNaN(exercise.reps) && 
+        exercise.reps > maxReps &&
+        exercise.reps < 200) { // Reasonable upper limit check
       maxReps = exercise.reps;
     }
   });
@@ -103,7 +111,7 @@ export const calculateMaxReps = (exercises: { reps: number }[]): number => {
   return maxReps;
 };
 
-// Check if user meets requirements for next rank
+// Improved rank calculation with consistency checks
 export const calculateEligibleRank = (
   currentRank: Rank,
   birthdate: string | null,
@@ -114,6 +122,16 @@ export const calculateEligibleRank = (
   // Ensure current rank is a valid value
   if (!rankProgression.includes(currentRank)) {
     return 'Beginner';
+  }
+  
+  // Sanity check for unreasonable values
+  if (completedWorkouts > 1000 || maxWeight > 1000 || maxReps > 200) {
+    console.warn('Unreasonable values detected in rank calculation', {
+      completedWorkouts,
+      maxWeight,
+      maxReps
+    });
+    return currentRank; // Don't promote with suspect data
   }
   
   const age = calculateAge(birthdate);
@@ -127,17 +145,18 @@ export const calculateEligibleRank = (
     return 'Beginner';
   }
   
-  // Check if user can progress to next rank
-  if (currentRankIndex < rankProgression.length - 1) {
-    const nextRank = rankProgression[currentRankIndex + 1];
-    const requirements = rankRequirements[ageCategory][nextRank];
+  // Progressive rank check - first check if eligible for highest possible rank
+  // And work down to find the highest eligible rank
+  for (let i = rankProgression.length - 1; i > currentRankIndex; i--) {
+    const rankToCheck = rankProgression[i];
+    const requirements = rankRequirements[ageCategory][rankToCheck];
     
     if (
       maxWeight >= requirements.weightLifting &&
       maxReps >= requirements.reps &&
       completedWorkouts >= requirements.workoutCount
     ) {
-      return nextRank;
+      return rankToCheck;
     }
   }
   

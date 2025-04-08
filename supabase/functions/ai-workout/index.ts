@@ -22,17 +22,41 @@ serve(async (req) => {
     
     // Configure prompt based on request type
     if (type === "workout") {
-      systemPrompt = "Du bist ein erfahrener Fitnesstrainer, der sich auf die Erstellung personalisierter Trainingspläne spezialisiert hat. Achte auf Sicherheit, Fortschritt und Effektivität."
-      userPrompt = `Erstelle einen Trainingsplan für einen Trainierenden auf ${data.rank} Niveau mit folgenden Einschränkungen: ${data.limitations.join(', ') || 'keine'}. Bitte gib angemessene Übungen, Sätze, Wiederholungen und Ruhezeiten an.`
+      systemPrompt = `Du bist ein erfahrener Fitnesstrainer, der sich auf die Erstellung personalisierter Trainingspläne spezialisiert hat. 
+      Du berücksichtigst das Trainingsniveau des Benutzers sowie körperliche Einschränkungen.
+      Achte auf korrekte und sichere Übungsausführung.
+      Deine Antworten sind präzise, motivierend und leicht verständlich.`
+      
+      userPrompt = `Erstelle einen personalisierten Trainingsplan für einen Trainierenden auf ${data.rank} Niveau` + 
+                  (data.limitations && data.limitations.length > 0 ? 
+                  ` mit folgenden Einschränkungen: ${data.limitations.join(', ')}. ` : 
+                  ' ohne körperliche Einschränkungen. ') + 
+                  `Bitte gib 4-6 geeignete Übungen mit angemessenen Sätzen, Wiederholungen und Gewichten an. 
+                   Berücksichtige progressive Überlastung und eine ausgewogene Muskelgruppenbeanspruchung.`
     } else if (type === "problem") {
-      systemPrompt = "Du bist ein Experte für die Analyse von Fitnessbeschränkungen und das Vorschlagen geeigneter Übungsmodifikationen."
-      userPrompt = `Analysiere diese Einschränkung oder dieses Problem: "${data.limitation}". Schlage Übungsmodifikationen und Alternativen vor.`
+      systemPrompt = `Du bist ein Experte für die Analyse von körperlichen Einschränkungen und das Vorschlagen geeigneter Übungsmodifikationen.
+      Deine Antworten sind präzise, hilfreich und leicht verständlich.
+      Du gibst nützliche Vorschläge zur Anpassung von Trainingsübungen.`
+      
+      userPrompt = `Analysiere diese körperliche Einschränkung: "${data.limitation}". 
+                    Welche Übungen sollten vermieden werden? 
+                    Welche alternativen Übungen wären geeignet? 
+                    Welche Anpassungen sollten beim Training gemacht werden?`
     } else if (type === "evaluation") {
-      systemPrompt = "Du bist ein Fitnessleistungsanalyst, der Trainingsdaten auswertet und aussagekräftige Erkenntnisse liefert."
-      userPrompt = `Bewerte diese Trainingsleistung: Dauer: ${data.duration}s, Herzfrequenz: ${data.heartRate}bpm, Kalorien: ${data.calories}, Sauerstoff: ${data.oxygen}%, Schwierigkeiten erkannt: ${data.struggleDetected}. Liefere Einblicke und Empfehlungen.`
+      systemPrompt = `Du bist ein Fitnessleistungsanalyst, der Trainingsdaten professionell auswertet.
+      Deine Antworten sind motivierend, konstruktiv und leicht verständlich.
+      Du gibst hilfreiche Tipps zur Leistungsverbesserung.`
+      
+      userPrompt = `Bewerte diese Trainingsleistung: 
+                    Dauer: ${data.duration}s, 
+                    Herzfrequenz: ${data.heartRate}bpm, 
+                    Kalorien: ${data.calories}, 
+                    Sauerstoffsättigung: ${data.oxygen}%, 
+                    Erkannte Schwierigkeiten: ${data.struggleDetected}. 
+                    Liefere Einblicke zur Effektivität des Trainings und Empfehlungen zur Verbesserung.`
     }
 
-    // Make request to OpenRouter API using the Qwen model
+    // Make request to OpenRouter API using the latest models
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -42,7 +66,7 @@ serve(async (req) => {
         "X-Title": "Fitness Trainer App",
       },
       body: JSON.stringify({
-        model: "qwen/qwen2.5-vl-72b-instruct:free",
+        model: "anthropic/claude-3-5-sonnet",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
@@ -54,10 +78,46 @@ serve(async (req) => {
 
     const result = await response.json()
     
+    // Fallback to a simpler model if the main one fails
+    if (!result.choices?.[0]?.message?.content) {
+      console.log("Main model failed, trying fallback model")
+      
+      const fallbackResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://lovable.app",
+          "X-Title": "Fitness Trainer App",
+        },
+        body: JSON.stringify({
+          model: "qwen/qwen2.5-vl-72b-instruct:free",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
+          ],
+          temperature: 0.7,
+          max_tokens: 1000,
+        }),
+      })
+      
+      const fallbackResult = await fallbackResponse.json()
+      
+      return new Response(
+        JSON.stringify({ 
+          result: fallbackResult.choices?.[0]?.message?.content || "Konnte keine Antwort generieren",
+          type,
+          model: "fallback"
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    
     return new Response(
       JSON.stringify({ 
         result: result.choices?.[0]?.message?.content || "Konnte keine Antwort generieren",
-        type
+        type,
+        model: "primary"
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )

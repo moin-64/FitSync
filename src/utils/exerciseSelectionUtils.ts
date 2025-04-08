@@ -51,6 +51,29 @@ export const getExerciseVideoUrl = (exerciseName: string): string => {
     'Butterfly': 'https://storage.googleapis.com/workout-videos/butterfly-dlc220.mp4',
     'Latzug Radial': 'https://storage.googleapis.com/workout-videos/lat-pulldown-dlc315.mp4',
     'Lateral Rudern': 'https://storage.googleapis.com/workout-videos/rowing-dlc325.mp4',
+    'Lat Press': 'https://storage.googleapis.com/workout-videos/lat-press-dlc330.mp4',
+    'Pull Over': 'https://storage.googleapis.com/workout-videos/pullover-dlc345.mp4',
+    'Rückenstrecker': 'https://storage.googleapis.com/workout-videos/back-extension-dlc355.mp4',
+    'Bizeps Curls': 'https://storage.googleapis.com/workout-videos/bicep-dlc415.mp4',
+    'Dips Maschine': 'https://storage.googleapis.com/workout-videos/dip-dlc435.mp4',
+    'Kniebeugen Maschine': 'https://storage.googleapis.com/workout-videos/squat-dlc635.mp4',
+    'Kickbacks': 'https://storage.googleapis.com/workout-videos/kick-dlc665.mp4',
+    'Wadenmaschine': 'https://storage.googleapis.com/workout-videos/calf-dlc685.mp4',
+    'Beinpresse': 'https://storage.googleapis.com/workout-videos/leg-press-k613.mp4',
+    'Vario Beinpresse': 'https://storage.googleapis.com/workout-videos/leg-press-k617.mp4',
+    'Kombinierte Beinübung': 'https://storage.googleapis.com/workout-videos/leg-combo-k688.mp4',
+    'Brustdrücken Flach': 'https://storage.googleapis.com/workout-videos/bench-press-k721.mp4',
+    'Schrägbankdrücken': 'https://storage.googleapis.com/workout-videos/incline-bench-k724.mp4',
+    'Hyperextension': 'https://storage.googleapis.com/workout-videos/hyperextension-k733.mp4',
+    'Bizepsbank': 'https://storage.googleapis.com/workout-videos/bicep-bench-k740.mp4',
+    'Bauchübungen': 'https://storage.googleapis.com/workout-videos/ab-bench-k753.mp4',
+    'Kniebeugen mit Rack': 'https://storage.googleapis.com/workout-videos/squat-rack-k760.mp4',
+    'Latzug mit Sitz': 'https://storage.googleapis.com/workout-videos/lat-station-t310.mp4',
+    'Rudern Station': 'https://storage.googleapis.com/workout-videos/rowing-station-t320.mp4',
+    'Sitzrudern mit Brustpolster': 'https://storage.googleapis.com/workout-videos/seated-row-t322.mp4',
+    'Bizeps-Trizeps Kombi': 'https://storage.googleapis.com/workout-videos/bicep-tricep-t414.mp4',
+    'Rollsitz Beinpresse': 'https://storage.googleapis.com/workout-videos/rolling-leg-press-t613.mp4',
+    'Beinpresse, sitzend': 'https://storage.googleapis.com/workout-videos/leg-press.mp4',
   };
   
   // Return actual video URL if available, otherwise a generic one
@@ -126,7 +149,8 @@ export const pickExercisesForWorkout = (limitations: string[] = [], minExercises
   
   // Detect specific body part limitations
   const hasArmLimitation = limitationsLower.some(l => 
-    l.includes('arm') || l.includes('wrist') || l.includes('hand') || l.includes('elbow') || l.includes('schulter')
+    l.includes('arm') || l.includes('wrist') || l.includes('hand') || l.includes('elbow') || 
+    l.includes('schulter') || l.includes('arm') || l.includes('handgelenk')
   );
   
   const hasLegLimitation = limitationsLower.some(l =>
@@ -135,11 +159,13 @@ export const pickExercisesForWorkout = (limitations: string[] = [], minExercises
   );
   
   const hasBackLimitation = limitationsLower.some(l =>
-    l.includes('back') || l.includes('rücken') || l.includes('wirbel') || l.includes('spine')
+    l.includes('back') || l.includes('rücken') || l.includes('wirbel') || l.includes('spine') || 
+    l.includes('nacken') || l.includes('neck')
   );
   
   const hasChestLimitation = limitationsLower.some(l =>
-    l.includes('brust') || l.includes('chest') || l.includes('pec') || l.includes('schulter')
+    l.includes('brust') || l.includes('chest') || l.includes('pec') || l.includes('schulter') ||
+    l.includes('rippen') || l.includes('rib')
   );
   
   // Select exercise categories based on limitations
@@ -182,13 +208,20 @@ export const pickExercisesForWorkout = (limitations: string[] = [], minExercises
   const selectedExercises = [];
   const categoriesForSelection = [...exerciseCategories];
   
+  // Use a tracking set to avoid selecting the same exercise twice
+  const selectedIds = new Set();
+  
   // First, ensure we have at least one exercise from each available category if possible
   for (const category of exerciseCategories) {
-    const categoryExercises = availableExercises.filter(ex => ex.category === category);
+    const categoryExercises = availableExercises.filter(ex => 
+      ex.category === category && !selectedIds.has(ex.id)
+    );
     
     if (categoryExercises.length > 0) {
       const randomIndex = Math.floor(Math.random() * categoryExercises.length);
-      selectedExercises.push(categoryExercises[randomIndex]);
+      const selectedExercise = categoryExercises[randomIndex];
+      selectedExercises.push(selectedExercise);
+      selectedIds.add(selectedExercise.id);
     }
   }
   
@@ -206,13 +239,14 @@ export const pickExercisesForWorkout = (limitations: string[] = [], minExercises
     categoriesForSelection.splice(randomCategoryIndex, 1);
     
     const categoryExercises = availableExercises.filter(ex => 
-      ex.category === randomCategory && 
-      !selectedExercises.some(selected => selected.id === ex.id)
+      ex.category === randomCategory && !selectedIds.has(ex.id)
     );
     
     if (categoryExercises.length > 0) {
       const randomIndex = Math.floor(Math.random() * categoryExercises.length);
-      selectedExercises.push(categoryExercises[randomIndex]);
+      const selectedExercise = categoryExercises[randomIndex];
+      selectedExercises.push(selectedExercise);
+      selectedIds.add(selectedExercise.id);
     }
   }
   

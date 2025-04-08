@@ -38,35 +38,56 @@ export const useUserData = (user: User | null, isAuthenticated: boolean) => {
         throw new Error('User encryption key not found');
       }
       
-      // Decrypt user data with retry mechanism
-      const decryptedData = await decryptUserData(privateKey);
+      // Improved retry mechanism with exponential backoff
+      let attempt = 0;
+      const maxAttempts = 3;
+      const backoffTime = 300; // Start with 300ms delay
       
-      if (decryptedData) {
-        // Validate and ensure data has all required fields
-        const validatedData = {
-          ...defaultUserData,
-          ...decryptedData,
-          profile: {
-            ...defaultUserData.profile,
-            ...decryptedData.profile,
+      while (attempt < maxAttempts) {
+        try {
+          // Decrypt user data
+          const decryptedData = await decryptUserData(privateKey);
+          
+          if (decryptedData) {
+            // Validate and ensure data has all required fields
+            const validatedData = {
+              ...defaultUserData,
+              ...decryptedData,
+              profile: {
+                ...defaultUserData.profile,
+                ...decryptedData.profile,
+              }
+            };
+            
+            setUserData(validatedData);
+            
+            // Also store a backup copy in unencrypted format with timestamp
+            saveToStorage('userData_backup', {
+              ...validatedData,
+              _backupTimestamp: new Date().toISOString()
+            });
+            
+            setLoading(false);
+            return;
           }
-        };
-        
-        setUserData(validatedData);
-        
-        // Also store a backup copy in unencrypted format
-        saveToStorage('userData_backup', validatedData);
-      } else {
-        console.warn('Failed to load encrypted user data, checking for backup');
-        // Try to load backup data
-        const backupData = getFromStorage('userData_backup', null);
-        if (backupData) {
-          console.log('Loaded user data from backup after decryption failure');
-          setUserData(backupData);
-        } else {
-          console.warn('No backup data found, using default data');
-          setUserData(defaultUserData);
+          break; // If we got here without data but no error, break the loop
+        } catch (err) {
+          attempt++;
+          if (attempt >= maxAttempts) throw err;
+          // Exponential backoff
+          await new Promise(resolve => setTimeout(resolve, backoffTime * Math.pow(2, attempt - 1)));
         }
+      }
+      
+      // If we got here, we couldn't decrypt the data, check for backup
+      console.warn('Failed to load encrypted user data after retries, checking for backup');
+      const backupData = getFromStorage('userData_backup', null);
+      if (backupData) {
+        console.log('Loaded user data from backup after decryption failure');
+        setUserData(backupData);
+      } else {
+        console.warn('No backup data found, using default data');
+        setUserData(defaultUserData);
       }
     } catch (err) {
       console.error('Failed to load user data:', err);
@@ -90,24 +111,33 @@ export const useUserData = (user: User | null, isAuthenticated: boolean) => {
     loadUserData();
   }, [loadUserData]);
 
-  // Improved setUserData with automatic persistence
+  // Improved setUserData with automatic persistence and error recovery
   const updateUserDataState = useCallback(async (newData: UserData) => {
     try {
       // Set state immediately for UI responsiveness
       setUserData(newData);
       
-      // Store backup data immediately
-      saveToStorage('userData_backup', newData);
+      // Store backup data immediately with timestamp
+      saveToStorage('userData_backup', {
+        ...newData,
+        _backupTimestamp: new Date().toISOString()
+      });
       
       // Only persist if authenticated
       if (isAuthenticated && user) {
-        const publicKey = localStorage.getItem(`${KEY_PREFIX}${user.email}`);
-        if (publicKey) {
-          await storeUserData(newData, publicKey);
+        const privateKey = localStorage.getItem(`${KEY_PREFIX}${user.email}`);
+        if (privateKey) {
+          await storeUserData(newData, privateKey);
+        } else {
+          console.warn('User encryption key not found for storing data');
+          // Create secondary backup to prevent data loss
+          saveToStorage(`userData_backup_${new Date().getTime()}`, newData);
         }
       }
     } catch (err) {
       console.error('Error saving updated user data:', err);
+      // Create emergency backup
+      saveToStorage(`userData_emergency_${new Date().getTime()}`, newData);
     }
   }, [isAuthenticated, user]);
 

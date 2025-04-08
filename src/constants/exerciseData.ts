@@ -1,3 +1,4 @@
+
 // Exercise categories
 export const EXERCISE_CATEGORIES = [
   'All',
@@ -66,7 +67,9 @@ export const EQUIPMENT_TYPES = [
   'T320 Rowing Station',
   'T322 Seated Row',
   'T414 Bicep-Tricep',
-  'T613 Rolling Leg Press'
+  'T613 Rolling Leg Press',
+  // Additional descriptions for leg press
+  'Beinpresse, sitzend'
 ];
 
 // Expanded list of fitness exercises with new equipment
@@ -165,5 +168,7 @@ export const availableExercises = [
   { id: 'ex74', name: 'Rudern Station', equipment: 'T320 Rowing Station', videoUrl: '/rowing-station-t320.mp4', category: 'Back' },
   { id: 'ex75', name: 'Sitzrudern mit Brustpolster', equipment: 'T322 Seated Row', videoUrl: '/seated-row-t322.mp4', category: 'Back' },
   { id: 'ex76', name: 'Bizeps-Trizeps Kombi', equipment: 'T414 Bicep-Tricep', videoUrl: '/bicep-tricep-t414.mp4', category: 'Arms' },
-  { id: 'ex77', name: 'Rollsitz Beinpresse', equipment: 'T613 Rolling Leg Press', videoUrl: '/rolling-leg-press-t613.mp4', category: 'Legs' }
+  { id: 'ex77', name: 'Rollsitz Beinpresse', equipment: 'T613 Rolling Leg Press', videoUrl: '/rolling-leg-press-t613.mp4', category: 'Legs' },
+  // New entry for Beinpresse sitzend
+  { id: 'ex78', name: 'Beinpresse, sitzend', equipment: 'Beinpresse, sitzend', videoUrl: '/leg-press.mp4', category: 'Legs' },
 ];

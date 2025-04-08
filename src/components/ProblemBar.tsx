@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useUser } from '../context/UserContext';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, AlertOctagon } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
 
@@ -14,6 +14,7 @@ interface ProblemBarProps {
 const ProblemBar: React.FC<ProblemBarProps> = ({ onLimitationAdded }) => {
   const [limitation, setLimitation] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const { addLimitation } = useUser();
   const { toast } = useToast();
 
@@ -22,6 +23,7 @@ const ProblemBar: React.FC<ProblemBarProps> = ({ onLimitationAdded }) => {
     
     try {
       setSubmitting(true);
+      setAiAnalysis(null);
 
       // Get AI analysis of the limitation
       const { data, error } = await supabase.functions.invoke('ai-workout', {
@@ -36,10 +38,14 @@ const ProblemBar: React.FC<ProblemBarProps> = ({ onLimitationAdded }) => {
       if (error) {
         console.error("Error analyzing limitation:", error);
       } else if (data?.result) {
+        // Save the AI analysis for display
+        setAiAnalysis(data.result);
+        
         // Show the AI analysis as a toast
         toast({
-          title: "Limitation Analysis",
+          title: "Einschränkung analysiert",
           description: data.result.substring(0, 255) + (data.result.length > 255 ? "..." : ""),
+          duration: 5000,
         });
       }
       
@@ -54,8 +60,8 @@ const ProblemBar: React.FC<ProblemBarProps> = ({ onLimitationAdded }) => {
     } catch (error) {
       console.error('Failed to add limitation:', error);
       toast({
-        title: "Error",
-        description: "Failed to add limitation",
+        title: "Fehler",
+        description: "Einschränkung konnte nicht hinzugefügt werden",
         variant: "destructive",
       });
     } finally {
@@ -72,9 +78,10 @@ const ProblemBar: React.FC<ProblemBarProps> = ({ onLimitationAdded }) => {
   return (
     <div className="fixed bottom-5 left-0 right-0 px-4 md:px-6 z-10 animate-fade-in">
       <div className="mx-auto max-w-2xl glass rounded-full p-2 flex items-center shadow-lg">
+        <AlertOctagon className="ml-2 mr-1 h-5 w-5 text-amber-500" />
         <Input
           type="text"
-          placeholder="Describe any limitations you have today (e.g., injured wrist, sore back)"
+          placeholder="Beschreibe Einschränkungen, die du heute hast (z.B. verletztes Handgelenk, Rückenschmerzen)"
           value={limitation}
           onChange={(e) => setLimitation(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -90,6 +97,13 @@ const ProblemBar: React.FC<ProblemBarProps> = ({ onLimitationAdded }) => {
           <ArrowRight className="h-5 w-5" />
         </Button>
       </div>
+      
+      {aiAnalysis && (
+        <div className="mt-2 mx-auto max-w-2xl p-4 glass rounded-lg shadow-lg text-sm">
+          <h4 className="text-white font-medium mb-1">KI-Analyse deiner Einschränkung:</h4>
+          <p className="text-white/90">{aiAnalysis}</p>
+        </div>
+      )}
     </div>
   );
 };
