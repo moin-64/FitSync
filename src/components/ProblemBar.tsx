@@ -37,6 +37,11 @@ const ProblemBar: React.FC<ProblemBarProps> = ({ onLimitationAdded }) => {
 
       if (error) {
         console.error("Error analyzing limitation:", error);
+        toast({
+          title: "Fehler",
+          description: "Analyse der Einschränkung fehlgeschlagen",
+          variant: "destructive",
+        });
       } else if (data?.result) {
         // Save the AI analysis for display
         setAiAnalysis(data.result);
@@ -47,16 +52,16 @@ const ProblemBar: React.FC<ProblemBarProps> = ({ onLimitationAdded }) => {
           description: data.result.substring(0, 255) + (data.result.length > 255 ? "..." : ""),
           duration: 5000,
         });
+        
+        // Add the limitation to the user profile
+        await addLimitation(limitation);
+        
+        if (onLimitationAdded) {
+          onLimitationAdded(limitation);
+        }
+        
+        setLimitation('');
       }
-      
-      // Add the limitation to the user profile
-      await addLimitation(limitation);
-      
-      if (onLimitationAdded) {
-        onLimitationAdded(limitation);
-      }
-      
-      setLimitation('');
     } catch (error) {
       console.error('Failed to add limitation:', error);
       toast({

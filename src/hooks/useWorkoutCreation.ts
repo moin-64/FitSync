@@ -4,7 +4,7 @@ import { Exercise } from '@/types/exercise';
 import { LocationState } from '@/types/exercise';
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from '../context/UserContext';
-import { generateAIWorkout } from '@/utils/workoutGenerationUtils';
+import { generateAIWorkout } from '@/utils/workout/workoutGenerationUtils';
 import { getUserMaxWeights } from '@/utils/userDataUtils';
 import { Rank } from '@/utils/rankingUtils';
 

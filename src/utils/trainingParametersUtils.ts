@@ -19,9 +19,5 @@ export const repsByRank: Record<Rank, number> = {
   'Master': 25        
 };
 
-// Format duration from seconds to MM:SS
-export const formatDuration = (seconds: number) => {
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-};
+// Re-export format duration function for backward compatibility
+export { formatDuration } from './workout/formatUtils';
