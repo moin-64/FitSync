@@ -73,8 +73,9 @@ export interface UserContextType {
   getFriends: () => Friend[];
   getFriendRequests: () => FriendRequest[];
   getNotifications: () => Notification[];
-  markNotificationAsRead: (notificationId: string) => Promise<void>;
-  clearNotification: (notificationId: string) => Promise<void>;
+  // Update return types to match the implementation in useNotifications
+  markNotificationAsRead: (notificationId: string) => Promise<boolean>;
+  clearNotification: (notificationId: string) => Promise<boolean>;
 }
 
 export interface Friend {

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useUser } from '../context/UserContext';
 import { useAuth } from '../context/AuthContext';
@@ -35,7 +34,6 @@ const Profile = () => {
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
   const [friendsLoading, setFriendsLoading] = useState(false);
   
-  // Use effect to update state values when profile changes
   useEffect(() => {
     if (profile) {
       setWeight(profile.weight);
@@ -44,32 +42,23 @@ const Profile = () => {
   }, [profile]);
   
   useEffect(() => {
-    // Check for any pending friend requests in localStorage that match this user
-    // This simulates receiving friend requests from other users
     try {
       const pendingNotifications = JSON.parse(localStorage.getItem('pendingNotifications') || '[]');
       
-      // Find notifications that match the current user
       const matchingNotifications = pendingNotifications.filter(
         (item: any) => item.username === user?.username
       );
       
       if (matchingNotifications.length > 0) {
-        // Process each notification
         matchingNotifications.forEach(async (item: any) => {
-          // Add the request to the user's friend requests
           const friendRequests = [...(profile.friendRequests || []), item.request];
-          
-          // Add the notification to the user's notifications
           const notifications = [...(profile.notifications || []), item.notification];
           
-          // Update the profile
           await updateProfile({
             friendRequests,
             notifications
           });
           
-          // Remove the item from pending notifications
           const remaining = pendingNotifications.filter(
             (pending: any) => pending.username !== user?.username || 
                              pending.request.id !== item.request.id
@@ -174,7 +163,14 @@ const Profile = () => {
   
   const handleMarkNotificationAsRead = async (notificationId: string) => {
     try {
-      await markNotificationAsRead(notificationId);
+      const success = await markNotificationAsRead(notificationId);
+      if (!success) {
+        toast({
+          title: 'Fehler',
+          description: 'Benachrichtigung konnte nicht als gelesen markiert werden',
+          variant: 'destructive',
+        });
+      }
     } catch (error) {
       console.error('Failed to mark notification as read:', error);
     }
@@ -182,17 +178,23 @@ const Profile = () => {
   
   const handleClearNotification = async (notificationId: string) => {
     try {
-      await clearNotification(notificationId);
+      const success = await clearNotification(notificationId);
+      if (!success) {
+        toast({
+          title: 'Fehler',
+          description: 'Benachrichtigung konnte nicht entfernt werden',
+          variant: 'destructive',
+        });
+      }
     } catch (error) {
       console.error('Failed to clear notification:', error);
     }
   };
   
-  // Create mock user stats for comparison with improved calculation
   const userStats = {
     workoutsCompleted: profile.friends?.length ? profile.friends.length + 5 : 5,
     maxWeight: weight ? Math.round(weight * 0.5) : 50,
-    avgWorkoutDuration: 1800, // 30 minutes in seconds
+    avgWorkoutDuration: 1800,
     rank: profile.rank
   };
   
