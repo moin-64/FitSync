@@ -83,17 +83,24 @@ export function useAddFriend(
       const notification = createFriendRequestNotification(newRequest);
       
       // Store in localStorage to simulate a pending request - only for the recipient
-      // Fixed: Don't store the request for the current user, only for the recipient
       const existingNotifications = JSON.parse(localStorage.getItem('pendingNotifications') || '[]');
-      existingNotifications.push({
+      
+      // Make sure we don't add the request for the current user, only for the recipient
+      const newNotification = {
         username: normalizedUsername, // This is the recipient username
         notification,
         request: newRequest
-      });
-      localStorage.setItem('pendingNotifications', JSON.stringify(existingNotifications));
+      };
       
-      // We don't need to add this to the current user's requests anymore
-      // This was causing the "anonymous" friend request issue
+      // Check if this notification already exists to prevent duplicates
+      const notificationExists = existingNotifications.some(
+        (n: any) => n.username === normalizedUsername && n.request.fromUsername === newRequest.fromUsername
+      );
+      
+      if (!notificationExists) {
+        existingNotifications.push(newNotification);
+        localStorage.setItem('pendingNotifications', JSON.stringify(existingNotifications));
+      }
       
       toast({
         title: 'Erfolg',
