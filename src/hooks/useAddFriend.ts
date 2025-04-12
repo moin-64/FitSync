@@ -74,7 +74,7 @@ export function useAddFriend(
       const newRequest: FriendRequest = {
         id: `req-${Date.now()}-${Math.random().toString(36).substring(7)}`,
         fromUsername: profile.username || 'anonymous',
-        fromUserId: profile.id,
+        fromUserId: profile.id || '',
         sentAt: new Date().toISOString(),
         status: 'pending'
       };
@@ -82,21 +82,18 @@ export function useAddFriend(
       // Create a notification for the recipient
       const notification = createFriendRequestNotification(newRequest);
       
-      // Store in localStorage to simulate a pending request
+      // Store in localStorage to simulate a pending request - only for the recipient
+      // Fixed: Don't store the request for the current user, only for the recipient
       const existingNotifications = JSON.parse(localStorage.getItem('pendingNotifications') || '[]');
       existingNotifications.push({
-        username: normalizedUsername,
+        username: normalizedUsername, // This is the recipient username
         notification,
         request: newRequest
       });
       localStorage.setItem('pendingNotifications', JSON.stringify(existingNotifications));
       
-      // Add to current user's outgoing requests
-      const updatedRequests = addFriendRequest(newRequest);
-      
-      await updateProfileFn({
-        friendRequests: updatedRequests
-      });
+      // We don't need to add this to the current user's requests anymore
+      // This was causing the "anonymous" friend request issue
       
       toast({
         title: 'Erfolg',
@@ -115,7 +112,7 @@ export function useAddFriend(
     } finally {
       setIsLoading(false);
     }
-  }, [profile, getFriends, getFriendRequests, updateProfileFn, toast, addFriendRequest]);
+  }, [profile, getFriends, getFriendRequests, toast]);
 
   return {
     addFriend,
