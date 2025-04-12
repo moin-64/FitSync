@@ -1,6 +1,6 @@
 
 import { useState, useCallback } from 'react';
-import { FriendRequest } from '@/types/user';
+import { FriendRequest, UserProfile } from '@/types/user';
 import { useToast } from '@/hooks/use-toast';
 
 export function useDeclineFriendRequest(
