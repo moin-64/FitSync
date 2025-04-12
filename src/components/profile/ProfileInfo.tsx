@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { format } from 'date-fns';
 
 interface ProfileInfoProps {
   user: User | null;
@@ -17,11 +18,14 @@ interface ProfileInfoProps {
 const ProfileInfo = ({ user, height, weight, setHeight, setWeight }: ProfileInfoProps) => {
   const formatJoinedDate = () => {
     try {
-      // Use current date as fallback
-      return new Date().toLocaleDateString();
+      if (user && user.createdAt) {
+        return format(new Date(user.createdAt), 'dd.MM.yyyy');
+      }
+      // Fallback to a static date for demo purposes if no createdAt is available
+      return '12.04.2025';
     } catch (error) {
       console.error('Error formatting joined date:', error);
-      return new Date().toLocaleDateString();
+      return '12.04.2025';
     }
   };
   
