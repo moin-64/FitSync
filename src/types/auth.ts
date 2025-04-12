@@ -3,6 +3,7 @@ export interface User {
   id: string;
   username: string;
   email: string;
+  createdAt?: string; // Adding createdAt as an optional property
 }
 
 export interface AuthContextType {
