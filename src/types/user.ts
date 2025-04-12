@@ -1,4 +1,3 @@
-
 import { Rank } from '../utils/rankingUtils';
 
 export interface UserProfile {
@@ -12,7 +11,7 @@ export interface UserProfile {
   rank: Rank;
   friends: Friend[];
   friendRequests: FriendRequest[];
-  notifications: Notification[]; // Added notifications array
+  notifications: Notification[];
 }
 
 export interface Workout {
@@ -44,7 +43,7 @@ export interface WorkoutHistory {
   heartRate?: number;
   caloriesBurned?: number;
   oxygenSaturation?: number;
-  performance: number; // 0-100 rating
+  performance: number;
 }
 
 export interface UserData {
@@ -66,14 +65,12 @@ export interface UserContextType {
   completeWorkout: (id: string, stats: Omit<WorkoutHistory, 'id' | 'workoutId' | 'date'>) => Promise<void>;
   addLimitation: (limitation: string) => Promise<void>;
   removeLimitation: (limitation: string) => Promise<void>;
-  // Updated these return types to match the implementation in useFriends
   addFriend: (username: string) => Promise<boolean>;
   acceptFriendRequest: (requestId: string) => Promise<boolean>;
   declineFriendRequest: (requestId: string) => Promise<boolean>;
   getFriends: () => Friend[];
   getFriendRequests: () => FriendRequest[];
   getNotifications: () => Notification[];
-  // Update return types to match the implementation in useNotifications
   markNotificationAsRead: (notificationId: string) => Promise<boolean>;
   clearNotification: (notificationId: string) => Promise<boolean>;
 }
@@ -89,7 +86,6 @@ export interface Friend {
     avgWorkoutDuration: number;
     lastActive?: string;
   };
-  // Add direct properties to support existing component access
   rank?: Rank;
   workoutsCompleted?: number;
   maxWeight?: number;
@@ -113,7 +109,6 @@ export interface FriendNotification {
   read: boolean;
 }
 
-// New notification type for various system notifications
 export interface Notification {
   id: string;
   type: 'friendRequest' | 'friendAccepted' | 'workout' | 'system';
@@ -121,7 +116,8 @@ export interface Notification {
   message: string;
   createdAt: string;
   read: boolean;
-  requestId?: string; // Optional ID for related friend request
-  workoutId?: string; // Optional ID for related workout
-  fromUsername?: string; // Optional username who triggered the notification
+  requestId?: string;
+  workoutId?: string;
+  fromUsername?: string;
+  actionable?: boolean;
 }

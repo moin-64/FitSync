@@ -4,8 +4,10 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { UserPlus, UserCheck, BarChart2 } from "lucide-react";
+import { UserPlus, UserCheck, BarChart2, Activity } from "lucide-react";
 import { Friend } from "@/types/user";
+import { formatDistanceToNow } from 'date-fns';
+import { de } from 'date-fns/locale';
 
 interface FriendsListProps {
   friends: Friend[];
@@ -34,7 +36,7 @@ const FriendsList = ({ friends, onViewStats }: FriendsListProps) => {
       
       <TabsContent value="all" className="space-y-3">
         {friends.map(friend => (
-          <Card key={friend.id}>
+          <Card key={friend.id} className="overflow-hidden hover:shadow transition-shadow">
             <CardContent className="p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Avatar>
@@ -42,9 +44,17 @@ const FriendsList = ({ friends, onViewStats }: FriendsListProps) => {
                 </Avatar>
                 <div>
                   <p className="font-medium">{friend.username}</p>
-                  <p className="text-xs text-muted-foreground">
-                    Rang: {friend.rank || friend.stats?.rank || 'Beginner'}
-                  </p>
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Activity className="h-3 w-3" />
+                    <span>{friend.rank || friend.stats?.rank || 'Beginner'}</span>
+                    {friend.since && (
+                      <span className="ml-2">· Freunde seit {new Date(friend.since).toLocaleDateString('de-DE', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric'
+                      })}</span>
+                    )}
+                  </div>
                 </div>
               </div>
               <Button 
@@ -70,7 +80,7 @@ const FriendsList = ({ friends, onViewStats }: FriendsListProps) => {
           .map(friend => {
             const lastActive = friend.lastActive || friend.stats?.lastActive;
             return (
-              <Card key={friend.id}>
+              <Card key={friend.id} className="overflow-hidden hover:shadow transition-shadow">
                 <CardContent className="p-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Avatar className="relative">
@@ -79,9 +89,12 @@ const FriendsList = ({ friends, onViewStats }: FriendsListProps) => {
                     </Avatar>
                     <div>
                       <p className="font-medium">{friend.username}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Zuletzt aktiv: {lastActive ? new Date(lastActive).toLocaleDateString() : 'Unbekannt'}
-                      </p>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <span>Zuletzt aktiv:</span> 
+                        <span className="font-medium">
+                          {lastActive ? formatDistanceToNow(new Date(lastActive), { addSuffix: true, locale: de }) : 'Unbekannt'}
+                        </span>
+                      </div>
                     </div>
                   </div>
                   <Button 

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Check, X } from 'lucide-react';
+import { Check, X, UserCheck, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Notification } from '@/types/user';
 import {
@@ -18,12 +18,16 @@ interface NotificationsListProps {
   notifications: Notification[];
   onMarkAsRead: (notificationId: string) => void;
   onClear: (notificationId: string) => void;
+  onAcceptRequest?: (requestId: string) => void; // New prop
+  onDeclineRequest?: (requestId: string) => void; // New prop
 }
 
 const NotificationsList: React.FC<NotificationsListProps> = ({
   notifications,
   onMarkAsRead,
   onClear,
+  onAcceptRequest,
+  onDeclineRequest,
 }) => {
   if (notifications.length === 0) {
     return (
@@ -70,18 +74,41 @@ const NotificationsList: React.FC<NotificationsListProps> = ({
           <CardContent className="p-3 pt-1">
             <p className="text-sm">{notification.message}</p>
           </CardContent>
-          {!notification.read && (
-            <CardFooter className="p-2 flex justify-end">
+          <CardFooter className="p-2 flex justify-between">
+            {/* Add action buttons for friend requests */}
+            {notification.type === 'friendRequest' && notification.requestId && onAcceptRequest && onDeclineRequest && (
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="text-xs h-8 border-red-200 hover:bg-red-50" 
+                  onClick={() => onDeclineRequest(notification.requestId!)}
+                >
+                  <X className="h-3 w-3 mr-1 text-red-500" /> Ablehnen
+                </Button>
+                <Button 
+                  variant="default" 
+                  size="sm" 
+                  className="text-xs h-8" 
+                  onClick={() => onAcceptRequest(notification.requestId!)}
+                >
+                  <UserCheck className="h-3 w-3 mr-1" /> Annehmen
+                </Button>
+              </div>
+            )}
+            
+            {/* Mark as read button */}
+            {!notification.read && (
               <Button 
                 variant="ghost" 
                 size="sm" 
-                className="text-xs h-8" 
+                className="text-xs h-8 ml-auto" 
                 onClick={() => onMarkAsRead(notification.id)}
               >
                 <Check className="h-3 w-3 mr-1" /> Als gelesen markieren
               </Button>
-            </CardFooter>
-          )}
+            )}
+          </CardFooter>
         </Card>
       ))}
     </div>

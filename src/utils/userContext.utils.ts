@@ -1,4 +1,3 @@
-
 import { UserData, UserProfile, Friend, FriendRequest, Notification } from '../types/user';
 import { calculateEligibleRank, calculateMaxWeight, calculateMaxReps } from './rankingUtils';
 
@@ -93,6 +92,7 @@ export const createFriendRequestNotification = (request: FriendRequest): Notific
     createdAt: new Date().toISOString(),
     read: false,
     requestId: request.id,
-    fromUsername: request.fromUsername
+    fromUsername: request.fromUsername,
+    actionable: true // Mark as actionable since this has accept/decline actions
   };
 };

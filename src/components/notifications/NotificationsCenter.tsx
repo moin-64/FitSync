@@ -82,6 +82,8 @@ const NotificationsCenter: React.FC<NotificationsCenterProps> = ({
               notifications={notifications}
               onMarkAsRead={onMarkNotificationAsRead}
               onClear={onClearNotification}
+              onAcceptRequest={onAcceptRequest}  
+              onDeclineRequest={onDeclineRequest}
             />
           </TabsContent>
           
