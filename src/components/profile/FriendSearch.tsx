@@ -9,6 +9,7 @@ import { Friend, FriendRequest } from "@/types/user";
 import { findFriendByUsername, hasPendingRequest } from "@/utils/userContext.utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { PostgrestSingleResponse } from "@supabase/supabase-js";
 
 interface FriendSearchProps {
   onSendFriendRequest: (username: string) => void;
@@ -25,10 +26,12 @@ interface UserSearchResult {
   exists: boolean;
 }
 
-// Define a type for the Supabase profiles response
-interface Profile {
+// Define a type for the Supabase profiles
+interface ProfilesTable {
   id: string;
   username: string;
+  avatar_url?: string;
+  created_at?: string;
 }
 
 const FriendSearch = ({ onSendFriendRequest, isSearching, friends, friendRequests }: FriendSearchProps) => {
@@ -60,7 +63,7 @@ const FriendSearch = ({ onSendFriendRequest, isSearching, friends, friendRequest
         .from('profiles')
         .select('id, username')
         .ilike('username', `%${trimmedQuery}%`)
-        .limit(5) as { data: Profile[] | null, error: any };
+        .limit(5) as PostgrestSingleResponse<ProfilesTable[]>;
       
       if (error) throw error;
       
@@ -82,7 +85,7 @@ const FriendSearch = ({ onSendFriendRequest, isSearching, friends, friendRequest
           .from('profiles')
           .select('id, username')
           .eq('username', trimmedQuery)
-          .single() as { data: Profile | null, error: any };
+          .single() as PostgrestSingleResponse<ProfilesTable>;
         
         if (exactUser) {
           results = [{
