@@ -26,14 +26,6 @@ interface UserSearchResult {
   exists: boolean;
 }
 
-// Define a type for the Supabase profiles
-interface ProfilesTable {
-  id: string;
-  username: string;
-  avatar_url?: string;
-  created_at?: string;
-}
-
 const FriendSearch = ({ onSendFriendRequest, isSearching, friends, friendRequests }: FriendSearchProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
@@ -55,15 +47,14 @@ const FriendSearch = ({ onSendFriendRequest, isSearching, friends, friendRequest
     setSearchResults([]);
 
     try {
-      // Search for users in Supabase
       const trimmedQuery = searchQuery.trim();
       
-      // Query users from the profiles table
+      // Search for users in Supabase profiles table
       const { data: supabaseUsers, error } = await supabase
         .from('profiles')
         .select('id, username')
         .ilike('username', `%${trimmedQuery}%`)
-        .limit(5) as PostgrestSingleResponse<ProfilesTable[]>;
+        .limit(5);
       
       if (error) throw error;
       
@@ -85,7 +76,7 @@ const FriendSearch = ({ onSendFriendRequest, isSearching, friends, friendRequest
           .from('profiles')
           .select('id, username')
           .eq('username', trimmedQuery)
-          .single() as PostgrestSingleResponse<ProfilesTable>;
+          .single();
         
         if (exactUser) {
           results = [{
