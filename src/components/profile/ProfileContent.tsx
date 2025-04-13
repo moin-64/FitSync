@@ -7,6 +7,7 @@ import FriendStats from './FriendStats';
 import FriendSearch from './FriendSearch';
 import { Button } from "@/components/ui/button";
 import { User } from '@/types/auth';
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ProfileContentProps {
   user: User | null;
@@ -46,6 +47,8 @@ const ProfileContent: React.FC<ProfileContentProps> = ({
   friendRequests,
   userStats
 }) => {
+  const isMobile = useIsMobile();
+  
   if (showFriendSearch) {
     return (
       <div className="mb-8">
@@ -56,10 +59,11 @@ const ProfileContent: React.FC<ProfileContentProps> = ({
           friends={friends}
           friendRequests={friendRequests}
         />
-        <div className="mt-4 flex justify-end">
+        <div className={`mt-4 ${isMobile ? "w-full" : "flex justify-end"}`}>
           <Button 
             variant="outline" 
             onClick={() => setShowFriendSearch(false)}
+            className={isMobile ? "w-full" : ""}
           >
             Zurück zum Profil
           </Button>

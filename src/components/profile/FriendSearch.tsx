@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Friend, FriendRequest } from "@/types/user";
 import { findFriendByUsername, hasPendingRequest } from "@/utils/userContext.utils";
 import { supabase } from "@/integrations/supabase/client";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface FriendSearchProps {
   onSendFriendRequest: (username: string) => void;
@@ -29,6 +30,7 @@ const FriendSearch = ({ onSendFriendRequest, isSearching, friends, friendRequest
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
   const [isSearchingDatabase, setIsSearchingDatabase] = useState(false);
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
@@ -44,60 +46,66 @@ const FriendSearch = ({ onSendFriendRequest, isSearching, friends, friendRequest
     setSearchResults([]);
 
     try {
-      // Check if the user already exists in localStorage to simulate a database check
-      // In a real app, we would query the database here
+      // Search for users in Supabase
       const trimmedQuery = searchQuery.trim();
       
-      // Check if the user is already a friend
-      const isFriend = !!findFriendByUsername(friends, trimmedQuery);
-      const hasPendingReq = hasPendingRequest(friendRequests, trimmedQuery);
-
-      // Check if user exists in localStorage
-      // Simulate database check by looking for users with similar usernames
-      const storageKeys = Object.keys(localStorage);
-      const usernameKeys = storageKeys.filter(key => 
-        key.includes('user_') || 
-        key.includes('username_') || 
-        key.includes('auth')
-      );
+      // Query users from the auth.users table via profiles table
+      // This assumes there's a profiles table connected to auth.users
+      const { data: supabaseUsers, error } = await supabase
+        .from('profiles')
+        .select('id, username')
+        .ilike('username', `%${trimmedQuery}%`)
+        .limit(5);
       
-      // Check if the username exists in any of the potential user storage keys
-      let userExists = false;
-      for (const key of usernameKeys) {
-        try {
-          const storedValue = localStorage.getItem(key);
-          if (storedValue && storedValue.toLowerCase().includes(trimmedQuery.toLowerCase())) {
-            userExists = true;
-            break;
-          }
-        } catch (e) {
-          console.error('Error checking username:', e);
+      if (error) throw error;
+      
+      // Check if the user is already a friend
+      let results: UserSearchResult[] = [];
+      
+      if (supabaseUsers && supabaseUsers.length > 0) {
+        // Map supabase results to our format
+        results = supabaseUsers.map(user => ({
+          id: user.id,
+          username: user.username,
+          isFriend: !!findFriendByUsername(friends, user.username),
+          hasPendingRequest: hasPendingRequest(friendRequests, user.username),
+          exists: true
+        }));
+      } else {
+        // If no users found, check if the exact username exists
+        const { data: exactUser } = await supabase
+          .from('profiles')
+          .select('id, username')
+          .eq('username', trimmedQuery)
+          .single();
+        
+        if (exactUser) {
+          results = [{
+            id: exactUser.id,
+            username: exactUser.username,
+            isFriend: !!findFriendByUsername(friends, exactUser.username),
+            hasPendingRequest: hasPendingRequest(friendRequests, exactUser.username),
+            exists: true
+          }];
+        } else {
+          // No user found, show "not found" result
+          results = [{
+            id: `user-${Date.now()}`,
+            username: trimmedQuery,
+            isFriend: false,
+            hasPendingRequest: false,
+            exists: false
+          }];
+          
+          toast({
+            title: "Benutzer nicht gefunden",
+            description: `Der Benutzer "${trimmedQuery}" existiert nicht.`,
+            variant: "destructive",
+          });
         }
       }
-      
-      // For demo purposes: Consider users with names at least 3 characters long as existing
-      // but combine with our "database" check
-      userExists = userExists || (trimmedQuery.length > 3 && Math.random() > 0.5);
-      
-      const results: UserSearchResult[] = [
-        {
-          id: `user-${Date.now()}`,
-          username: trimmedQuery,
-          isFriend,
-          hasPendingRequest: hasPendingReq,
-          exists: userExists
-        }
-      ];
       
       setSearchResults(results);
-      
-      if (!userExists) {
-        toast({
-          title: "Benutzer nicht gefunden",
-          description: `Der Benutzer "${trimmedQuery}" existiert nicht.`,
-          variant: "destructive",
-        });
-      }
     } catch (error) {
       console.error("Fehler bei der Benutzersuche:", error);
       toast({
@@ -110,21 +118,29 @@ const FriendSearch = ({ onSendFriendRequest, isSearching, friends, friendRequest
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
   return (
     <div className="space-y-4">
-      <div className="flex gap-2">
-        <div className="relative flex-1">
+      <div className={`flex ${isMobile ? "flex-col" : "flex-row"} gap-2`}>
+        <div className={`relative ${isMobile ? "w-full" : "flex-1"}`}>
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Freunde suchen..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
             className="pl-8"
           />
         </div>
         <Button 
           onClick={handleSearch} 
           disabled={isSearching || isSearchingDatabase || !searchQuery.trim()}
+          className={isMobile ? "w-full" : ""}
         >
           {isSearchingDatabase ? "Suche läuft..." : "Suchen"}
         </Button>
