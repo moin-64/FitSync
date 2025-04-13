@@ -1,30 +1,37 @@
 
 import { useState } from 'react';
 import { UserData, Workout, WorkoutHistory } from '@/types/user';
-import { saveUserData, updateProfileRank } from '@/utils/userContext.utils';
+import { updateProfileRank } from '@/utils/userContext.utils';
+import { useSupabaseWorkouts } from './useSupabaseWorkouts';
 
 export function useWorkoutManagement(
   userData: UserData,
   setUserData: (data: UserData) => void
 ) {
   const [isProcessing, setIsProcessing] = useState(false);
+  const { 
+    saveWorkout: saveWorkoutToSupabase, 
+    updateWorkout: updateWorkoutInSupabase,
+    deleteWorkout: deleteWorkoutFromSupabase,
+    completeWorkout: completeWorkoutInSupabase
+  } = useSupabaseWorkouts();
 
   const addWorkout = async (workout: Omit<Workout, 'id' | 'createdAt'>): Promise<Workout> => {
     setIsProcessing(true);
     try {
-      const newWorkout: Workout = {
-        ...workout,
-        id: `workout-${Date.now()}`,
-        createdAt: new Date().toISOString(),
-        completed: false
-      };
+      // Save to Supabase
+      const savedWorkout = await saveWorkoutToSupabase(workout);
       
-      const updatedWorkouts = [...userData.workouts, newWorkout];
+      if (!savedWorkout) {
+        throw new Error('Failed to save workout to Supabase');
+      }
+      
+      // Update local state
+      const updatedWorkouts = [...userData.workouts, savedWorkout];
       const updatedData = { ...userData, workouts: updatedWorkouts };
-      await saveUserData(updatedData);
       setUserData(updatedData);
       
-      return newWorkout;
+      return savedWorkout;
     } catch (error) {
       console.error('Failed to add workout:', error);
       throw error;
@@ -36,6 +43,14 @@ export function useWorkoutManagement(
   const updateWorkout = async (id: string, data: Partial<Workout>) => {
     setIsProcessing(true);
     try {
+      // Update in Supabase
+      const success = await updateWorkoutInSupabase(id, data);
+      
+      if (!success) {
+        throw new Error('Failed to update workout in Supabase');
+      }
+      
+      // Update local state
       const workoutIndex = userData.workouts.findIndex(w => w.id === id);
       if (workoutIndex === -1) throw new Error('Workout not found');
       
@@ -43,7 +58,6 @@ export function useWorkoutManagement(
       updatedWorkouts[workoutIndex] = { ...updatedWorkouts[workoutIndex], ...data };
       
       const updatedData = { ...userData, workouts: updatedWorkouts };
-      await saveUserData(updatedData);
       setUserData(updatedData);
     } catch (error) {
       console.error('Failed to update workout:', error);
@@ -56,9 +70,16 @@ export function useWorkoutManagement(
   const deleteWorkout = async (id: string) => {
     setIsProcessing(true);
     try {
+      // Delete from Supabase
+      const success = await deleteWorkoutFromSupabase(id);
+      
+      if (!success) {
+        throw new Error('Failed to delete workout from Supabase');
+      }
+      
+      // Update local state
       const updatedWorkouts = userData.workouts.filter(w => w.id !== id);
       const updatedData = { ...userData, workouts: updatedWorkouts };
-      await saveUserData(updatedData);
       setUserData(updatedData);
     } catch (error) {
       console.error('Failed to delete workout:', error);
@@ -71,6 +92,14 @@ export function useWorkoutManagement(
   const completeWorkout = async (id: string, stats: Omit<WorkoutHistory, 'id' | 'workoutId' | 'date'>) => {
     setIsProcessing(true);
     try {
+      // Complete workout in Supabase
+      const success = await completeWorkoutInSupabase(id, stats);
+      
+      if (!success) {
+        throw new Error('Failed to complete workout in Supabase');
+      }
+      
+      // Update local state
       const workoutIndex = userData.workouts.findIndex(w => w.id === id);
       if (workoutIndex === -1) throw new Error('Workout not found');
       
@@ -95,7 +124,6 @@ export function useWorkoutManagement(
       const updatedProfile = updateProfileRank(updatedData);
       updatedData.profile = updatedProfile;
       
-      await saveUserData(updatedData);
       setUserData(updatedData);
     } catch (error) {
       console.error('Failed to complete workout:', error);

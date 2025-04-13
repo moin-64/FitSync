@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { UserContextType, UserProfile } from '../types/user';
 import { useUserData } from '../hooks/useUserData';
@@ -8,13 +8,32 @@ import { useWorkoutManagement } from '@/hooks/useWorkoutManagement';
 import { useFriends } from '@/hooks/useFriends';
 import { useProfileManagement } from '@/hooks/useProfileManagement';
 import { useNotifications } from '@/hooks/useNotifications';
+import { supabase } from '@/integrations/supabase/client';
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isAuthenticated } = useAuth();
-  const { userData, setUserData, loading } = useUserData(user, isAuthenticated);
+  const { userData, setUserData, loading, reloadData } = useUserData(user, isAuthenticated);
   const { toast } = useToast();
+  
+  // Set up auth state listener to reload data when user logs in/out
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN') {
+        // Reload user data when signed in
+        reloadData();
+        toast({
+          title: 'Angemeldet',
+          description: 'Deine Trainingsdaten werden geladen',
+        });
+      }
+    });
+    
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [reloadData, toast]);
   
   // Use our extracted hooks for specific functionality domains
   const {

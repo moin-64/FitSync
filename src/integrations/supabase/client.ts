@@ -6,39 +6,7 @@ import type { Database } from './types';
 const SUPABASE_URL = "https://vlvaytsqqlzfprphvgll.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZsdmF5dHNxcWx6ZnBycGh2Z2xsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM1NzMxNDYsImV4cCI6MjA1OTE0OTE0Nn0.q-ndRrgUZpvGVutBa-FDXEb8_IOnH0RRvKfXNTkvQB4";
 
-// Define a custom Database type that includes the profiles table
-interface CustomDatabase {
-  public: {
-    Tables: {
-      profiles: {
-        Row: {
-          id: string;
-          username: string;
-          avatar_url?: string | null;
-          created_at?: string | null;
-        };
-        Insert: {
-          id: string;
-          username: string;
-          avatar_url?: string | null;
-          created_at?: string | null;
-        };
-        Update: {
-          id?: string;
-          username?: string;
-          avatar_url?: string | null;
-          created_at?: string | null;
-        };
-      };
-    };
-    Views: {};
-    Functions: {};
-    Enums: {};
-    CompositeTypes: {};
-  };
-}
-
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<CustomDatabase>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);

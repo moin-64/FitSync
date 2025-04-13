@@ -9,6 +9,53 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      exercises: {
+        Row: {
+          duration: number | null
+          equipment: string
+          id: string
+          name: string
+          reps: number
+          rest_between_sets: number
+          sets: number
+          video_url: string | null
+          weight: number | null
+          workout_id: string | null
+        }
+        Insert: {
+          duration?: number | null
+          equipment: string
+          id?: string
+          name: string
+          reps: number
+          rest_between_sets: number
+          sets: number
+          video_url?: string | null
+          weight?: number | null
+          workout_id?: string | null
+        }
+        Update: {
+          duration?: number | null
+          equipment?: string
+          id?: string
+          name?: string
+          reps?: number
+          rest_between_sets?: number
+          sets?: number
+          video_url?: string | null
+          weight?: number | null
+          workout_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercises_workout_id_fkey"
+            columns: ["workout_id"]
+            isOneToOne: false
+            referencedRelation: "workouts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -27,6 +74,77 @@ export type Database = {
           created_at?: string | null
           id?: string
           username?: string
+        }
+        Relationships: []
+      }
+      workout_history: {
+        Row: {
+          calories_burned: number | null
+          date: string | null
+          duration: number
+          heart_rate: number | null
+          id: string
+          oxygen_saturation: number | null
+          performance: number
+          user_id: string
+          workout_id: string | null
+        }
+        Insert: {
+          calories_burned?: number | null
+          date?: string | null
+          duration: number
+          heart_rate?: number | null
+          id?: string
+          oxygen_saturation?: number | null
+          performance: number
+          user_id: string
+          workout_id?: string | null
+        }
+        Update: {
+          calories_burned?: number | null
+          date?: string | null
+          duration?: number
+          heart_rate?: number | null
+          id?: string
+          oxygen_saturation?: number | null
+          performance?: number
+          user_id?: string
+          workout_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workout_history_workout_id_fkey"
+            columns: ["workout_id"]
+            isOneToOne: false
+            referencedRelation: "workouts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workouts: {
+        Row: {
+          completed: boolean | null
+          created_at: string | null
+          id: string
+          name: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          completed?: boolean | null
+          created_at?: string | null
+          id?: string
+          name: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          completed?: boolean | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          type?: string
+          user_id?: string
         }
         Relationships: []
       }
