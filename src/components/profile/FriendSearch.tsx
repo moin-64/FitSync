@@ -25,6 +25,12 @@ interface UserSearchResult {
   exists: boolean;
 }
 
+// Define a type for the Supabase profiles response
+interface Profile {
+  id: string;
+  username: string;
+}
+
 const FriendSearch = ({ onSendFriendRequest, isSearching, friends, friendRequests }: FriendSearchProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
@@ -49,13 +55,12 @@ const FriendSearch = ({ onSendFriendRequest, isSearching, friends, friendRequest
       // Search for users in Supabase
       const trimmedQuery = searchQuery.trim();
       
-      // Query users from the auth.users table via profiles table
-      // This assumes there's a profiles table connected to auth.users
+      // Query users from the profiles table
       const { data: supabaseUsers, error } = await supabase
         .from('profiles')
         .select('id, username')
         .ilike('username', `%${trimmedQuery}%`)
-        .limit(5);
+        .limit(5) as { data: Profile[] | null, error: any };
       
       if (error) throw error;
       
@@ -77,7 +82,7 @@ const FriendSearch = ({ onSendFriendRequest, isSearching, friends, friendRequest
           .from('profiles')
           .select('id, username')
           .eq('username', trimmedQuery)
-          .single();
+          .single() as { data: Profile | null, error: any };
         
         if (exactUser) {
           results = [{
