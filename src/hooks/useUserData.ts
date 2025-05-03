@@ -27,22 +27,22 @@ export const useUserData = (user: User | null, isAuthenticated: boolean) => {
       // Eventually we could move this to Supabase as well
       
       // Load workouts and history from Supabase
-      const { workouts, history, error: fetchError } = await fetchUserWorkouts();
+      const workoutResponse = await fetchUserWorkouts();
       
-      if (fetchError) {
-        throw new Error(`Failed to load workouts: ${fetchError.message}`);
+      if (workoutResponse.error) {
+        throw new Error(`Failed to load workouts: ${workoutResponse.error.message}`);
       }
       
       const updatedData = {
         ...userData,
-        workouts: workouts || [],
-        history: history || []
+        workouts: workoutResponse.workouts || [],
+        history: workoutResponse.history || []
       };
       
       setUserData(updatedData);
       console.log('User data loaded successfully:', { 
-        workoutsCount: workouts?.length || 0, 
-        historyCount: history?.length || 0 
+        workoutsCount: workoutResponse.workouts?.length || 0, 
+        historyCount: workoutResponse.history?.length || 0 
       });
     } catch (err) {
       console.error('Failed to load user data:', err);

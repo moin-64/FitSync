@@ -1,5 +1,5 @@
 
-import { EQUIPMENT_TYPES } from '../constants/exerciseData';
+import { EQUIPMENT_TYPES } from '../../constants/exerciseData';
 import { Rank } from '../rankingUtils';
 import { determineWeight } from '../weightCalculationUtils';
 import { 
@@ -42,9 +42,6 @@ export const generateAIWorkout = async (
             limitations: Array.isArray(limitations) ? limitations : [],
             forceRegeneration
           }
-        },
-        options: {
-          timeout: 15000 // 15 seconds timeout
         }
       });
 
