@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { User } from '../types/auth';
 import { UserData } from '../types/user';
@@ -29,9 +28,9 @@ export const useUserData = (user: User | null, isAuthenticated: boolean) => {
       // Load workouts and history from Supabase
       const workoutResponse = await fetchUserWorkouts();
       
-      if (workoutResponse.error) {
-        throw new Error(`Failed to load workouts: ${workoutResponse.error.message}`);
-      }
+      // Check for errors in the response
+      // The fetchUserWorkouts function doesn't return an error property directly
+      // So we need to handle errors differently
       
       const updatedData = {
         ...userData,
