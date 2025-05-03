@@ -21,17 +21,21 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     if (isAuthenticated && user) {
       // Reload user data when authenticated
+      console.log("User authenticated, loading data", user.id);
       reloadData();
     }
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN') {
         // Reload user data when signed in
+        console.log("Auth state change: SIGNED_IN");
         reloadData();
         toast({
           title: 'Angemeldet',
           description: 'Deine Trainingsdaten werden geladen',
         });
+      } else if (event === 'SIGNED_OUT') {
+        console.log("Auth state change: SIGNED_OUT");
       }
     });
     
@@ -43,6 +47,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Show error toast if there's an error loading user data
   useEffect(() => {
     if (error) {
+      console.error("Error loading user data:", error);
       toast({
         title: 'Fehler beim Laden der Daten',
         description: error.message,

@@ -19,6 +19,7 @@ export const useUserData = (user: User | null, isAuthenticated: boolean) => {
     }
 
     try {
+      console.log("Loading user data for user:", user?.id);
       setLoading(true);
       setError(null);
       
@@ -26,7 +27,11 @@ export const useUserData = (user: User | null, isAuthenticated: boolean) => {
       // Eventually we could move this to Supabase as well
       
       // Load workouts and history from Supabase
-      const { workouts, history } = await fetchUserWorkouts();
+      const { workouts, history, error: fetchError } = await fetchUserWorkouts();
+      
+      if (fetchError) {
+        throw new Error(`Failed to load workouts: ${fetchError.message}`);
+      }
       
       const updatedData = {
         ...userData,
@@ -50,7 +55,10 @@ export const useUserData = (user: User | null, isAuthenticated: boolean) => {
   // Load data when auth status changes
   useEffect(() => {
     if (isAuthenticated && user) {
+      console.log("Auth status changed, loading user data");
       loadUserData();
+    } else {
+      console.log("User not authenticated, not loading data");
     }
   }, [isAuthenticated, user, loadUserData]);
 
@@ -61,6 +69,7 @@ export const useUserData = (user: User | null, isAuthenticated: boolean) => {
 
   // Reload data for recovery after errors
   const reloadData = useCallback(() => {
+    console.log("Reloading user data");
     loadUserData();
   }, [loadUserData]);
 

@@ -19,19 +19,25 @@ export const useWorkoutCreation = (state: LocationState | undefined) => {
   const [isSaving, setIsSaving] = useState(false);
   const [exerciseFilter, setExerciseFilter] = useState('all');
   const [generationAttempts, setGenerationAttempts] = useState(0);
+  const [generationError, setGenerationError] = useState<string | null>(null);
   
   useEffect(() => {
     if (state?.type === 'ai') {
       setIsGenerating(true);
+      setGenerationError(null);
       setWorkoutName('KI-generiertes Workout');
       
       const exerciseWeights = getUserMaxWeights(workouts || []);
       
       const generateWorkout = async () => {
         try {
+          // Add a short delay to show loading state
           await new Promise(resolve => setTimeout(resolve, 800));
           
           const experienceLevel: Rank = (profile?.experienceLevel as Rank) || 'Beginner';
+          
+          console.log('Generating workout for experience level:', experienceLevel);
+          console.log('User limitations:', profile?.limitations || []);
           
           const aiExercises = await generateAIWorkout(
             profile?.limitations || [],
@@ -40,6 +46,8 @@ export const useWorkoutCreation = (state: LocationState | undefined) => {
           );
           
           if (aiExercises && aiExercises.length > 0) {
+            console.log('Successfully generated workout with exercises:', aiExercises.length);
+            
             if (aiExercises.length > 3) {
               const warmup = aiExercises[0];
               const mainExercises = aiExercises.slice(1, 3);
@@ -69,16 +77,20 @@ export const useWorkoutCreation = (state: LocationState | undefined) => {
             }
             
             setIsGenerating(false);
+            setGenerationError(null);
           } else {
+            console.warn('Generated workout has no exercises, retrying...');
             if (generationAttempts < 3) {
               setGenerationAttempts(prev => prev + 1);
             } else {
+              console.error('Failed to generate workout after multiple attempts');
               toast({
                 title: 'Fehler bei der Workout-Generierung',
                 description: 'Wir konnten kein Workout erstellen. Bitte versuche es erneut oder erstelle ein manuelles Workout.',
                 variant: 'destructive',
               });
               
+              // Fallback to basic workout
               setExercises([
                 {
                   id: `ex-warmup-${Date.now()}`,
@@ -92,16 +104,51 @@ export const useWorkoutCreation = (state: LocationState | undefined) => {
                 }
               ]);
               setIsGenerating(false);
+              setGenerationError('Fehler bei KI-Generierung. Fallback verwendet.');
             }
           }
         } catch (error) {
           console.error('Fehler bei der Generierung des KI-Workouts:', error);
           toast({
             title: 'Fehler',
-            description: 'Bei der Erstellung des Workouts ist ein Fehler aufgetreten.',
+            description: 'Bei der Erstellung des Workouts ist ein Fehler aufgetreten. Wir verwenden ein Standard-Workout.',
             variant: 'destructive',
           });
+          
+          // Fallback in case of error
+          setExercises([
+            {
+              id: `ex-warmup-${Date.now()}`,
+              name: 'Cardio Aufwärmen',
+              sets: 1,
+              reps: 1,
+              duration: 600,
+              restBetweenSets: 60,
+              equipment: 'Laufband',
+              weight: 0,
+            },
+            {
+              id: `ex-${Date.now()}-1`,
+              name: 'Liegestütze',
+              sets: 3,
+              reps: 10,
+              restBetweenSets: 60,
+              equipment: 'Körpergewicht',
+              weight: 0,
+            },
+            {
+              id: `ex-${Date.now()}-2`,
+              name: 'Kniebeugen',
+              sets: 3,
+              reps: 12,
+              restBetweenSets: 60,
+              equipment: 'Körpergewicht',
+              weight: 0,
+            }
+          ]);
+          
           setIsGenerating(false);
+          setGenerationError('Technischer Fehler bei der KI-Generierung. Fallback verwendet.');
         }
       };
       
@@ -122,7 +169,7 @@ export const useWorkoutCreation = (state: LocationState | undefined) => {
       ]);
       setWorkoutName('Mein eigenes Workout');
     }
-  }, [state?.type, profile?.limitations, profile?.experienceLevel, workouts, generationAttempts]);
+  }, [state?.type, profile?.limitations, profile?.experienceLevel, workouts, generationAttempts, toast]);
   
   const addExercise = () => {
     const newExercise: Exercise = {
@@ -151,6 +198,53 @@ export const useWorkoutCreation = (state: LocationState | undefined) => {
     setExercises(exercises.filter(exercise => exercise.id !== id));
   };
   
+  const retryGeneration = async () => {
+    if (state?.type === 'ai') {
+      setIsGenerating(true);
+      setGenerationError(null);
+      setGenerationAttempts(0);
+      
+      // Reset state as if we're starting fresh
+      const experienceLevel: Rank = (profile?.experienceLevel as Rank) || 'Beginner';
+      const exerciseWeights = getUserMaxWeights(workouts || []);
+      
+      try {
+        toast({
+          title: 'Workout wird neu generiert',
+          description: 'Bitte warten...',
+        });
+        
+        const aiExercises = await generateAIWorkout(
+          profile?.limitations || [],
+          experienceLevel,
+          exerciseWeights,
+          true // Force regeneration flag
+        );
+        
+        if (aiExercises && aiExercises.length > 0) {
+          setExercises(aiExercises);
+          setIsGenerating(false);
+          
+          toast({
+            title: 'Neues Workout generiert',
+            description: 'Dein Workout wurde erfolgreich neu erstellt.',
+          });
+        } else {
+          throw new Error('Keine Übungen generiert');
+        }
+      } catch (error) {
+        console.error('Fehler bei erneuter Generierung:', error);
+        toast({
+          title: 'Fehler bei der Neugenerierung',
+          description: 'Bitte versuche es später erneut oder erstelle ein manuelles Workout.',
+          variant: 'destructive',
+        });
+        setIsGenerating(false);
+        setGenerationError('Fehler bei erneuter KI-Generierung.');
+      }
+    }
+  };
+  
   return {
     workoutName,
     setWorkoutName,
@@ -164,6 +258,8 @@ export const useWorkoutCreation = (state: LocationState | undefined) => {
     setExerciseFilter,
     addExercise,
     updateExercise,
-    removeExercise
+    removeExercise,
+    retryGeneration,
+    generationError
   };
 };

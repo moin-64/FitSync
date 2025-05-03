@@ -15,7 +15,19 @@ serve(async (req) => {
   }
 
   try {
+    console.log('AI workout function invoked')
+    
+    // Validate API key
+    if (!OPENROUTER_API_KEY) {
+      console.error('OPENROUTER_API_KEY not configured')
+      throw new Error('API key not configured')
+    }
+    
+    // Parse request body
     const { type, data } = await req.json()
+    
+    console.log('Request type:', type)
+    console.log('Request data:', JSON.stringify(data))
     
     let systemPrompt = ""
     let userPrompt = ""
@@ -54,35 +66,16 @@ serve(async (req) => {
                     Sauerstoffsättigung: ${data.oxygen}%, 
                     Erkannte Schwierigkeiten: ${data.struggleDetected}. 
                     Liefere Einblicke zur Effektivität des Trainings und Empfehlungen zur Verbesserung.`
+    } else {
+      throw new Error(`Invalid request type: ${type}`)
     }
-
-    // Make request to OpenRouter API using the latest models
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://lovable.app",
-        "X-Title": "Fitness Trainer App",
-      },
-      body: JSON.stringify({
-        model: "anthropic/claude-3-5-sonnet",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ],
-        temperature: 0.7,
-        max_tokens: 1000,
-      }),
-    })
-
-    const result = await response.json()
     
-    // Fallback to a simpler model if the main one fails
-    if (!result.choices?.[0]?.message?.content) {
-      console.log("Main model failed, trying fallback model")
-      
-      const fallbackResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    console.log('Preparing to call API with prompt')
+
+    // Try main model first
+    try {
+      console.log('Calling primary model')
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
@@ -91,7 +84,7 @@ serve(async (req) => {
           "X-Title": "Fitness Trainer App",
         },
         body: JSON.stringify({
-          model: "qwen/qwen2.5-vl-72b-instruct:free",
+          model: "anthropic/claude-3-5-sonnet",
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: userPrompt }
@@ -100,32 +93,89 @@ serve(async (req) => {
           max_tokens: 1000,
         }),
       })
+
+      const result = await response.json()
       
-      const fallbackResult = await fallbackResponse.json()
+      if (result.choices?.[0]?.message?.content) {
+        console.log('Primary model success')
+        return new Response(
+          JSON.stringify({ 
+            result: result.choices[0].message.content,
+            type,
+            model: "primary"
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
       
-      return new Response(
-        JSON.stringify({ 
-          result: fallbackResult.choices?.[0]?.message?.content || "Konnte keine Antwort generieren",
-          type,
-          model: "fallback"
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      console.log('Primary model failed or returned empty result')
+      throw new Error('Primary model failed')
+      
+    } catch (primaryError) {
+      console.warn("Primary model failed, trying fallback model:", primaryError)
+      
+      // Try fallback model
+      try {
+        console.log('Calling fallback model')
+        const fallbackResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://lovable.app",
+            "X-Title": "Fitness Trainer App",
+          },
+          body: JSON.stringify({
+            model: "qwen/qwen2.5-vl-72b-instruct:free",
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPrompt }
+            ],
+            temperature: 0.7,
+            max_tokens: 1000,
+          }),
+        })
+        
+        const fallbackResult = await fallbackResponse.json()
+        
+        if (fallbackResult.choices?.[0]?.message?.content) {
+          console.log('Fallback model success')
+          return new Response(
+            JSON.stringify({ 
+              result: fallbackResult.choices[0].message.content,
+              type,
+              model: "fallback"
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+        
+        console.log('Fallback model failed or returned empty result')
+        throw new Error('Fallback model failed')
+        
+      } catch (fallbackError) {
+        console.error('Both models failed:', fallbackError)
+        
+        return new Response(
+          JSON.stringify({ 
+            error: 'Both AI models failed to generate a response',
+            type,
+            primaryError: primaryError.message,
+            fallbackError: fallbackError.message
+          }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
     }
+  } catch (error) {
+    console.error('General error in AI function:', error)
     
     return new Response(
       JSON.stringify({ 
-        result: result.choices?.[0]?.message?.content || "Konnte keine Antwort generieren",
-        type,
-        model: "primary"
+        error: error.message || 'Unknown error occurred',
+        stack: error.stack
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
-  } catch (error) {
-    console.error('Fehler:', error)
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
 })
