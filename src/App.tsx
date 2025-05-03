@@ -16,6 +16,7 @@ import Profile from "./pages/Profile";
 import CreateWorkout from "./pages/CreateWorkout";
 import ExecuteWorkout from "./pages/ExecuteWorkout";
 import NotFound from "./pages/NotFound";
+import BodyScan from "./pages/BodyScan";
 
 // Verbesserte Komponente für geschützte Routen mit besserer Fehlerbehandlung und Ladeanimation
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -93,6 +94,12 @@ const App = () => (
               <Route path="/workout/:id" element={
                 <ProtectedRoute>
                   <ExecuteWorkout />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/bodyscan" element={
+                <ProtectedRoute>
+                  <BodyScan />
                 </ProtectedRoute>
               } />
               

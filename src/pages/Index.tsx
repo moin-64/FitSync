@@ -2,7 +2,7 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { ArrowRight, Dumbbell, Brain } from "lucide-react";
+import { ArrowRight, Dumbbell, Brain, Scan } from "lucide-react";
 
 const Index = () => {
   const { isAuthenticated } = useAuth();
@@ -19,12 +19,21 @@ const Index = () => {
         
         <div className="space-y-4">
           {isAuthenticated ? (
-            <Button asChild className="w-full group">
-              <Link to="/home">
-                Zum Dashboard
-                <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-              </Link>
-            </Button>
+            <>
+              <Button asChild className="w-full group">
+                <Link to="/home">
+                  Zum Dashboard
+                  <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                </Link>
+              </Button>
+              
+              <Button asChild variant="outline" className="w-full">
+                <Link to="/bodyscan" className="flex items-center">
+                  <Scan className="mr-2 h-4 w-4" />
+                  3D Körperscan starten
+                </Link>
+              </Button>
+            </>
           ) : (
             <>
               <Button asChild className="w-full">
@@ -35,10 +44,15 @@ const Index = () => {
                 <Link to="/register">Registrieren</Link>
               </Button>
               
-              <div className="pt-4 border-t mt-6">
+              <div className="pt-4 border-t mt-6 space-y-2">
                 <div className="flex items-center justify-center space-x-2 text-muted-foreground">
                   <Brain className="w-4 h-4" />
                   <span className="text-sm">KI-gestützte Trainingspläne</span>
+                </div>
+                
+                <div className="flex items-center justify-center space-x-2 text-muted-foreground">
+                  <Scan className="w-4 h-4" />
+                  <span className="text-sm">3D Körperanalyse</span>
                 </div>
               </div>
             </>
