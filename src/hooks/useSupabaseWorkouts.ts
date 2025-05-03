@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from './use-toast';
@@ -20,14 +19,29 @@ export function useSupabaseWorkouts() {
 
     setIsLoading(true);
     try {
+      // Check if the user ID is valid before querying
+      // User IDs from auth should be UUIDs for Supabase queries
+      let userId = user.id;
+      
+      // If the user ID doesn't look like a UUID (contains "user-"), return empty data
+      // This prevents the invalid UUID format error
+      if (typeof userId === 'string' && (userId.startsWith('user-') || !isValidUUID(userId))) {
+        console.log('Non-UUID user ID detected, skipping Supabase query:', userId);
+        return { workouts: [], history: [] };
+      }
+
       // Fetch workouts
       const { data: workoutData, error: workoutError } = await supabase
         .from('workouts')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
       if (workoutError) throw workoutError;
+      
+      if (!workoutData || workoutData.length === 0) {
+        return { workouts: [], history: [] };
+      }
 
       // Fetch exercises for all workouts
       const workoutIds = workoutData.map(w => w.id);
@@ -42,7 +56,7 @@ export function useSupabaseWorkouts() {
       const { data: historyData, error: historyError } = await supabase
         .from('workout_history')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .order('date', { ascending: false });
 
       if (historyError) throw historyError;
@@ -73,7 +87,7 @@ export function useSupabaseWorkouts() {
         };
       });
 
-      const history = historyData.map(h => ({
+      const history = historyData && historyData.length > 0 ? historyData.map(h => ({
         id: h.id,
         workoutId: h.workout_id || '',
         date: h.date || new Date().toISOString(),
@@ -82,7 +96,7 @@ export function useSupabaseWorkouts() {
         caloriesBurned: h.calories_burned || undefined,
         oxygenSaturation: h.oxygen_saturation || undefined,
         performance: h.performance
-      }));
+      })) : [];
 
       return { workouts, history };
     } catch (error) {
@@ -96,6 +110,12 @@ export function useSupabaseWorkouts() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Helper function to validate UUID format
+  const isValidUUID = (uuid: string) => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(uuid);
   };
 
   const saveWorkout = async (workout: Omit<Workout, 'id' | 'createdAt'>): Promise<Workout | null> => {

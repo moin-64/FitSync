@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useEffect } from 'react';
 import { useAuth } from './AuthContext';
-import { UserContextType, UserProfile } from '../types/user';
+import { UserContextType } from '../types/user';
 import { useUserData } from '../hooks/useUserData';
 import { useToast } from '@/hooks/use-toast';
 import { useWorkoutManagement } from '@/hooks/useWorkoutManagement';
@@ -14,11 +14,16 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isAuthenticated } = useAuth();
-  const { userData, setUserData, loading, reloadData } = useUserData(user, isAuthenticated);
+  const { userData, setUserData, loading, reloadData, error } = useUserData(user, isAuthenticated);
   const { toast } = useToast();
   
   // Set up auth state listener to reload data when user logs in/out
   useEffect(() => {
+    if (isAuthenticated && user) {
+      // Reload user data when authenticated
+      reloadData();
+    }
+    
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN') {
         // Reload user data when signed in
@@ -33,7 +38,18 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       subscription.unsubscribe();
     };
-  }, [reloadData, toast]);
+  }, [isAuthenticated, user, reloadData, toast]);
+  
+  // Show error toast if there's an error loading user data
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: 'Fehler beim Laden der Daten',
+        description: error.message,
+        variant: 'destructive'
+      });
+    }
+  }, [error, toast]);
   
   // Use our extracted hooks for specific functionality domains
   const {

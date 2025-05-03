@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { User } from '../types/auth';
 import { UserData } from '../types/user';
@@ -29,11 +30,15 @@ export const useUserData = (user: User | null, isAuthenticated: boolean) => {
       
       const updatedData = {
         ...userData,
-        workouts,
-        history
+        workouts: workouts || [],
+        history: history || []
       };
       
       setUserData(updatedData);
+      console.log('User data loaded successfully:', { 
+        workoutsCount: workouts?.length || 0, 
+        historyCount: history?.length || 0 
+      });
     } catch (err) {
       console.error('Failed to load user data:', err);
       setError(err instanceof Error ? err : new Error('Unknown error loading user data'));
@@ -44,8 +49,10 @@ export const useUserData = (user: User | null, isAuthenticated: boolean) => {
 
   // Load data when auth status changes
   useEffect(() => {
-    loadUserData();
-  }, [loadUserData]);
+    if (isAuthenticated && user) {
+      loadUserData();
+    }
+  }, [isAuthenticated, user, loadUserData]);
 
   // Simplified setUserData function as we'll handle persistence in specific hooks
   const updateUserDataState = useCallback(async (newData: UserData) => {
