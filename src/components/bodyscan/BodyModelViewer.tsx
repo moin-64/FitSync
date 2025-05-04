@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useCallback, memo, Suspense } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, useGLTF, PerspectiveCamera, Environment, ContactShadows } from '@react-three/drei';
@@ -235,6 +234,49 @@ const Scene = (props: BodyModelViewerProps) => {
   );
 };
 
+// Create a custom hook to handle the controls
+const useModelControls = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
+  const handleReset = useCallback(() => {
+    if (canvasRef.current?.__r3f?.controls) {
+      canvasRef.current.__r3f.controls.reset();
+    }
+  }, [canvasRef]);
+  
+  const handleRotateLeft = useCallback(() => {
+    if (canvasRef.current?.__r3f?.controls) {
+      canvasRef.current.__r3f.controls.rotateLeft(Math.PI / 8);
+    }
+  }, [canvasRef]);
+  
+  const handleRotateRight = useCallback(() => {
+    if (canvasRef.current?.__r3f?.controls) {
+      canvasRef.current.__r3f.controls.rotateRight(Math.PI / 8);
+    }
+  }, [canvasRef]);
+  
+  const handleZoomIn = useCallback(() => {
+    if (canvasRef.current?.__r3f?.controls) {
+      canvasRef.current.__r3f.controls.dollyIn(1.2);
+      canvasRef.current.__r3f.controls.update();
+    }
+  }, [canvasRef]);
+  
+  const handleZoomOut = useCallback(() => {
+    if (canvasRef.current?.__r3f?.controls) {
+      canvasRef.current.__r3f.controls.dollyOut(1.2);
+      canvasRef.current.__r3f.controls.update();
+    }
+  }, [canvasRef]);
+
+  return {
+    handleReset,
+    handleRotateLeft,
+    handleRotateRight,
+    handleZoomIn,
+    handleZoomOut
+  };
+};
+
 // Memoized main component
 const BodyModelViewer: React.FC<BodyModelViewerProps> = memo(({ 
   bodyData, 
@@ -244,63 +286,19 @@ const BodyModelViewer: React.FC<BodyModelViewerProps> = memo(({
   const [isLoading, setIsLoading] = useState(true);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
+  // Get control handlers from our custom hook
+  const {
+    handleReset,
+    handleRotateLeft,
+    handleRotateRight,
+    handleZoomIn,
+    handleZoomOut
+  } = useModelControls(canvasRef);
+  
   // Cleanup loading state
   React.useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 600);
     return () => clearTimeout(timer);
-  }, []);
-  
-  // Controls handlers
-  const handleReset = useCallback(() => {
-    if (canvasRef.current) {
-      const canvas = canvasRef.current;
-      const controls = canvas.__r3f?.controls;
-      if (controls) {
-        controls.reset();
-      }
-    }
-  }, []);
-  
-  const handleRotateLeft = useCallback(() => {
-    if (canvasRef.current) {
-      const canvas = canvasRef.current;
-      const controls = canvas.__r3f?.controls;
-      if (controls) {
-        controls.rotateLeft(Math.PI / 8);
-      }
-    }
-  }, []);
-  
-  const handleRotateRight = useCallback(() => {
-    if (canvasRef.current) {
-      const canvas = canvasRef.current;
-      const controls = canvas.__r3f?.controls;
-      if (controls) {
-        controls.rotateRight(Math.PI / 8);
-      }
-    }
-  }, []);
-  
-  const handleZoomIn = useCallback(() => {
-    if (canvasRef.current) {
-      const canvas = canvasRef.current;
-      const controls = canvas.__r3f?.controls;
-      if (controls) {
-        controls.dollyIn(1.2);
-        controls.update();
-      }
-    }
-  }, []);
-  
-  const handleZoomOut = useCallback(() => {
-    if (canvasRef.current) {
-      const canvas = canvasRef.current;
-      const controls = canvas.__r3f?.controls;
-      if (controls) {
-        controls.dollyOut(1.2);
-        controls.update();
-      }
-    }
   }, []);
   
   // If no data and not loading, show placeholder
