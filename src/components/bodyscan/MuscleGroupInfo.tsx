@@ -15,6 +15,25 @@ interface MuscleGroupInfoProps {
   muscleData: any;
 }
 
+// Optimierte Muskelgruppenübungen und -namen außerhalb der Komponente
+const exercisesByMuscle: Record<string, string[]> = {
+  chest: ['Bankdrücken', 'Fliegende', 'Push-Ups'],
+  back: ['Klimmzüge', 'Rudern', 'Lat-Pulldowns'],
+  shoulders: ['Schulterdrücken', 'Seitheben', 'Front Raises'],
+  arms: ['Bizeps-Curls', 'Trizeps-Extensions', 'Hammercurls'],
+  abs: ['Crunches', 'Planks', 'Russian Twists'],
+  legs: ['Squats', 'Deadlifts', 'Beinpresse']
+};
+
+const muscleNames: Record<string, string> = {
+  chest: 'Brust',
+  back: 'Rücken',
+  shoulders: 'Schultern',
+  arms: 'Arme',
+  abs: 'Bauch',
+  legs: 'Beine'
+};
+
 const MuscleGroupInfo: React.FC<MuscleGroupInfoProps> = ({ muscleGroup, muscleData }) => {
   // Zeige Skeleton während Daten geladen werden
   if (!muscleData) {
@@ -27,31 +46,12 @@ const MuscleGroupInfo: React.FC<MuscleGroupInfoProps> = ({ muscleGroup, muscleDa
     );
   }
   
-  // Empfohlene Übungen für jede Muskelgruppe
+  // Memoized Werte für bessere Performance
   const recommendedExercises = useMemo(() => {
-    const exercisesByMuscle: Record<string, string[]> = {
-      chest: ['Bankdrücken', 'Fliegende', 'Push-Ups'],
-      back: ['Klimmzüge', 'Rudern', 'Lat-Pulldowns'],
-      shoulders: ['Schulterdrücken', 'Seitheben', 'Front Raises'],
-      arms: ['Bizeps-Curls', 'Trizeps-Extensions', 'Hammercurls'],
-      abs: ['Crunches', 'Planks', 'Russian Twists'],
-      legs: ['Squats', 'Deadlifts', 'Beinpresse']
-    };
-    
     return exercisesByMuscle[muscleGroup] || [];
   }, [muscleGroup]);
   
-  // Deutsche Übersetzungen der Muskelgruppen
   const getMuscleName = useMemo(() => {
-    const muscleNames: Record<string, string> = {
-      chest: 'Brust',
-      back: 'Rücken',
-      shoulders: 'Schultern',
-      arms: 'Arme',
-      abs: 'Bauch',
-      legs: 'Beine'
-    };
-    
     return muscleNames[muscleGroup] || muscleGroup;
   }, [muscleGroup]);
   
@@ -119,4 +119,4 @@ const MuscleGroupInfo: React.FC<MuscleGroupInfoProps> = ({ muscleGroup, muscleDa
   );
 };
 
-export default MuscleGroupInfo;
+export default React.memo(MuscleGroupInfo);

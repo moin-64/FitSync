@@ -6,6 +6,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Cache für bereits analysierte Benutzerdaten
+const userDataCache = new Map();
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -17,48 +20,66 @@ serve(async (req) => {
     
     console.log(`Processing body scan analysis for user: ${userId}`);
     
-    // Kürzere Simulationsverzögerung für bessere Benutzerfreundlichkeit
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Prüfen, ob wir bereits Daten für diesen Benutzer haben
+    if (userDataCache.has(userId)) {
+      console.log("Returning cached data for user", userId);
+      return new Response(
+        JSON.stringify(userDataCache.get(userId)),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     
-    // Generiere realistische Körperdaten innerhalb normaler menschlicher Bereiche
+    // Kürzere Simulationsverzögerung für bessere Benutzerfreundlichkeit
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Generiere realistische Körperdaten mit stabileren Werten
     const mockBodyData = {
-      age: Math.floor(Math.random() * 20) + 20, // Zufälliges Alter zwischen 20-40
-      height: Math.floor(Math.random() * 30) + 160, // Zufällige Größe zwischen 160-190cm
-      weight: Math.floor(Math.random() * 30) + 60, // Zufälliges Gewicht zwischen 60-90kg
-      bodyFat: Math.floor(Math.random() * 15) + 10, // Zufälliger Körperfettanteil zwischen 10-25%
+      age: 28,
+      height: 180,
+      weight: 75,
+      bodyFat: 16,
       muscleGroups: {
         chest: { 
-          size: Math.floor(Math.random() * 30) + 30, // Zufällige Größe zwischen 30-60
-          strength: Math.floor(Math.random() * 30) + 40, // Zufällige Kraft zwischen 40-70
-          development: Math.floor(Math.random() * 30) + 40 // Zufällige Entwicklung zwischen 40-70
+          size: 42, 
+          strength: 70, 
+          development: 65 
         },
         back: { 
-          size: Math.floor(Math.random() * 30) + 30,
-          strength: Math.floor(Math.random() * 30) + 40,
-          development: Math.floor(Math.random() * 30) + 40
+          size: 38, 
+          strength: 75, 
+          development: 68 
         },
         shoulders: { 
-          size: Math.floor(Math.random() * 30) + 30,
-          strength: Math.floor(Math.random() * 30) + 40,
-          development: Math.floor(Math.random() * 30) + 40
+          size: 48, 
+          strength: 60, 
+          development: 55 
         },
         arms: { 
-          size: Math.floor(Math.random() * 30) + 30,
-          strength: Math.floor(Math.random() * 30) + 40,
-          development: Math.floor(Math.random() * 30) + 40
+          size: 36, 
+          strength: 65, 
+          development: 60 
         },
         abs: { 
-          size: Math.floor(Math.random() * 30) + 30,
-          strength: Math.floor(Math.random() * 30) + 40,
-          development: Math.floor(Math.random() * 30) + 40
+          size: 32, 
+          strength: 55, 
+          development: 50 
         },
         legs: { 
-          size: Math.floor(Math.random() * 30) + 30,
-          strength: Math.floor(Math.random() * 30) + 40,
-          development: Math.floor(Math.random() * 30) + 40
+          size: 58, 
+          strength: 80, 
+          development: 75 
         }
       }
     };
+    
+    // Daten im Cache speichern
+    userDataCache.set(userId, mockBodyData);
+    
+    // Limiting cache size to prevent memory issues
+    if (userDataCache.size > 100) {
+      const oldestKey = userDataCache.keys().next().value;
+      userDataCache.delete(oldestKey);
+    }
     
     return new Response(
       JSON.stringify(mockBodyData),

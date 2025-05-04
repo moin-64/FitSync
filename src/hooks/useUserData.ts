@@ -26,9 +26,7 @@ export const useUserData = (user: User | null, isAuthenticated: boolean) => {
       // Load workouts and history from Supabase
       const workoutResponse = await fetchUserWorkouts();
       
-      // Fehler-Eigenschaft existiert nicht im Response, daher entfernen wir diesen Code
-      // und behandeln Fehler durch try/catch
-      
+      // Wir überprüfen nicht mehr auf workoutResponse.error, da diese Eigenschaft nicht existiert
       const updatedData = {
         ...userData,
         workouts: workoutResponse.workouts || [],

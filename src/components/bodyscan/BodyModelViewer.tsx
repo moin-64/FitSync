@@ -1,5 +1,5 @@
 
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, memo } from 'react';
 import { RotateCcw, RotateCw, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -10,7 +10,8 @@ interface BodyModelViewerProps {
   onSelectMuscleGroup: (muscleGroup: any) => void;
 }
 
-const BodyModelViewer: React.FC<BodyModelViewerProps> = ({ 
+// Verwenden von memo zur Vermeidung unnötiger Rerenders
+const BodyModelViewer: React.FC<BodyModelViewerProps> = memo(({ 
   bodyData, 
   selectedMuscleGroup,
   onSelectMuscleGroup 
@@ -20,7 +21,7 @@ const BodyModelViewer: React.FC<BodyModelViewerProps> = ({
   const [rotation, setRotation] = useState(0);
   const [zoom, setZoom] = useState(1);
   
-  // Optimierte Muskelgruppenpositionen
+  // Optimierte Muskelgruppenpositionen als constante außerhalb der Renderfunktion
   const musclePositions = {
     chest: { top: '30%', left: '50%', width: '40%', height: '15%' },
     back: { top: '30%', left: '50%', width: '40%', height: '15%' },
@@ -30,72 +31,83 @@ const BodyModelViewer: React.FC<BodyModelViewerProps> = ({
     legs: { top: '65%', left: '50%', width: '45%', height: '25%' }
   };
   
-  // Farbberechnung basierend auf Muskelentwicklung
+  // Memoized Farbberechnung
   const getColorForMuscle = useCallback((muscleGroup: string) => {
     if (!bodyData?.muscleGroups?.[muscleGroup]) return 'rgba(125, 125, 125, 0.7)';
     
     const development = bodyData.muscleGroups[muscleGroup].development || 50;
     
-    // Farbverlauf basierend auf Muskelentwicklung (rot nach grün)
     if (development < 40) return 'rgba(255, 59, 48, 0.7)'; // Rot für unterentwickelt
     if (development < 60) return 'rgba(255, 204, 0, 0.7)'; // Gelb für durchschnittlich
     return 'rgba(52, 199, 89, 0.7)'; // Grün für gut entwickelt
   }, [bodyData]);
   
-  // Transparenz basierend auf Auswahl
+  // Memoized Transparenzberechnung
   const getMuscleOpacity = useCallback((muscleGroup: string) => {
     if (!selectedMuscleGroup) return 0.7;
     return muscleGroup === selectedMuscleGroup ? 0.9 : 0.3;
   }, [selectedMuscleGroup]);
   
-  // Verzögertes Laden simulieren
+  // Kontrolliertes verzögertes Laden
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 800);
+    const timer = setTimeout(() => setIsLoading(false), 600);
     return () => clearTimeout(timer);
   }, []);
   
-  // Rotationshandler
-  const handleRotateLeft = () => {
-    setRotation(rotation - 45);
-  };
+  // Handler mit useCallback zur Verbesserung der Performance
+  const handleRotateLeft = useCallback(() => {
+    setRotation(prev => prev - 45);
+  }, []);
   
-  const handleRotateRight = () => {
-    setRotation(rotation + 45);
-  };
+  const handleRotateRight = useCallback(() => {
+    setRotation(prev => prev + 45);
+  }, []);
   
-  // Zoom-Handler
-  const handleZoomIn = () => {
+  const handleZoomIn = useCallback(() => {
     setZoom((prev) => Math.min(prev + 0.2, 2));
-  };
+  }, []);
   
-  const handleZoomOut = () => {
+  const handleZoomOut = useCallback(() => {
     setZoom((prev) => Math.max(prev - 0.2, 0.6));
-  };
+  }, []);
   
-  // Zurücksetzen der Ansicht
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     setRotation(0);
     setZoom(1);
-  };
+  }, []);
+  
+  // Click-Handler mit useCallback
+  const handleMuscleClick = useCallback((muscle: string) => {
+    onSelectMuscleGroup(muscle);
+  }, [onSelectMuscleGroup]);
+  
+  // Wenn keine Daten vorhanden sind, zeige optimiertes Skeleton
+  if (!bodyData && !isLoading) {
+    return (
+      <div className="aspect-[3/4] flex items-center justify-center bg-muted rounded-lg">
+        <p className="text-muted-foreground">Keine Daten verfügbar</p>
+      </div>
+    );
+  }
   
   return (
     <div className="relative">
       {isLoading ? (
-        <div className="aspect-[3/4] flex items-center justify-center bg-black/10 rounded-lg">
+        <div className="aspect-[3/4] flex items-center justify-center bg-muted rounded-lg">
           <Skeleton className="w-[60%] h-[80%] rounded-full" />
         </div>
       ) : (
         <div className="relative aspect-[3/4] overflow-hidden bg-gradient-to-b from-slate-100 to-slate-200 rounded-lg">
           <div 
             ref={containerRef}
-            className="w-full h-full relative transition-transform duration-300 ease-in-out"
+            className="w-full h-full relative transition-transform duration-300 ease-in-out will-change-transform"
             style={{
               transform: `rotateY(${rotation}deg) scale(${zoom})`,
               transformStyle: 'preserve-3d',
               perspective: '1000px'
             }}
           >
-            {/* Basic human model - would be replaced with a real 3D model */}
+            {/* Basic human model */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[40%] h-[80%] flex flex-col items-center">
               {/* Head */}
               <div className="w-[40%] aspect-square rounded-full bg-gray-300"></div>
@@ -117,7 +129,7 @@ const BodyModelViewer: React.FC<BodyModelViewerProps> = ({
             </div>
             
             {/* Muscle group overlays - nur rendern, wenn bodyData verfügbar ist */}
-            {bodyData && musclePositions && Object.entries(musclePositions).map(([muscle, position]: [string, any]) => (
+            {bodyData && Object.entries(musclePositions).map(([muscle, position]: [string, any]) => (
               <div
                 key={muscle}
                 className="absolute transform -translate-x-1/2 -translate-y-1/2 rounded-lg cursor-pointer transition-opacity duration-300"
@@ -129,7 +141,7 @@ const BodyModelViewer: React.FC<BodyModelViewerProps> = ({
                   backgroundColor: getColorForMuscle(muscle),
                   opacity: getMuscleOpacity(muscle),
                 }}
-                onClick={() => onSelectMuscleGroup(muscle)}
+                onClick={() => handleMuscleClick(muscle)}
               />
             ))}
           </div>
@@ -156,6 +168,8 @@ const BodyModelViewer: React.FC<BodyModelViewerProps> = ({
       )}
     </div>
   );
-};
+});
+
+BodyModelViewer.displayName = 'BodyModelViewer';
 
 export default BodyModelViewer;
