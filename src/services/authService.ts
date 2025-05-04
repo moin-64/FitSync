@@ -4,31 +4,54 @@ import { generateKeyPair } from '../utils/encryption';
 import { User } from '../types/auth';
 import { initializeUserData, decryptUserData } from '../utils/userDataUtils';
 
-// Gespeicherten Benutzer mit verbesserter Fehlerbehandlung und Fallback abrufen
+// Improved stored user retrieval with better error handling
 export const getStoredUser = (): User | null => {
   try {
     const storedUser = localStorage.getItem(USER_KEY);
-    if (storedUser) {
-      return JSON.parse(storedUser);
+    if (!storedUser) {
+      return null;
     }
-    return null;
+    
+    // Validate JSON structure before returning
+    const userData = JSON.parse(storedUser);
+    
+    // Basic validation of user object structure
+    if (!userData || typeof userData !== 'object') {
+      console.error('Invalid user data format in localStorage');
+      localStorage.removeItem(USER_KEY);
+      return null;
+    }
+    
+    // Check for required fields
+    if (!userData.id || !userData.email || !userData.username) {
+      console.error('Missing required user fields in localStorage');
+      localStorage.removeItem(USER_KEY);
+      return null;
+    }
+    
+    return userData;
   } catch (error) {
-    console.error('Fehler beim Parsen der gespeicherten Benutzerdaten:', error);
+    console.error('Error parsing stored user data:', error);
     // Clear corrupt data
     localStorage.removeItem(USER_KEY);
     return null;
   }
 };
 
-// Prüfen, ob Benutzerschlüssel existiert mit robuster Prüfung und Normalisierung
+// Check if user key exists with robust validation
 export const userKeyExists = (email: string): boolean => {
   if (!email) return false;
   
-  const normalizedEmail = email.toLowerCase().trim();
-  return localStorage.getItem(`${KEY_PREFIX}${normalizedEmail}`) !== null;
+  try {
+    const normalizedEmail = email.toLowerCase().trim();
+    return localStorage.getItem(`${KEY_PREFIX}${normalizedEmail}`) !== null;
+  } catch (error) {
+    console.error('Error checking user key:', error);
+    return false;
+  }
 };
 
-// Zuverlässigere Anmeldung mit verbesserten Fehlermeldungen und Wiederholungslogik
+// More reliable login with enhanced error messages and retry logic
 export const loginUser = async (email: string, password: string): Promise<User> => {
   if (!email || !password) {
     throw new Error('E-Mail und Passwort sind erforderlich');
@@ -36,43 +59,66 @@ export const loginUser = async (email: string, password: string): Promise<User> 
   
   const normalizedEmail = email.toLowerCase().trim();
   
-  // Privaten Schlüssel für diesen Benutzer abrufen
+  // Get private key for this user
   const privateKey = localStorage.getItem(`${KEY_PREFIX}${normalizedEmail}`);
   
   if (!privateKey) {
-    console.error('Kein privater Schlüssel gefunden für:', normalizedEmail);
+    console.error('No private key found for:', normalizedEmail);
     throw new Error('Benutzer nicht gefunden oder ungültige Anmeldedaten');
   }
   
   try {
-    // Mock-Serverantwort mit Benutzerdaten
-    const mockUserResponse = {
-      id: `user-${normalizedEmail.split('@')[0]}`,
-      username: normalizedEmail.split('@')[0],
-      email: normalizedEmail,
-    };
+    // Mock server response with user data (with retry mechanism)
+    let attempts = 0;
+    const maxAttempts = 3;
+    let lastError = null;
     
-    // Benutzer in localStorage für Persistenz speichern
-    localStorage.setItem(USER_KEY, JSON.stringify(mockUserResponse));
-    
-    // Überprüfen, ob wir Benutzerdaten entschlüsseln können
-    const userData = await decryptUserData(privateKey);
-    
-    if (!userData) {
-      console.log('Entschlüsselung der Benutzerdaten fehlgeschlagen - Neuinitialisierung');
-      
-      // Wenn die Entschlüsselung fehlschlägt, versuchen, Benutzerdaten neu zu initialisieren
-      await initializeUserData(privateKey);
+    while (attempts < maxAttempts) {
+      try {
+        const mockUserResponse = {
+          id: `user-${normalizedEmail.split('@')[0]}`,
+          username: normalizedEmail.split('@')[0],
+          email: normalizedEmail,
+        };
+        
+        // Store user in localStorage for persistence
+        localStorage.setItem(USER_KEY, JSON.stringify(mockUserResponse));
+        
+        // Update session timestamp
+        updateSessionActivity();
+        
+        // Check if we can decrypt user data
+        const userData = await decryptUserData(privateKey);
+        
+        if (!userData) {
+          console.log('Failed to decrypt user data - re-initializing');
+          
+          // If decryption fails, try to re-initialize user data
+          await initializeUserData(privateKey);
+        }
+        
+        return mockUserResponse;
+      } catch (error) {
+        attempts++;
+        lastError = error;
+        
+        if (attempts >= maxAttempts) {
+          throw error;
+        }
+        
+        // Short delay before retry attempt
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
     }
     
-    return mockUserResponse;
+    throw lastError || new Error('Login failed after multiple attempts');
   } catch (error) {
-    console.error('Anmeldefehler:', error);
+    console.error('Login error:', error);
     throw new Error('Anmeldung fehlgeschlagen: ' + (error instanceof Error ? error.message : 'Unbekannter Fehler'));
   }
 };
 
-// Verbesserte Registrierung mit besserer Validierung und Fehlerbehandlung
+// Enhanced registration with better validation and error handling
 export const registerUser = async (username: string, email: string, password: string): Promise<User> => {
   if (!username || !email || !password) {
     throw new Error('Benutzername, E-Mail und Passwort sind erforderlich');
@@ -84,19 +130,19 @@ export const registerUser = async (username: string, email: string, password: st
   
   const normalizedEmail = email.toLowerCase().trim();
   
-  // E-Mail-Format validieren
+  // Validate email format
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(normalizedEmail)) {
-    throw new Error('Bitte gib eine gültige E-Mail-Adresse ein');
+    throw new Error('Bitte geben Sie eine gültige E-Mail-Adresse ein');
   }
   
-  // Überprüfen, ob Benutzer bereits existiert
+  // Check if user already exists
   if (userKeyExists(normalizedEmail)) {
     throw new Error('Ein Benutzer mit dieser E-Mail existiert bereits');
   }
   
   try {
-    // Sicheres Verschlüsselungs-Schlüsselpaar mit Wiederholungslogik generieren
+    // Generate secure encryption key pair with retry logic
     let keyPair;
     let attempts = 0;
     const maxAttempts = 3;
@@ -108,61 +154,66 @@ export const registerUser = async (username: string, email: string, password: st
           break;
         }
       } catch (e) {
-        console.error(`Schlüsselgenerierungsversuch ${attempts + 1} fehlgeschlagen:`, e);
+        console.error(`Key generation attempt ${attempts + 1} failed:`, e);
       }
       attempts++;
       
       if (attempts >= maxAttempts) {
-        throw new Error('Generierung sicherer Schlüssel nach mehreren Versuchen fehlgeschlagen');
+        throw new Error('Failed to generate secure keys after multiple attempts');
       }
       
-      // Kurze Verzögerung vor dem Wiederholungsversuch
-      await new Promise(resolve => setTimeout(resolve, 100 * attempts));
+      // Short delay before retry attempt
+      await new Promise(resolve => setTimeout(resolve, 300 * attempts));
     }
     
     if (!keyPair) {
-      throw new Error('Schlüsselgenerierung fehlgeschlagen');
+      throw new Error('Key generation failed');
     }
     
     const { publicKey, privateKey } = keyPair;
     
-    // Privaten Schlüssel speichern (in einer realen App würde dieser vom Benutzerpasswort abgeleitet oder in einer sicheren Enklave gespeichert)
+    // Store private key (in a real app this would be derived from user password or stored in a secure enclave)
     localStorage.setItem(`${KEY_PREFIX}${normalizedEmail}`, privateKey);
     
-    // Benutzerdaten erstellen
+    // Create user data
     const userData = {
       id: `user-${normalizedEmail.split('@')[0]}`,
       username,
-      email: normalizedEmail
+      email: normalizedEmail,
+      createdAt: new Date().toISOString()
     };
     
-    // In localStorage speichern
+    // Store in localStorage
     localStorage.setItem(USER_KEY, JSON.stringify(userData));
     
-    // Verschlüsselten Benutzerdatenspeicher mit öffentlichem Schlüssel initialisieren
+    // Update session timestamp
+    updateSessionActivity();
+    
+    // Initialize encrypted user data store with public key
     const initialized = await initializeUserData(publicKey);
     
     if (!initialized) {
-      // Aufräumen, wenn die Initialisierung fehlschlägt
+      // Clean up if initialization fails
       localStorage.removeItem(`${KEY_PREFIX}${normalizedEmail}`);
       localStorage.removeItem(USER_KEY);
-      throw new Error('Initialisierung der Benutzerdaten fehlgeschlagen');
+      throw new Error('Failed to initialize user data');
     }
     
     return userData;
   } catch (error) {
-    console.error('Registrierungsfehler:', error);
-    throw error instanceof Error ? error : new Error('Registrierung fehlgeschlagen: Unbekannter Fehler');
+    console.error('Registration error:', error);
+    throw error instanceof Error ? error : new Error('Registration failed: Unknown error');
   }
 };
 
-// Benutzer abmelden mit vollständiger Bereinigung und Session-Management
+// Log out user with complete cleanup and session management
 export const logoutUser = (): void => {
   try {
-    // Nur Authentifizierungsdaten entfernen, nicht die Verschlüsselungsschlüssel
+    // Remove authentication data, but not encryption keys
     localStorage.removeItem(USER_KEY);
+    localStorage.removeItem('lastActivityTimestamp');
     
-    // Session-Cookies löschen (falls vorhanden)
+    // Clear session cookies (if present)
     document.cookie.split(';').forEach(cookie => {
       const [name] = cookie.split('=');
       if (name.trim().startsWith('session')) {
@@ -170,25 +221,41 @@ export const logoutUser = (): void => {
       }
     });
     
-    console.log('Benutzer erfolgreich abgemeldet');
+    console.log('User successfully logged out');
   } catch (error) {
-    console.error('Fehler bei der Abmeldung:', error);
+    console.error('Logout error:', error);
   }
 };
 
-// Session-Ablaufzeit überprüfen
+// Check session expiration time
 export const isSessionValid = (): boolean => {
-  const lastActivity = localStorage.getItem('lastActivityTimestamp');
-  if (!lastActivity) return false;
-  
-  const now = Date.now();
-  const lastActivityTime = parseInt(lastActivity, 10);
-  const sessionTimeout = 4 * 60 * 60 * 1000; // 4 Stunden
-  
-  return now - lastActivityTime < sessionTimeout;
+  try {
+    const lastActivity = localStorage.getItem('lastActivityTimestamp');
+    if (!lastActivity) return false;
+    
+    const now = Date.now();
+    const lastActivityTime = parseInt(lastActivity, 10);
+    
+    // Check if timestamp is a valid number
+    if (isNaN(lastActivityTime)) {
+      localStorage.removeItem('lastActivityTimestamp');
+      return false;
+    }
+    
+    const sessionTimeout = 8 * 60 * 60 * 1000; // 8 hours
+    
+    return now - lastActivityTime < sessionTimeout;
+  } catch (error) {
+    console.error('Error checking session validity:', error);
+    return false;
+  }
 };
 
-// Sitzungsaktivität aktualisieren
+// Update session activity
 export const updateSessionActivity = (): void => {
-  localStorage.setItem('lastActivityTimestamp', Date.now().toString());
+  try {
+    localStorage.setItem('lastActivityTimestamp', Date.now().toString());
+  } catch (error) {
+    console.error('Error updating session activity:', error);
+  }
 };

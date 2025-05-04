@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Button } from "@/components/ui/button";
@@ -7,34 +7,60 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Lock, Mail, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Lock, Mail, AlertCircle, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { login, retryAuth } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Clear error on input change
+  useEffect(() => {
+    if (errorMessage && (email || password)) {
+      setErrorMessage(null);
+    }
+  }, [email, password, errorMessage]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMessage(null);
     
-    if (!email || !password) {
+    // Input validation
+    if (!email.trim() || !password) {
       setErrorMessage('Bitte geben Sie E-Mail und Passwort ein');
       return;
     }
-    
+
     try {
       setIsLoading(true);
-      await login(email, password);
+      setErrorMessage(null);
+      
+      // Attempt login with a timeout to prevent infinite loading state
+      const loginPromise = login(email.trim(), password);
+      
+      // Race with a timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Anmeldevorgang hat zu lange gedauert')), 10000);
+      });
+      
+      await Promise.race([loginPromise, timeoutPromise]);
       navigate('/home');
     } catch (error) {
       console.error('Anmeldung fehlgeschlagen:', error);
-      setErrorMessage('Bitte überprüfen Sie Ihre Anmeldedaten und versuchen Sie es erneut');
+      
+      let message = 'Bitte überprüfen Sie Ihre Anmeldedaten und versuchen Sie es erneut';
+      if (error instanceof Error) {
+        if (error.message.includes('zu lange gedauert')) {
+          message = 'Der Anmeldevorgang hat zu lange gedauert. Bitte versuchen Sie es erneut.';
+        }
+      }
+      
+      setErrorMessage(message);
     } finally {
       setIsLoading(false);
     }
@@ -42,24 +68,48 @@ const Login = () => {
 
   const handleRetry = async () => {
     try {
-      setIsLoading(true);
-      await retryAuth();
-      if (localStorage.getItem('user')) {
+      setIsRetrying(true);
+      setErrorMessage(null);
+      
+      // Add timeout for retry to prevent hanging
+      const retryPromise = retryAuth();
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Wiederherstellungsversuch hat zu lange gedauert')), 8000);
+      });
+      
+      await Promise.race([retryPromise, timeoutPromise]);
+      
+      // Check if localStorage has user data after retry
+      const storedUser = localStorage.getItem('user');
+      
+      if (storedUser) {
         navigate('/home');
         toast({
           title: 'Erfolgreich wiederhergestellt',
           description: 'Ihre Sitzung wurde erfolgreich wiederhergestellt',
         });
+      } else {
+        setErrorMessage('Sitzung konnte nicht wiederhergestellt werden');
       }
     } catch (error) {
       console.error('Fehler bei der erneuten Authentifizierung:', error);
+      
+      setErrorMessage('Die Wiederherstellung der Sitzung ist fehlgeschlagen');
+      
       toast({
         title: 'Wiederherstellung fehlgeschlagen',
         description: 'Bitte melden Sie sich erneut an',
         variant: 'destructive',
       });
     } finally {
-      setIsLoading(false);
+      setIsRetrying(false);
+    }
+  };
+
+  // Handle Enter key
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !isLoading) {
+      handleSubmit(e);
     }
   };
 
@@ -105,7 +155,9 @@ const Login = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-10"
-                  disabled={isLoading}
+                  disabled={isLoading || isRetrying}
+                  onKeyDown={handleKeyDown}
+                  autoComplete="email"
                 />
               </div>
             </div>
@@ -135,7 +187,9 @@ const Login = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10"
-                  disabled={isLoading}
+                  disabled={isLoading || isRetrying}
+                  onKeyDown={handleKeyDown}
+                  autoComplete="current-password"
                 />
               </div>
             </div>
@@ -145,9 +199,16 @@ const Login = () => {
             <Button 
               type="submit" 
               className="w-full bg-primary hover:bg-primary/90" 
-              disabled={isLoading}
+              disabled={isLoading || isRetrying}
             >
-              {isLoading ? 'Anmelden...' : 'Anmelden'}
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Anmelden...
+                </>
+              ) : (
+                'Anmelden'
+              )}
             </Button>
             
             <Button
@@ -155,9 +216,16 @@ const Login = () => {
               variant="outline"
               className="w-full"
               onClick={handleRetry}
-              disabled={isLoading}
+              disabled={isLoading || isRetrying}
             >
-              Sitzung wiederherstellen
+              {isRetrying ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Versuche wiederherzustellen...
+                </>
+              ) : (
+                'Sitzung wiederherstellen'
+              )}
             </Button>
             
             <div className="text-center text-sm">
