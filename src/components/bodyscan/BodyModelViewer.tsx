@@ -1,87 +1,309 @@
 
-import React, { useRef, useEffect, useState, useCallback, memo } from 'react';
+import React, { useRef, useState, useCallback, memo, Suspense } from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { OrbitControls, useGLTF, PerspectiveCamera, Environment, ContactShadows } from '@react-three/drei';
 import { RotateCcw, RotateCw, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import * as THREE from 'three';
 
 interface BodyModelViewerProps {
   bodyData: any;
   selectedMuscleGroup: string | null;
-  onSelectMuscleGroup: (muscleGroup: any) => void;
+  onSelectMuscleGroup: (muscleGroup: string) => void;
 }
 
-// Verwenden von memo zur Vermeidung unnötiger Rerenders
-const BodyModelViewer: React.FC<BodyModelViewerProps> = memo(({ 
-  bodyData, 
-  selectedMuscleGroup,
-  onSelectMuscleGroup 
-}) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [rotation, setRotation] = useState(0);
-  const [zoom, setZoom] = useState(1);
+// Human figure model component
+const HumanModel = ({ bodyData, selectedMuscleGroup, onSelectMuscleGroup }: BodyModelViewerProps) => {
+  const modelRef = useRef<THREE.Group>(null);
+  const { camera } = useThree();
   
-  // Optimierte Muskelgruppenpositionen als constante außerhalb der Renderfunktion
-  const musclePositions = {
-    chest: { top: '30%', left: '50%', width: '40%', height: '15%' },
-    back: { top: '30%', left: '50%', width: '40%', height: '15%' },
-    shoulders: { top: '25%', left: '50%', width: '50%', height: '10%' },
-    arms: { top: '35%', left: '50%', width: '60%', height: '15%' },
-    abs: { top: '45%', left: '50%', width: '30%', height: '15%' },
-    legs: { top: '65%', left: '50%', width: '45%', height: '25%' }
-  };
-  
-  // Memoized Farbberechnung
+  // Muscle group colors calculated based on development score
   const getColorForMuscle = useCallback((muscleGroup: string) => {
-    if (!bodyData?.muscleGroups?.[muscleGroup]) return 'rgba(125, 125, 125, 0.7)';
+    if (!bodyData?.muscleGroups?.[muscleGroup]) return new THREE.Color(0x7d7d7d);
     
     const development = bodyData.muscleGroups[muscleGroup].development || 50;
     
-    if (development < 40) return 'rgba(255, 59, 48, 0.7)'; // Rot für unterentwickelt
-    if (development < 60) return 'rgba(255, 204, 0, 0.7)'; // Gelb für durchschnittlich
-    return 'rgba(52, 199, 89, 0.7)'; // Grün für gut entwickelt
+    if (development < 40) return new THREE.Color(0xff3b30); // Red for underdeveloped
+    if (development < 60) return new THREE.Color(0xffcc00); // Yellow for average
+    return new THREE.Color(0x34c759); // Green for well developed
   }, [bodyData]);
-  
-  // Memoized Transparenzberechnung
+
+  // Muscle group opacity based on selection
   const getMuscleOpacity = useCallback((muscleGroup: string) => {
     if (!selectedMuscleGroup) return 0.7;
     return muscleGroup === selectedMuscleGroup ? 0.9 : 0.3;
   }, [selectedMuscleGroup]);
   
-  // Kontrolliertes verzögertes Laden
-  useEffect(() => {
+  // Gentle rotation animation when not interacting
+  useFrame((state) => {
+    if (modelRef.current) {
+      modelRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.2) * 0.1;
+    }
+  });
+
+  // Simplified human model with muscle groups as meshes
+  return (
+    <group ref={modelRef} position={[0, 0, 0]} scale={1}>
+      {/* Basic human body structure */}
+      <mesh position={[0, 0, 0]} castShadow receiveShadow>
+        <capsuleGeometry args={[0.8, 1.8, 4, 8]} />
+        <meshStandardMaterial color="#e1e1e1" roughness={0.7} metalness={0.1} />
+      </mesh>
+      
+      {/* Head */}
+      <mesh position={[0, 1.5, 0]} castShadow>
+        <sphereGeometry args={[0.4, 32, 16]} />
+        <meshStandardMaterial color="#e1e1e1" roughness={0.7} metalness={0.1} />
+      </mesh>
+      
+      {/* Muscle groups - only render if bodyData available */}
+      {bodyData && (
+        <>
+          {/* Chest muscle group */}
+          <mesh 
+            position={[0, 0.7, 0.4]} 
+            onClick={() => onSelectMuscleGroup('chest')}
+            castShadow
+          >
+            <boxGeometry args={[1.2, 0.5, 0.3]} />
+            <meshStandardMaterial 
+              color={getColorForMuscle('chest')} 
+              opacity={getMuscleOpacity('chest')} 
+              transparent
+              emissive={selectedMuscleGroup === 'chest' ? getColorForMuscle('chest') : undefined}
+              emissiveIntensity={selectedMuscleGroup === 'chest' ? 0.3 : 0}
+            />
+          </mesh>
+          
+          {/* Back muscle group */}
+          <mesh 
+            position={[0, 0.7, -0.4]} 
+            onClick={() => onSelectMuscleGroup('back')}
+            castShadow
+          >
+            <boxGeometry args={[1.2, 0.7, 0.3]} />
+            <meshStandardMaterial 
+              color={getColorForMuscle('back')} 
+              opacity={getMuscleOpacity('back')} 
+              transparent
+              emissive={selectedMuscleGroup === 'back' ? getColorForMuscle('back') : undefined}
+              emissiveIntensity={selectedMuscleGroup === 'back' ? 0.3 : 0}
+            />
+          </mesh>
+          
+          {/* Shoulders muscle group */}
+          <group>
+            <mesh 
+              position={[-0.8, 0.7, 0]} 
+              onClick={() => onSelectMuscleGroup('shoulders')}
+              castShadow
+            >
+              <sphereGeometry args={[0.3, 16, 16]} />
+              <meshStandardMaterial 
+                color={getColorForMuscle('shoulders')} 
+                opacity={getMuscleOpacity('shoulders')} 
+                transparent
+                emissive={selectedMuscleGroup === 'shoulders' ? getColorForMuscle('shoulders') : undefined}
+                emissiveIntensity={selectedMuscleGroup === 'shoulders' ? 0.3 : 0}
+              />
+            </mesh>
+            <mesh 
+              position={[0.8, 0.7, 0]} 
+              onClick={() => onSelectMuscleGroup('shoulders')}
+              castShadow
+            >
+              <sphereGeometry args={[0.3, 16, 16]} />
+              <meshStandardMaterial 
+                color={getColorForMuscle('shoulders')} 
+                opacity={getMuscleOpacity('shoulders')} 
+                transparent
+                emissive={selectedMuscleGroup === 'shoulders' ? getColorForMuscle('shoulders') : undefined}
+                emissiveIntensity={selectedMuscleGroup === 'shoulders' ? 0.3 : 0}
+              />
+            </mesh>
+          </group>
+          
+          {/* Arms muscle group */}
+          <group>
+            <mesh 
+              position={[-0.8, 0.2, 0]} 
+              rotation={[0, 0, -0.2]}
+              onClick={() => onSelectMuscleGroup('arms')}
+              castShadow
+            >
+              <capsuleGeometry args={[0.2, 0.8, 4, 8]} />
+              <meshStandardMaterial 
+                color={getColorForMuscle('arms')} 
+                opacity={getMuscleOpacity('arms')} 
+                transparent
+                emissive={selectedMuscleGroup === 'arms' ? getColorForMuscle('arms') : undefined}
+                emissiveIntensity={selectedMuscleGroup === 'arms' ? 0.3 : 0}
+              />
+            </mesh>
+            <mesh 
+              position={[0.8, 0.2, 0]} 
+              rotation={[0, 0, 0.2]}
+              onClick={() => onSelectMuscleGroup('arms')}
+              castShadow
+            >
+              <capsuleGeometry args={[0.2, 0.8, 4, 8]} />
+              <meshStandardMaterial 
+                color={getColorForMuscle('arms')} 
+                opacity={getMuscleOpacity('arms')} 
+                transparent
+                emissive={selectedMuscleGroup === 'arms' ? getColorForMuscle('arms') : undefined}
+                emissiveIntensity={selectedMuscleGroup === 'arms' ? 0.3 : 0}
+              />
+            </mesh>
+          </group>
+          
+          {/* Abs muscle group */}
+          <mesh 
+            position={[0, 0.1, 0.3]} 
+            onClick={() => onSelectMuscleGroup('abs')}
+            castShadow
+          >
+            <boxGeometry args={[0.8, 0.6, 0.2]} />
+            <meshStandardMaterial 
+              color={getColorForMuscle('abs')} 
+              opacity={getMuscleOpacity('abs')} 
+              transparent
+              emissive={selectedMuscleGroup === 'abs' ? getColorForMuscle('abs') : undefined}
+              emissiveIntensity={selectedMuscleGroup === 'abs' ? 0.3 : 0}
+            />
+          </mesh>
+          
+          {/* Legs muscle group */}
+          <group>
+            <mesh 
+              position={[-0.3, -0.8, 0]} 
+              onClick={() => onSelectMuscleGroup('legs')}
+              castShadow
+            >
+              <capsuleGeometry args={[0.25, 1.2, 4, 8]} />
+              <meshStandardMaterial 
+                color={getColorForMuscle('legs')} 
+                opacity={getMuscleOpacity('legs')} 
+                transparent
+                emissive={selectedMuscleGroup === 'legs' ? getColorForMuscle('legs') : undefined}
+                emissiveIntensity={selectedMuscleGroup === 'legs' ? 0.3 : 0}
+              />
+            </mesh>
+            <mesh 
+              position={[0.3, -0.8, 0]} 
+              onClick={() => onSelectMuscleGroup('legs')}
+              castShadow
+            >
+              <capsuleGeometry args={[0.25, 1.2, 4, 8]} />
+              <meshStandardMaterial 
+                color={getColorForMuscle('legs')} 
+                opacity={getMuscleOpacity('legs')} 
+                transparent
+                emissive={selectedMuscleGroup === 'legs' ? getColorForMuscle('legs') : undefined}
+                emissiveIntensity={selectedMuscleGroup === 'legs' ? 0.3 : 0}
+              />
+            </mesh>
+          </group>
+        </>
+      )}
+    </group>
+  );
+};
+
+// Scene container with camera setup and controls
+const Scene = (props: BodyModelViewerProps) => {
+  const controlsRef = useRef(null);
+  
+  return (
+    <>
+      <PerspectiveCamera makeDefault position={[0, 0, 5]} />
+      <ambientLight intensity={0.5} />
+      <directionalLight position={[10, 10, 5]} intensity={1} castShadow />
+      <directionalLight position={[-10, -10, -5]} intensity={0.5} />
+      <HumanModel {...props} />
+      <ContactShadows position={[0, -1.5, 0]} opacity={0.4} scale={5} blur={2.5} />
+      <OrbitControls 
+        ref={controlsRef}
+        enablePan={false}
+        minDistance={3}
+        maxDistance={8}
+        minPolarAngle={Math.PI / 6}
+        maxPolarAngle={Math.PI * 0.6}
+      />
+    </>
+  );
+};
+
+// Memoized main component
+const BodyModelViewer: React.FC<BodyModelViewerProps> = memo(({ 
+  bodyData, 
+  selectedMuscleGroup,
+  onSelectMuscleGroup 
+}) => {
+  const [isLoading, setIsLoading] = useState(true);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  
+  // Cleanup loading state
+  React.useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 600);
     return () => clearTimeout(timer);
   }, []);
   
-  // Handler mit useCallback zur Verbesserung der Performance
+  // Controls handlers
+  const handleReset = useCallback(() => {
+    if (canvasRef.current) {
+      const canvas = canvasRef.current;
+      const controls = canvas.__r3f?.controls;
+      if (controls) {
+        controls.reset();
+      }
+    }
+  }, []);
+  
   const handleRotateLeft = useCallback(() => {
-    setRotation(prev => prev - 45);
+    if (canvasRef.current) {
+      const canvas = canvasRef.current;
+      const controls = canvas.__r3f?.controls;
+      if (controls) {
+        controls.rotateLeft(Math.PI / 8);
+      }
+    }
   }, []);
   
   const handleRotateRight = useCallback(() => {
-    setRotation(prev => prev + 45);
+    if (canvasRef.current) {
+      const canvas = canvasRef.current;
+      const controls = canvas.__r3f?.controls;
+      if (controls) {
+        controls.rotateRight(Math.PI / 8);
+      }
+    }
   }, []);
   
   const handleZoomIn = useCallback(() => {
-    setZoom((prev) => Math.min(prev + 0.2, 2));
+    if (canvasRef.current) {
+      const canvas = canvasRef.current;
+      const controls = canvas.__r3f?.controls;
+      if (controls) {
+        controls.dollyIn(1.2);
+        controls.update();
+      }
+    }
   }, []);
   
   const handleZoomOut = useCallback(() => {
-    setZoom((prev) => Math.max(prev - 0.2, 0.6));
+    if (canvasRef.current) {
+      const canvas = canvasRef.current;
+      const controls = canvas.__r3f?.controls;
+      if (controls) {
+        controls.dollyOut(1.2);
+        controls.update();
+      }
+    }
   }, []);
   
-  const handleReset = useCallback(() => {
-    setRotation(0);
-    setZoom(1);
-  }, []);
-  
-  // Click-Handler mit useCallback
-  const handleMuscleClick = useCallback((muscle: string) => {
-    onSelectMuscleGroup(muscle);
-  }, [onSelectMuscleGroup]);
-  
-  // Wenn keine Daten vorhanden sind, zeige optimiertes Skeleton
+  // If no data and not loading, show placeholder
   if (!bodyData && !isLoading) {
     return (
       <div className="aspect-[3/4] flex items-center justify-center bg-muted rounded-lg">
@@ -98,53 +320,16 @@ const BodyModelViewer: React.FC<BodyModelViewerProps> = memo(({
         </div>
       ) : (
         <div className="relative aspect-[3/4] overflow-hidden bg-gradient-to-b from-slate-100 to-slate-200 rounded-lg">
-          <div 
-            ref={containerRef}
-            className="w-full h-full relative transition-transform duration-300 ease-in-out will-change-transform"
-            style={{
-              transform: `rotateY(${rotation}deg) scale(${zoom})`,
-              transformStyle: 'preserve-3d',
-              perspective: '1000px'
-            }}
-          >
-            {/* Basic human model */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[40%] h-[80%] flex flex-col items-center">
-              {/* Head */}
-              <div className="w-[40%] aspect-square rounded-full bg-gray-300"></div>
-              
-              {/* Body */}
-              <div className="w-full h-[35%] bg-gray-200 mt-[5%] rounded-lg"></div>
-              
-              {/* Arms */}
-              <div className="w-full flex justify-between mt-[-20%]">
-                <div className="w-[15%] h-[30%] bg-gray-200 rounded-lg"></div>
-                <div className="w-[15%] h-[30%] bg-gray-200 rounded-lg"></div>
-              </div>
-              
-              {/* Legs */}
-              <div className="w-full flex justify-between mt-[5%]">
-                <div className="w-[20%] h-[40%] bg-gray-200 rounded-lg"></div>
-                <div className="w-[20%] h-[40%] bg-gray-200 rounded-lg"></div>
-              </div>
-            </div>
-            
-            {/* Muscle group overlays - nur rendern, wenn bodyData verfügbar ist */}
-            {bodyData && Object.entries(musclePositions).map(([muscle, position]: [string, any]) => (
-              <div
-                key={muscle}
-                className="absolute transform -translate-x-1/2 -translate-y-1/2 rounded-lg cursor-pointer transition-opacity duration-300"
-                style={{
-                  top: position.top,
-                  left: position.left,
-                  width: position.width,
-                  height: position.height,
-                  backgroundColor: getColorForMuscle(muscle),
-                  opacity: getMuscleOpacity(muscle),
-                }}
-                onClick={() => handleMuscleClick(muscle)}
+          <Canvas ref={canvasRef} shadows dpr={[1, 2]} className="h-full w-full">
+            <Suspense fallback={null}>
+              <Scene 
+                bodyData={bodyData} 
+                selectedMuscleGroup={selectedMuscleGroup}
+                onSelectMuscleGroup={onSelectMuscleGroup}
               />
-            ))}
-          </div>
+              <Environment preset="city" />
+            </Suspense>
+          </Canvas>
           
           {/* Controls */}
           <div className="absolute bottom-4 left-0 right-0 flex justify-center space-x-2">
