@@ -1,6 +1,5 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,28 +15,22 @@ serve(async (req) => {
   try {
     const { userId } = await req.json();
     
-    // In a real implementation, we would:
-    // 1. Get the user's images from storage
-    // 2. Process them with AI to analyze body composition
-    // 3. Store the analysis results in a database
-    // 4. Return the analysis to the client
-    
     console.log(`Processing body scan analysis for user: ${userId}`);
     
-    // Simulate AI processing delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // Kürzere Simulationsverzögerung für bessere Benutzerfreundlichkeit
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // Generate mock data for demo purposes
+    // Generiere realistische Körperdaten innerhalb normaler menschlicher Bereiche
     const mockBodyData = {
-      age: Math.floor(Math.random() * 20) + 20, // Random age between 20-40
-      height: Math.floor(Math.random() * 30) + 160, // Random height between 160-190cm
-      weight: Math.floor(Math.random() * 30) + 60, // Random weight between 60-90kg
-      bodyFat: Math.floor(Math.random() * 15) + 10, // Random body fat between 10-25%
+      age: Math.floor(Math.random() * 20) + 20, // Zufälliges Alter zwischen 20-40
+      height: Math.floor(Math.random() * 30) + 160, // Zufällige Größe zwischen 160-190cm
+      weight: Math.floor(Math.random() * 30) + 60, // Zufälliges Gewicht zwischen 60-90kg
+      bodyFat: Math.floor(Math.random() * 15) + 10, // Zufälliger Körperfettanteil zwischen 10-25%
       muscleGroups: {
         chest: { 
-          size: Math.floor(Math.random() * 30) + 30, // Random size between 30-60
-          strength: Math.floor(Math.random() * 30) + 40, // Random strength between 40-70
-          development: Math.floor(Math.random() * 30) + 40 // Random development between 40-70
+          size: Math.floor(Math.random() * 30) + 30, // Zufällige Größe zwischen 30-60
+          strength: Math.floor(Math.random() * 30) + 40, // Zufällige Kraft zwischen 40-70
+          development: Math.floor(Math.random() * 30) + 40 // Zufällige Entwicklung zwischen 40-70
         },
         back: { 
           size: Math.floor(Math.random() * 30) + 30,

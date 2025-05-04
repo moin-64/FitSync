@@ -1,5 +1,5 @@
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Camera, Scan, RotateCw, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -21,18 +21,40 @@ const BodyScan = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   
+  // Zustandsverwaltung
   const [scanStage, setScanStage] = useState<ScanStage>('intro');
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedMuscleGroup, setSelectedMuscleGroup] = useState<MuscleGroup>(null);
   const [bodyData, setBodyData] = useState<any>(null);
+  
+  // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
+  // Speicher freigeben, wenn die Komponente unmountet wird
+  useEffect(() => {
+    return () => {
+      if (videoRef.current && videoRef.current.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
+  
+  // Handlers
   const handleStartScan = () => {
     setScanStage('full-body');
   };
   
   const handleBackClick = () => {
+    // Kamera ausschalten, wenn wir zurück von einer Kameraansicht gehen
+    if (scanStage === 'full-body' || scanStage === 'muscle-groups') {
+      if (videoRef.current && videoRef.current.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach(track => track.stop());
+      }
+    }
+    
     if (scanStage === 'full-body') {
       setScanStage('intro');
     } else if (scanStage === 'muscle-groups') {
@@ -49,58 +71,78 @@ const BodyScan = () => {
   const captureBodyImage = () => {
     if (!videoRef.current || !canvasRef.current) return null;
     
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    const context = canvas.getContext('2d');
-    
-    if (!context) return null;
-    
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
-    return canvas.toDataURL('image/jpeg');
+    try {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      const context = canvas.getContext('2d');
+      
+      if (!context) return null;
+      
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      return canvas.toDataURL('image/jpeg');
+    } catch (error) {
+      console.error("Error capturing image:", error);
+      return null;
+    }
   };
   
   const handleCaptureFullBody = () => {
-    const imageData = captureBodyImage();
-    if (!imageData) {
+    try {
+      const imageData = captureBodyImage();
+      if (!imageData) {
+        toast({
+          title: "Fehler",
+          description: "Kamera konnte nicht erfasst werden",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      toast({
+        title: "Erfolg",
+        description: "Körperscan erfolgreich aufgenommen",
+      });
+      
+      setScanStage('muscle-groups');
+    } catch (error) {
+      console.error("Error in handleCaptureFullBody:", error);
       toast({
         title: "Fehler",
-        description: "Kamera konnte nicht erfasst werden",
+        description: "Ein Fehler ist aufgetreten",
         variant: "destructive",
       });
-      return;
     }
-    
-    toast({
-      title: "Erfolg",
-      description: "Körperscan erfolgreich aufgenommen",
-    });
-    
-    // Move to muscle group scanning stage
-    setScanStage('muscle-groups');
   };
   
-  const handleCaptureMuscleGroup = async (muscleGroup: MuscleGroup) => {
-    const imageData = captureBodyImage();
-    if (!imageData) {
+  const handleCaptureMuscleGroup = (muscleGroup: MuscleGroup) => {
+    try {
+      const imageData = captureBodyImage();
+      if (!imageData) {
+        toast({
+          title: "Fehler",
+          description: "Kamera konnte nicht erfasst werden",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      toast({
+        title: "Erfolg",
+        description: `${muscleGroup} Scan erfolgreich aufgenommen`,
+      });
+      
+      setScanStage('analysis');
+    } catch (error) {
+      console.error("Error in handleCaptureMuscleGroup:", error);
       toast({
         title: "Fehler",
-        description: "Kamera konnte nicht erfasst werden",
+        description: "Ein Fehler ist aufgetreten",
         variant: "destructive",
       });
-      return;
     }
-    
-    toast({
-      title: "Erfolg",
-      description: `${muscleGroup} Scan erfolgreich aufgenommen`,
-    });
-    
-    // Check if all muscle groups are scanned
-    // For now, just move to analysis after first muscle group scan
-    setScanStage('analysis');
   };
   
   const handleAnalyzeData = async () => {
@@ -116,7 +158,7 @@ const BodyScan = () => {
     setIsProcessing(true);
     
     try {
-      // Simulate AI analysis with Supabase Edge Function
+      // Simuliere AI-Analyse mit Supabase Edge Function
       const { data, error } = await supabase.functions.invoke('analyze-body-scan', {
         body: { userId: user.id }
       });
@@ -125,7 +167,7 @@ const BodyScan = () => {
         throw new Error(error.message);
       }
       
-      // Set body data from analysis
+      // Setze Körperdaten aus der Analyse
       setBodyData(data);
       setScanStage('results');
       
@@ -137,7 +179,7 @@ const BodyScan = () => {
         variant: "destructive",
       });
       
-      // For demo purposes, proceed with mock data
+      // Als Fallback verwenden wir Demo-Daten
       setTimeout(() => {
         setBodyData({
           age: 28,
@@ -154,7 +196,7 @@ const BodyScan = () => {
           }
         });
         setScanStage('results');
-      }, 3000);
+      }, 1000); // Kürzerer Timeout für bessere UX
       
     } finally {
       setIsProcessing(false);
@@ -249,7 +291,7 @@ const BodyScan = () => {
                   )}
                 </div>
                 
-                {selectedMuscleGroup && (
+                {selectedMuscleGroup && bodyData?.muscleGroups[selectedMuscleGroup] && (
                   <MuscleGroupInfo 
                     muscleGroup={selectedMuscleGroup} 
                     muscleData={bodyData?.muscleGroups[selectedMuscleGroup]}
@@ -282,7 +324,7 @@ const BodyScan = () => {
                       
                       <h3 className="text-lg font-medium pt-4">Muskelgruppen-Details</h3>
                       <div className="space-y-2">
-                        {Object.entries(bodyData.muscleGroups).map(([muscle, data]: [string, any]) => (
+                        {bodyData.muscleGroups && Object.entries(bodyData.muscleGroups).map(([muscle, data]: [string, any]) => (
                           <Button 
                             key={muscle}
                             variant="outline" 

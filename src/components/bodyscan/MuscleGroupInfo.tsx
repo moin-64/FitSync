@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { 
   Dumbbell, 
   Scale, 
@@ -7,7 +7,6 @@ import {
   CalendarClock,
   ChevronRight
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -17,6 +16,7 @@ interface MuscleGroupInfoProps {
 }
 
 const MuscleGroupInfo: React.FC<MuscleGroupInfoProps> = ({ muscleGroup, muscleData }) => {
+  // Zeige Skeleton während Daten geladen werden
   if (!muscleData) {
     return (
       <div className="mt-4 p-4 border rounded-lg">
@@ -27,7 +27,8 @@ const MuscleGroupInfo: React.FC<MuscleGroupInfoProps> = ({ muscleGroup, muscleDa
     );
   }
   
-  const getRecommendedExercises = () => {
+  // Empfohlene Übungen für jede Muskelgruppe
+  const recommendedExercises = useMemo(() => {
     const exercisesByMuscle: Record<string, string[]> = {
       chest: ['Bankdrücken', 'Fliegende', 'Push-Ups'],
       back: ['Klimmzüge', 'Rudern', 'Lat-Pulldowns'],
@@ -38,9 +39,10 @@ const MuscleGroupInfo: React.FC<MuscleGroupInfoProps> = ({ muscleGroup, muscleDa
     };
     
     return exercisesByMuscle[muscleGroup] || [];
-  };
+  }, [muscleGroup]);
   
-  const getMuscleName = () => {
+  // Deutsche Übersetzungen der Muskelgruppen
+  const getMuscleName = useMemo(() => {
     const muscleNames: Record<string, string> = {
       chest: 'Brust',
       back: 'Rücken',
@@ -51,19 +53,18 @@ const MuscleGroupInfo: React.FC<MuscleGroupInfoProps> = ({ muscleGroup, muscleDa
     };
     
     return muscleNames[muscleGroup] || muscleGroup;
-  };
+  }, [muscleGroup]);
   
+  // Farbberechnung für Fortschrittsbalken
   const getProgressColor = (value: number) => {
     if (value < 40) return 'bg-red-500';
     if (value < 60) return 'bg-yellow-500';
     return 'bg-green-500';
   };
   
-  const recommendedExercises = getRecommendedExercises();
-  
   return (
     <div className="mt-4 p-4 border rounded-lg animate-fade-in">
-      <h3 className="text-xl font-semibold mb-4">{getMuscleName()}</h3>
+      <h3 className="text-xl font-semibold mb-4">{getMuscleName}</h3>
       
       <div className="space-y-6">
         <div className="space-y-3">

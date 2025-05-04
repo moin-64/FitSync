@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { User } from '../types/auth';
 import { UserData } from '../types/user';
@@ -22,15 +23,11 @@ export const useUserData = (user: User | null, isAuthenticated: boolean) => {
       setLoading(true);
       setError(null);
       
-      // Load profile data - for now we keep using the existing profile structure
-      // Eventually we could move this to Supabase as well
-      
       // Load workouts and history from Supabase
       const workoutResponse = await fetchUserWorkouts();
       
-      // Check for errors in the response
-      // The fetchUserWorkouts function doesn't return an error property directly
-      // So we need to handle errors differently
+      // Fehler-Eigenschaft existiert nicht im Response, daher entfernen wir diesen Code
+      // und behandeln Fehler durch try/catch
       
       const updatedData = {
         ...userData,

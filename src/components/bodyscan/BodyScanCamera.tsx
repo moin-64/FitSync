@@ -24,8 +24,10 @@ const BodyScanCamera: React.FC<BodyScanCameraProps> = ({
   const [error, setError] = useState<string | null>(null);
   
   useEffect(() => {
+    // Starten der Kamera beim Mounten der Komponente
     startCamera();
     
+    // Cleanup-Funktion zum Stoppen der Kamera beim Unmounten
     return () => {
       stopCamera();
     };
@@ -34,8 +36,14 @@ const BodyScanCamera: React.FC<BodyScanCameraProps> = ({
   const startCamera = async () => {
     try {
       setError(null);
+      
+      // Versuche, den Zugriff auf die Kamera zu erhalten
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }
+        video: { 
+          facingMode: 'environment',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
       });
       
       if (videoRef.current) {
@@ -61,11 +69,16 @@ const BodyScanCamera: React.FC<BodyScanCameraProps> = ({
   const { captureImage } = useCameraCapture({ videoRef, canvasRef });
   
   const handleCapture = () => {
-    const imageData = captureImage();
-    if (imageData) {
-      onCapture();
-    } else {
-      setError('Fehler beim Erfassen des Bildes. Bitte versuche es erneut.');
+    try {
+      const imageData = captureImage();
+      if (imageData) {
+        onCapture();
+      } else {
+        setError('Fehler beim Erfassen des Bildes. Bitte versuche es erneut.');
+      }
+    } catch (err) {
+      console.error('Error capturing image:', err);
+      setError('Ein Fehler ist aufgetreten. Bitte versuche es erneut.');
     }
   };
   
@@ -90,7 +103,7 @@ const BodyScanCamera: React.FC<BodyScanCameraProps> = ({
           className="w-full h-full object-cover"
         />
         
-        {/* Overlay with silhouette guide */}
+        {/* Silhouette-Guide als Overlay */}
         <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
           <div className="w-[60%] h-[80%] border-2 border-dashed border-white/40 rounded-full opacity-40"></div>
         </div>

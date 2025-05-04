@@ -28,7 +28,7 @@ const Index = () => {
               </Button>
               
               <Button asChild variant="outline" className="w-full">
-                <Link to="/bodyscan" className="flex items-center">
+                <Link to="/bodyscan" className="flex items-center justify-center">
                   <Scan className="mr-2 h-4 w-4" />
                   3D Körperscan starten
                 </Link>

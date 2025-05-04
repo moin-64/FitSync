@@ -1,5 +1,5 @@
 
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { RotateCcw, RotateCw, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -20,7 +20,7 @@ const BodyModelViewer: React.FC<BodyModelViewerProps> = ({
   const [rotation, setRotation] = useState(0);
   const [zoom, setZoom] = useState(1);
   
-  // Simulated muscle group positions on the model
+  // Optimierte Muskelgruppenpositionen
   const musclePositions = {
     chest: { top: '30%', left: '50%', width: '40%', height: '15%' },
     back: { top: '30%', left: '50%', width: '40%', height: '15%' },
@@ -30,24 +30,31 @@ const BodyModelViewer: React.FC<BodyModelViewerProps> = ({
     legs: { top: '65%', left: '50%', width: '45%', height: '25%' }
   };
   
-  const getColorForMuscle = (muscleGroup: string) => {
-    const development = bodyData?.muscleGroups[muscleGroup]?.development || 50;
+  // Farbberechnung basierend auf Muskelentwicklung
+  const getColorForMuscle = useCallback((muscleGroup: string) => {
+    if (!bodyData?.muscleGroups?.[muscleGroup]) return 'rgba(125, 125, 125, 0.7)';
     
-    // Color gradient based on muscle development (red to green)
-    if (development < 40) return 'rgba(255, 59, 48, 0.7)'; // Red for underdeveloped
-    if (development < 60) return 'rgba(255, 204, 0, 0.7)'; // Yellow for average
-    return 'rgba(52, 199, 89, 0.7)'; // Green for well-developed
-  };
+    const development = bodyData.muscleGroups[muscleGroup].development || 50;
+    
+    // Farbverlauf basierend auf Muskelentwicklung (rot nach grün)
+    if (development < 40) return 'rgba(255, 59, 48, 0.7)'; // Rot für unterentwickelt
+    if (development < 60) return 'rgba(255, 204, 0, 0.7)'; // Gelb für durchschnittlich
+    return 'rgba(52, 199, 89, 0.7)'; // Grün für gut entwickelt
+  }, [bodyData]);
   
-  const getMuscleOpacity = (muscleGroup: string) => {
+  // Transparenz basierend auf Auswahl
+  const getMuscleOpacity = useCallback((muscleGroup: string) => {
     if (!selectedMuscleGroup) return 0.7;
     return muscleGroup === selectedMuscleGroup ? 0.9 : 0.3;
-  };
+  }, [selectedMuscleGroup]);
   
+  // Verzögertes Laden simulieren
   useEffect(() => {
-    setTimeout(() => setIsLoading(false), 1500);
+    const timer = setTimeout(() => setIsLoading(false), 800);
+    return () => clearTimeout(timer);
   }, []);
   
+  // Rotationshandler
   const handleRotateLeft = () => {
     setRotation(rotation - 45);
   };
@@ -56,6 +63,7 @@ const BodyModelViewer: React.FC<BodyModelViewerProps> = ({
     setRotation(rotation + 45);
   };
   
+  // Zoom-Handler
   const handleZoomIn = () => {
     setZoom((prev) => Math.min(prev + 0.2, 2));
   };
@@ -64,6 +72,7 @@ const BodyModelViewer: React.FC<BodyModelViewerProps> = ({
     setZoom((prev) => Math.max(prev - 0.2, 0.6));
   };
   
+  // Zurücksetzen der Ansicht
   const handleReset = () => {
     setRotation(0);
     setZoom(1);
@@ -107,8 +116,8 @@ const BodyModelViewer: React.FC<BodyModelViewerProps> = ({
               </div>
             </div>
             
-            {/* Muscle group overlays */}
-            {Object.entries(musclePositions).map(([muscle, position]: [string, any]) => (
+            {/* Muscle group overlays - nur rendern, wenn bodyData verfügbar ist */}
+            {bodyData && musclePositions && Object.entries(musclePositions).map(([muscle, position]: [string, any]) => (
               <div
                 key={muscle}
                 className="absolute transform -translate-x-1/2 -translate-y-1/2 rounded-lg cursor-pointer transition-opacity duration-300"
