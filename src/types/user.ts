@@ -4,9 +4,9 @@ import { FriendRequest, Friend } from './friends';
 import { Notification } from './notifications';
 import { Rank } from '@/utils/rankingUtils';
 
-export { Workout, WorkoutHistory, Exercise } from './workout';
-export { Friend, FriendRequest } from './friends';
-export { Notification } from './notifications';
+export type { Workout, WorkoutHistory, Exercise } from './workout';
+export type { Friend, FriendRequest } from './friends';
+export type { Notification } from './notifications';
 
 export interface UserProfile {
   birthdate: string | null;
