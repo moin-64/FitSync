@@ -9,7 +9,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { UserProvider } from "./context/UserContext";
 
-// Lazy-loaded Komponenten für bessere Performance
+// Lazy-loaded components for better performance
 const Welcome = lazy(() => import("./pages/Welcome"));
 const Login = lazy(() => import("./pages/Login"));
 const Register = lazy(() => import("./pages/Register"));
@@ -20,8 +20,9 @@ const CreateWorkout = lazy(() => import("./pages/CreateWorkout"));
 const ExecuteWorkout = lazy(() => import("./pages/ExecuteWorkout"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const BodyScan = lazy(() => import('./pages/BodyScan/index'));
+const Index = lazy(() => import('./pages/Index'));
 
-// Verbesserte Komponente für geschützte Routen mit besserer Fehlerbehandlung und Ladeanimation
+// Improved component for protected routes with better error handling and loading animation
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, loading } = useAuth();
   
@@ -36,7 +37,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
   
-  // Robustere Authentifizierungsprüfung
+  // More robust authentication check
   if (!isAuthenticated) {
     console.log("Benutzer nicht authentifiziert, Weiterleitung zur Anmeldeseite");
     return <Navigate to="/login" replace />;
@@ -45,21 +46,21 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-// Loading-Fallback für Lazy-Loading
+// Loading-Fallback for Lazy-Loading
 const LoadingFallback = () => (
   <div className="min-h-screen flex items-center justify-center">
     <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
   </div>
 );
 
-// Query-Client mit besseren Standardwerten für die Fehlerbehandlung konfigurieren
+// Configure Query-Client with better default values for error handling
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 1, // Reduziert auf einen Wiederholungsversuch
+      retry: 1, // Reduced to one retry attempt
       refetchOnWindowFocus: false,
-      staleTime: 5 * 60 * 1000, // 5 Minuten statt 10
-      gcTime: 10 * 60 * 1000, // 10 Minuten statt 15
+      staleTime: 5 * 60 * 1000, // 5 minutes instead of 10
+      gcTime: 10 * 60 * 1000, // 10 minutes instead of 15
       networkMode: 'always',
     },
   },
@@ -75,7 +76,8 @@ const App = () => (
             <Sonner />
             <Suspense fallback={<LoadingFallback />}>
               <Routes>
-                <Route path="/" element={<Welcome />} />
+                <Route path="/" element={<Index />} />
+                <Route path="/welcome" element={<Welcome />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 
