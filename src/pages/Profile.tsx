@@ -248,8 +248,14 @@ const Profile = () => {
               friends={friends}
               friendsLoading={friendsLoading}
               onViewFriendStats={handleViewFriendStats}
-              addLimitation={addLimitation}
-              removeLimitation={removeLimitation}
+              addLimitation={async (limitation: string) => {
+                const success = await addLimitation(limitation);
+                return;
+              }}
+              removeLimitation={async (limitation: string) => {
+                const success = await removeLimitation(limitation);
+                return;
+              }}
               onAcceptRequest={handleAcceptRequest}
               onDeclineRequest={handleDeclineRequest}
             />

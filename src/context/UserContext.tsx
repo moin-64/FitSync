@@ -124,14 +124,54 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         workouts: userData.workouts,
         history: userData.history,
         loading,
-        csrfToken, // CSRF-Token für Formularübermittlungen bereitstellen
+        csrfToken,
         updateProfile,
         addWorkout,
-        updateWorkout,
-        deleteWorkout,
-        completeWorkout,
-        addLimitation,
-        removeLimitation,
+        updateWorkout: async (id: string, workout: Partial<any>) => {
+          try {
+            await updateWorkout(id, workout);
+            return true;
+          } catch (error) {
+            console.error('Error updating workout:', error);
+            return false;
+          }
+        },
+        deleteWorkout: async (id: string) => {
+          try {
+            await deleteWorkout(id);
+            return true;
+          } catch (error) {
+            console.error('Error deleting workout:', error);
+            return false;
+          }
+        },
+        completeWorkout: async (workoutId: string, performance: any) => {
+          try {
+            await completeWorkout(workoutId, performance);
+            return true;
+          } catch (error) {
+            console.error('Error completing workout:', error);
+            return false;
+          }
+        },
+        addLimitation: async (limitation: string) => {
+          try {
+            await addLimitation(limitation);
+            return true;
+          } catch (error) {
+            console.error('Error adding limitation:', error);
+            return false;
+          }
+        },
+        removeLimitation: async (limitation: string) => {
+          try {
+            await removeLimitation(limitation);
+            return true;
+          } catch (error) {
+            console.error('Error removing limitation:', error);
+            return false;
+          }
+        },
         // Functions from useFriends
         addFriend,
         acceptFriendRequest, 

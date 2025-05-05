@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { User } from '../types/auth';
 import { UserData } from '../types/user';
@@ -69,7 +68,7 @@ export const useUserData = (user: User | null, isAuthenticated: boolean) => {
         toast({
           title: 'Datenvalidierung fehlgeschlagen',
           description: 'Es wurden ungültige Daten empfangen. Ihre vorherigen Daten werden verwendet.',
-          variant: 'warning'
+          variant: 'destructive' // Changed from 'warning' to 'destructive'
         });
         return;
       }
@@ -95,7 +94,7 @@ export const useUserData = (user: User | null, isAuthenticated: boolean) => {
         toast({
           title: 'Fehler beim Laden',
           description: 'Die neuesten Daten konnten nicht abgerufen werden. Offline-Daten werden verwendet.',
-          variant: 'warning'
+          variant: 'destructive' // Changed from 'warning' to 'destructive'
         });
       }
     } finally {

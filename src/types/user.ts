@@ -1,10 +1,12 @@
 
-// Updating the UserContextType to include csrfToken
-
 import { Workout, WorkoutHistory, Exercise } from './workout';
 import { FriendRequest, Friend } from './friends';
 import { Notification } from './notifications';
 import { Rank } from '@/utils/rankingUtils';
+
+export { Workout, WorkoutHistory, Exercise } from './workout';
+export { Friend, FriendRequest } from './friends';
+export { Notification } from './notifications';
 
 export interface UserProfile {
   birthdate: string | null;
@@ -16,6 +18,8 @@ export interface UserProfile {
   friends: Friend[];
   friendRequests: FriendRequest[];
   notifications?: Notification[];
+  username?: string;
+  id?: string;
 }
 
 export interface UserData {
@@ -29,7 +33,7 @@ export interface UserContextType {
   workouts: Workout[];
   history: WorkoutHistory[];
   loading: boolean;
-  csrfToken: string; // CSRF-Token für sichere Formularübermittlungen
+  csrfToken: string;
   updateProfile: (profile: Partial<UserProfile>) => Promise<void>;
   addWorkout: (workout: Omit<Workout, 'id' | 'createdAt'>) => Promise<Workout | null>;
   updateWorkout: (id: string, workout: Partial<Workout>) => Promise<boolean>;

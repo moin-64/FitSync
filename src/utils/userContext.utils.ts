@@ -1,4 +1,4 @@
-import { UserData, UserProfile, Friend, FriendRequest, Notification } from '../types/user';
+import { UserData, UserProfile, Friend, FriendRequest, Notification, Workout, WorkoutHistory } from '../types/user';
 import { calculateEligibleRank, calculateMaxWeight, calculateMaxReps } from './rankingUtils';
 
 export const defaultUserProfile: UserProfile = {
@@ -16,8 +16,7 @@ export const defaultUserProfile: UserProfile = {
 export const defaultUserData: UserData = {
   profile: defaultUserProfile,
   workouts: [],
-  history: [],
-  settings: {}
+  history: []
 };
 
 export const saveUserData = async (data: UserData): Promise<void> => {
