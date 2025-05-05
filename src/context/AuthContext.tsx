@@ -22,40 +22,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Enhanced checkAuth function with better error handling
+  // Optimierte checkAuth-Funktion mit verbessertem Timeout-Handling
   const checkAuth = async () => {
+    // Timeout für Auth-Check setzen
+    const timeoutPromise = new Promise<void>((_, reject) => {
+      setTimeout(() => reject(new Error('Auth-Check Timeout')), 3000);
+    });
+    
     try {
       setAuthError(null);
       
-      // Check if session is valid first
-      if (!isSessionValid()) {
-        console.log('Session expired or invalid');
-        setUser(null);
-        localStorage.removeItem('user');
-        setLoading(false);
-        return;
-      }
-      
-      const storedUser = getStoredUser();
-      
-      if (storedUser) {
-        // Validate user data format to prevent corrupt data issues
-        if (!storedUser.id || !storedUser.email || !storedUser.username) {
-          throw new Error('Invalid user data format');
-        }
-        
-        setUser(storedUser);
-        
-        // Check if key exists for this user
-        if (!userKeyExists(storedUser.email)) {
-          throw new Error('Authentication key not found');
-        }
-        
-        // Update session activity timestamp
-        updateSessionActivity();
-      }
+      // Race zwischen Auth-Check und Timeout
+      await Promise.race([
+        (async () => {
+          // Prüfen, ob Session gültig ist
+          if (!isSessionValid()) {
+            console.log('Session abgelaufen oder ungültig');
+            setUser(null);
+            localStorage.removeItem('user');
+            return;
+          }
+          
+          const storedUser = getStoredUser();
+          
+          if (storedUser) {
+            if (!storedUser.id || !storedUser.email || !storedUser.username) {
+              throw new Error('Ungültiges Benutzerdatenformat');
+            }
+            
+            setUser(storedUser);
+            
+            if (!userKeyExists(storedUser.email)) {
+              throw new Error('Authentifizierungsschlüssel nicht gefunden');
+            }
+            
+            updateSessionActivity();
+          }
+        })(),
+        timeoutPromise
+      ]);
     } catch (error) {
-      console.error('Authentication check failed:', error);
+      console.error('Authentifizierungsprüfung fehlgeschlagen:', error);
       setAuthError(error as Error);
       setUser(null);
       localStorage.removeItem('user');
@@ -65,16 +72,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    // Check auth on initialization
-    checkAuth();
+    // Authentifizierung beim Start prüfen
+    const initAuth = async () => {
+      await checkAuth();
+    };
     
-    // Set up interval to periodically check auth status (every 5 minutes)
+    initAuth();
+    
+    // Interval für regelmäßige Aktivitätsprüfung (alle 10 Minuten statt 5)
     const authCheckInterval = setInterval(() => {
       if (user) {
-        // Only update session activity if user is logged in
+        // Nur Sessionaktivität aktualisieren, wenn Benutzer angemeldet ist
         updateSessionActivity();
       }
-    }, 5 * 60 * 1000);
+    }, 10 * 60 * 1000);
     
     return () => {
       clearInterval(authCheckInterval);
@@ -98,10 +109,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     setLoading(true);
     try {
-      const userData = await loginUser(email, password);
+      // Schnellere Login-Timeout-Zeit
+      const loginPromise = loginUser(email, password);
+      const timeoutPromise = new Promise<User>((_, reject) => {
+        setTimeout(() => reject(new Error('Anmeldung hat zu lange gedauert')), 5000);
+      });
+      
+      const userData = await Promise.race([loginPromise, timeoutPromise]);
       setUser(userData);
       
-      // Update session activity
       updateSessionActivity();
       
       toast({
@@ -111,7 +127,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       navigate('/home');
     } catch (error) {
-      console.error('Login failed:', error);
+      console.error('Login fehlgeschlagen:', error);
       toast({
         title: 'Anmeldung fehlgeschlagen',
         description: 'Bitte überprüfen Sie Ihre Anmeldedaten und versuchen Sie es erneut',

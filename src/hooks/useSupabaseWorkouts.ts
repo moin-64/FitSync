@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from './use-toast';
@@ -19,23 +20,43 @@ export function useSupabaseWorkouts() {
 
     setIsLoading(true);
     try {
-      // Check if the user ID is valid before querying
-      // User IDs from auth should be UUIDs for Supabase queries
+      // Überprüfen, ob die Benutzer-ID gültig ist, bevor abgefragt wird
       let userId = user.id;
       
-      // If the user ID doesn't look like a UUID (contains "user-"), return empty data
-      // This prevents the invalid UUID format error
+      // Wenn die Benutzer-ID nicht wie eine UUID aussieht, leere Daten zurückgeben
       if (typeof userId === 'string' && (userId.startsWith('user-') || !isValidUUID(userId))) {
-        console.log('Non-UUID user ID detected, skipping Supabase query:', userId);
+        console.log('Nicht-UUID-Benutzer-ID erkannt, überspringe Supabase-Abfrage:', userId);
+        
+        // Cache-Werte verwenden, wenn verfügbar
+        const cachedWorkouts = localStorage.getItem('cached_workouts');
+        const cachedHistory = localStorage.getItem('cached_history');
+        
+        if (cachedWorkouts && cachedHistory) {
+          try {
+            return {
+              workouts: JSON.parse(cachedWorkouts),
+              history: JSON.parse(cachedHistory)
+            };
+          } catch (e) {
+            console.error('Fehler beim Parsen der Cache-Daten:', e);
+          }
+        }
+        
         return { workouts: [], history: [] };
       }
 
-      // Fetch workouts
+      // Workouts abrufen mit reduziertem Timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      
       const { data: workoutData, error: workoutError } = await supabase
         .from('workouts')
         .select('*')
         .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .abortSignal(controller.signal);
+      
+      clearTimeout(timeoutId);
 
       if (workoutError) throw workoutError;
       
@@ -43,7 +64,7 @@ export function useSupabaseWorkouts() {
         return { workouts: [], history: [] };
       }
 
-      // Fetch exercises for all workouts
+      // Übungen für alle Workouts abrufen
       const workoutIds = workoutData.map(w => w.id);
       const { data: exercisesData, error: exercisesError } = await supabase
         .from('exercises')
@@ -52,7 +73,7 @@ export function useSupabaseWorkouts() {
 
       if (exercisesError) throw exercisesError;
 
-      // Fetch workout history
+      // Workout-Verlauf abrufen
       const { data: historyData, error: historyError } = await supabase
         .from('workout_history')
         .select('*')
@@ -61,7 +82,7 @@ export function useSupabaseWorkouts() {
 
       if (historyError) throw historyError;
 
-      // Transform to app data model
+      // In App-Datenmodell transformieren
       const workouts = workoutData.map(w => {
         const workoutExercises = exercisesData
           .filter(e => e.workout_id === w.id)
@@ -98,21 +119,47 @@ export function useSupabaseWorkouts() {
         performance: h.performance
       })) : [];
 
+      // Ergebnisse im Cache speichern
+      try {
+        localStorage.setItem('cached_workouts', JSON.stringify(workouts));
+        localStorage.setItem('cached_history', JSON.stringify(history));
+      } catch (e) {
+        console.error('Fehler beim Caching der Workout-Daten:', e);
+      }
+
       return { workouts, history };
     } catch (error) {
-      console.error('Error fetching workouts from Supabase:', error);
+      console.error('Fehler beim Abrufen von Workouts aus Supabase:', error);
+      
+      // Versuchen, zwischengespeicherte Daten abzurufen, wenn vorhanden
+      try {
+        const cachedWorkouts = localStorage.getItem('cached_workouts');
+        const cachedHistory = localStorage.getItem('cached_history');
+        
+        if (cachedWorkouts && cachedHistory) {
+          console.log('Verwende zwischengespeicherte Workout-Daten');
+          return {
+            workouts: JSON.parse(cachedWorkouts),
+            history: JSON.parse(cachedHistory)
+          };
+        }
+      } catch (e) {
+        console.error('Fehler beim Abrufen von zwischengespeicherten Daten:', e);
+      }
+      
       toast({
         title: 'Fehler beim Laden',
         description: 'Deine Trainingsdaten konnten nicht geladen werden',
         variant: 'destructive'
       });
+      
       return { workouts: [], history: [] };
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Helper function to validate UUID format
+  // Hilfsfunktion zur Validierung des UUID-Formats
   const isValidUUID = (uuid: string) => {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     return uuidRegex.test(uuid);

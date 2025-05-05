@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -20,7 +19,7 @@ const Login = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Clear error on input change
+  // Fehler bei Eingabeänderung löschen
   useEffect(() => {
     if (errorMessage && (email || password)) {
       setErrorMessage(null);
@@ -30,7 +29,7 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Input validation
+    // Eingabevalidierung
     if (!email.trim() || !password) {
       setErrorMessage('Bitte geben Sie E-Mail und Passwort ein');
       return;
@@ -40,12 +39,10 @@ const Login = () => {
       setIsLoading(true);
       setErrorMessage(null);
       
-      // Attempt login with a timeout to prevent infinite loading state
+      // Verkürzte Timeout-Zeit für schnellere Reaktion
       const loginPromise = login(email.trim(), password);
-      
-      // Race with a timeout to prevent hanging
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Anmeldevorgang hat zu lange gedauert')), 10000);
+        setTimeout(() => reject(new Error('Anmeldevorgang hat zu lange gedauert')), 5000);
       });
       
       await Promise.race([loginPromise, timeoutPromise]);
@@ -71,10 +68,10 @@ const Login = () => {
       setIsRetrying(true);
       setErrorMessage(null);
       
-      // Add timeout for retry to prevent hanging
+      // Verkürzte Timeout-Zeit
       const retryPromise = retryAuth();
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Wiederherstellungsversuch hat zu lange gedauert')), 8000);
+        setTimeout(() => reject(new Error('Wiederherstellungsversuch hat zu lange gedauert')), 4000);
       });
       
       await Promise.race([retryPromise, timeoutPromise]);
@@ -215,7 +212,38 @@ const Login = () => {
               type="button"
               variant="outline"
               className="w-full"
-              onClick={handleRetry}
+              onClick={() => {
+                setIsRetrying(true);
+                setErrorMessage(null);
+                
+                // Verkürzte Timeout-Zeit
+                const retryPromise = retryAuth();
+                const timeoutPromise = new Promise((_, reject) => {
+                  setTimeout(() => reject(new Error('Wiederherstellungsversuch hat zu lange gedauert')), 4000);
+                });
+                
+                Promise.race([retryPromise, timeoutPromise])
+                  .then(() => {
+                    const storedUser = localStorage.getItem('user');
+                    
+                    if (storedUser) {
+                      navigate('/home');
+                      toast({
+                        title: 'Erfolgreich wiederhergestellt',
+                        description: 'Ihre Sitzung wurde erfolgreich wiederhergestellt',
+                      });
+                    } else {
+                      setErrorMessage('Sitzung konnte nicht wiederhergestellt werden');
+                    }
+                  })
+                  .catch((error) => {
+                    console.error('Fehler bei der erneuten Authentifizierung:', error);
+                    setErrorMessage('Die Wiederherstellung der Sitzung ist fehlgeschlagen');
+                  })
+                  .finally(() => {
+                    setIsRetrying(false);
+                  });
+              }}
               disabled={isLoading || isRetrying}
             >
               {isRetrying ? (

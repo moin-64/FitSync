@@ -1,3 +1,5 @@
+
+import { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -7,16 +9,17 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { UserProvider } from "./context/UserContext";
 
-import Welcome from "./pages/Welcome";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import Onboarding from "./pages/Onboarding";
-import Home from "./pages/Home";
-import Profile from "./pages/Profile";
-import CreateWorkout from "./pages/CreateWorkout";
-import ExecuteWorkout from "./pages/ExecuteWorkout";
-import NotFound from "./pages/NotFound";
-import BodyScan from './pages/BodyScan/index';
+// Lazy-loaded Komponenten für bessere Performance
+const Welcome = lazy(() => import("./pages/Welcome"));
+const Login = lazy(() => import("./pages/Login"));
+const Register = lazy(() => import("./pages/Register"));
+const Onboarding = lazy(() => import("./pages/Onboarding"));
+const Home = lazy(() => import("./pages/Home"));
+const Profile = lazy(() => import("./pages/Profile"));
+const CreateWorkout = lazy(() => import("./pages/CreateWorkout"));
+const ExecuteWorkout = lazy(() => import("./pages/ExecuteWorkout"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const BodyScan = lazy(() => import('./pages/BodyScan/index'));
 
 // Verbesserte Komponente für geschützte Routen mit besserer Fehlerbehandlung und Ladeanimation
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -42,14 +45,22 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+// Loading-Fallback für Lazy-Loading
+const LoadingFallback = () => (
+  <div className="min-h-screen flex items-center justify-center">
+    <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+  </div>
+);
+
 // Query-Client mit besseren Standardwerten für die Fehlerbehandlung konfigurieren
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 2,
+      retry: 1, // Reduziert auf einen Wiederholungsversuch
       refetchOnWindowFocus: false,
-      staleTime: 10 * 60 * 1000, // 10 Minuten
-      gcTime: 15 * 60 * 1000, // 15 Minuten
+      staleTime: 5 * 60 * 1000, // 5 Minuten statt 10
+      gcTime: 10 * 60 * 1000, // 10 Minuten statt 15
+      networkMode: 'always',
     },
   },
 });
@@ -62,49 +73,51 @@ const App = () => (
           <TooltipProvider>
             <Toaster />
             <Sonner />
-            <Routes>
-              <Route path="/" element={<Welcome />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              
-              <Route path="/onboarding" element={
-                <ProtectedRoute>
-                  <Onboarding />
-                </ProtectedRoute>
-              } />
-              
-              <Route path="/home" element={
-                <ProtectedRoute>
-                  <Home />
-                </ProtectedRoute>
-              } />
-              
-              <Route path="/profile" element={
-                <ProtectedRoute>
-                  <Profile />
-                </ProtectedRoute>
-              } />
-              
-              <Route path="/create-workout" element={
-                <ProtectedRoute>
-                  <CreateWorkout />
-                </ProtectedRoute>
-              } />
-              
-              <Route path="/workout/:id" element={
-                <ProtectedRoute>
-                  <ExecuteWorkout />
-                </ProtectedRoute>
-              } />
-              
-              <Route path="/bodyscan" element={
-                <ProtectedRoute>
-                  <BodyScan />
-                </ProtectedRoute>
-              } />
-              
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <Suspense fallback={<LoadingFallback />}>
+              <Routes>
+                <Route path="/" element={<Welcome />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                
+                <Route path="/onboarding" element={
+                  <ProtectedRoute>
+                    <Onboarding />
+                  </ProtectedRoute>
+                } />
+                
+                <Route path="/home" element={
+                  <ProtectedRoute>
+                    <Home />
+                  </ProtectedRoute>
+                } />
+                
+                <Route path="/profile" element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                } />
+                
+                <Route path="/create-workout" element={
+                  <ProtectedRoute>
+                    <CreateWorkout />
+                  </ProtectedRoute>
+                } />
+                
+                <Route path="/workout/:id" element={
+                  <ProtectedRoute>
+                    <ExecuteWorkout />
+                  </ProtectedRoute>
+                } />
+                
+                <Route path="/bodyscan" element={
+                  <ProtectedRoute>
+                    <BodyScan />
+                  </ProtectedRoute>
+                } />
+                
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
           </TooltipProvider>
         </UserProvider>
       </AuthProvider>
