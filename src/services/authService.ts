@@ -1,7 +1,17 @@
+
 import { USER_KEY, KEY_PREFIX, USER_DATA_KEY } from '../constants/authConstants';
-import { generateKeyPair } from '../utils/encryption';
+import { generateKeyPair, hashPassword, constantTimeEqual, generateSecureToken } from '../utils/encryption';
 import { User } from '../types/auth';
-import { initializeUserData, decryptUserData } from '../utils/userDataUtils';
+import { initializeUserData } from '../utils/userDataUtils';
+import { saveToStorage, getFromStorage } from '../utils/localStorage';
+
+// Verbessertes Passwort-Hashing mit Salz
+const saltAndHashPassword = async (password: string, salt?: string): Promise<{hash: string, salt: string}> => {
+  const usedSalt = salt || generateSecureToken(16);
+  const combinedPassword = password + usedSalt;
+  const hash = await hashPassword(combinedPassword);
+  return { hash, salt: usedSalt };
+};
 
 // Verbesserte Abruffunktion für gespeicherte Benutzer mit verbesserter Fehlerbehandlung
 export const getStoredUser = (): User | null => {
@@ -28,6 +38,13 @@ export const getStoredUser = (): User | null => {
       return null;
     }
     
+    // XSS-Prävention durch Bereinigung von Benutzereingaben
+    Object.entries(userData).forEach(([key, value]) => {
+      if (typeof value === 'string') {
+        userData[key] = value.replace(/<[^>]*>/g, '');
+      }
+    });
+    
     return userData;
   } catch (error) {
     console.error('Fehler beim Analysieren gespeicherter Benutzerdaten:', error);
@@ -43,9 +60,91 @@ export const userKeyExists = (email: string): boolean => {
   
   try {
     const normalizedEmail = email.toLowerCase().trim();
-    return localStorage.getItem(`${KEY_PREFIX}${normalizedEmail}`) !== null;
+    const keyName = `${KEY_PREFIX}${normalizedEmail}`;
+    return localStorage.getItem(keyName) !== null;
   } catch (error) {
     console.error('Fehler beim Überprüfen des Benutzerschlüssels:', error);
+    return false;
+  }
+};
+
+// Speichern von Benutzeranmeldeinformationen
+const storeUserCredentials = async (email: string, password: string): Promise<void> => {
+  try {
+    const normalizedEmail = email.toLowerCase().trim();
+    const { hash, salt } = await saltAndHashPassword(password);
+    
+    // Hash und Salt für spätere Überprüfung speichern
+    localStorage.setItem(`${KEY_PREFIX}${normalizedEmail}_hash`, hash);
+    localStorage.setItem(`${KEY_PREFIX}${normalizedEmail}_salt`, salt);
+    
+    // Letzte Anmeldung speichern für die Erkennung ungewöhnlicher Aktivitäten
+    localStorage.setItem(`${KEY_PREFIX}${normalizedEmail}_lastLogin`, Date.now().toString());
+    
+    // Fehlgeschlagene Anmeldeversuche zurücksetzen
+    localStorage.removeItem(`${KEY_PREFIX}${normalizedEmail}_failedAttempts`);
+  } catch (error) {
+    console.error('Fehler beim Speichern der Benutzeranmeldeinformationen:', error);
+    throw new Error('Fehler beim Speichern der Benutzerinformationen');
+  }
+};
+
+// Überprüfen von Benutzeranmeldeinformationen mit Schutz vor Brute-Force
+const verifyUserCredentials = async (email: string, password: string): Promise<boolean> => {
+  try {
+    const normalizedEmail = email.toLowerCase().trim();
+    const keyPrefix = `${KEY_PREFIX}${normalizedEmail}`;
+    const storedHash = localStorage.getItem(`${keyPrefix}_hash`);
+    const storedSalt = localStorage.getItem(`${keyPrefix}_salt`);
+    
+    if (!storedHash || !storedSalt) {
+      return false;
+    }
+    
+    // Prüfen auf zu viele fehlgeschlagene Anmeldeversuche
+    const failedAttemptsStr = localStorage.getItem(`${keyPrefix}_failedAttempts`) || '0';
+    const failedAttempts = parseInt(failedAttemptsStr, 10);
+    const lastFailedTimeStr = localStorage.getItem(`${keyPrefix}_lastFailedTime`);
+    
+    // Wenn zu viele fehlerhafte Versuche vorliegen, Zeitsperre prüfen
+    if (failedAttempts >= 5) {
+      if (lastFailedTimeStr) {
+        const lastFailedTime = parseInt(lastFailedTimeStr, 10);
+        const lockoutPeriod = 15 * 60 * 1000; // 15 Minuten Sperre
+        
+        if (Date.now() - lastFailedTime < lockoutPeriod) {
+          throw new Error('Zu viele fehlgeschlagene Anmeldeversuche. Bitte versuchen Sie es später erneut.');
+        } else {
+          // Sperre aufgehoben, Zähler zurücksetzen
+          localStorage.setItem(`${keyPrefix}_failedAttempts`, '0');
+        }
+      }
+    }
+    
+    // Hash des eingegebenen Passworts mit dem gespeicherten Salz generieren
+    const { hash: inputHash } = await saltAndHashPassword(password, storedSalt);
+    
+    // Zeitlich konstanter Vergleich zur Vermeidung von Timing-Angriffen
+    const isValid = constantTimeEqual(inputHash, storedHash);
+    
+    if (isValid) {
+      // Bei erfolgreicher Anmeldung alle Fehlerversuche zurücksetzen
+      localStorage.removeItem(`${keyPrefix}_failedAttempts`);
+      localStorage.removeItem(`${keyPrefix}_lastFailedTime`);
+      localStorage.setItem(`${keyPrefix}_lastLogin`, Date.now().toString());
+    } else {
+      // Fehlgeschlagenen Anmeldeversuch registrieren
+      const newFailedAttempts = failedAttempts + 1;
+      localStorage.setItem(`${keyPrefix}_failedAttempts`, newFailedAttempts.toString());
+      localStorage.setItem(`${keyPrefix}_lastFailedTime`, Date.now().toString());
+    }
+    
+    return isValid;
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('fehlgeschlagene Anmeldeversuche')) {
+      throw error; // Spezifischen Fehler weiterleiten
+    }
+    console.error('Fehler bei der Überprüfung der Anmeldeinformationen:', error);
     return false;
   }
 };
@@ -58,6 +157,15 @@ export const loginUser = async (email: string, password: string): Promise<User> 
   
   const normalizedEmail = email.toLowerCase().trim();
   
+  // Validierungen
+  if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+    throw new Error('Ungültiges E-Mail-Format');
+  }
+  
+  if (password.length < 6) {
+    throw new Error('Das Passwort muss mindestens 6 Zeichen lang sein');
+  }
+  
   // Privaten Schlüssel für diesen Benutzer abrufen
   const privateKey = localStorage.getItem(`${KEY_PREFIX}${normalizedEmail}`);
   
@@ -67,6 +175,13 @@ export const loginUser = async (email: string, password: string): Promise<User> 
   }
   
   try {
+    // Anmeldeinformationen überprüfen
+    const isValidCredentials = await verifyUserCredentials(normalizedEmail, password);
+    
+    if (!isValidCredentials) {
+      throw new Error('Ungültige Anmeldeinformationen');
+    }
+    
     // Schneller Mock-Server-Response mit Benutzerinformationen
     const mockUserResponse = {
       id: `user-${normalizedEmail.split('@')[0]}`,
@@ -83,7 +198,7 @@ export const loginUser = async (email: string, password: string): Promise<User> 
     return mockUserResponse;
   } catch (error) {
     console.error('Login-Fehler:', error);
-    throw new Error('Anmeldung fehlgeschlagen: ' + (error instanceof Error ? error.message : 'Unbekannter Fehler'));
+    throw error instanceof Error ? error : new Error('Anmeldung fehlgeschlagen: Unbekannter Fehler');
   }
 };
 
@@ -93,8 +208,19 @@ export const registerUser = async (username: string, email: string, password: st
     throw new Error('Benutzername, E-Mail und Passwort sind erforderlich');
   }
   
-  if (password.length < 6) {
-    throw new Error('Das Passwort muss mindestens 6 Zeichen lang sein');
+  // Erweiterte Passwortüberprüfung
+  if (password.length < 8) {
+    throw new Error('Das Passwort muss mindestens 8 Zeichen lang sein');
+  }
+  
+  // Passwort-Komplexitätsprüfung
+  const hasUpperCase = /[A-Z]/.test(password);
+  const hasLowerCase = /[a-z]/.test(password);
+  const hasNumbers = /\d/.test(password);
+  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+  
+  if (!(hasUpperCase && hasLowerCase && hasNumbers) || !hasSpecialChar) {
+    throw new Error('Das Passwort muss Groß- und Kleinbuchstaben, Zahlen und mindestens ein Sonderzeichen enthalten');
   }
   
   const normalizedEmail = email.toLowerCase().trim();
@@ -103,6 +229,15 @@ export const registerUser = async (username: string, email: string, password: st
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(normalizedEmail)) {
     throw new Error('Bitte geben Sie eine gültige E-Mail-Adresse ein');
+  }
+  
+  // Username-Validierung
+  if (username.length < 3 || username.length > 20) {
+    throw new Error('Der Benutzername muss zwischen 3 und 20 Zeichen lang sein');
+  }
+  
+  if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+    throw new Error('Der Benutzername darf nur Buchstaben, Zahlen und Unterstriche enthalten');
   }
   
   // Check if user already exists
@@ -144,10 +279,15 @@ export const registerUser = async (username: string, email: string, password: st
     // Store private key (in a real app this would be derived from user password or stored in a secure enclave)
     localStorage.setItem(`${KEY_PREFIX}${normalizedEmail}`, privateKey);
     
-    // Create user data
+    // Save hashed password and salt
+    await storeUserCredentials(normalizedEmail, password);
+    
+    // Create user data with sanitized inputs to prevent XSS
+    const sanitizedUsername = username.replace(/<[^>]*>/g, '');
+    
     const userData = {
       id: `user-${normalizedEmail.split('@')[0]}`,
-      username,
+      username: sanitizedUsername,
       email: normalizedEmail,
       createdAt: new Date().toISOString()
     };
@@ -178,9 +318,17 @@ export const registerUser = async (username: string, email: string, password: st
 // Log out user with complete cleanup and session management
 export const logoutUser = (): void => {
   try {
+    // Aktueller Benutzer für den Logout
+    const currentUser = getStoredUser();
+    
     // Remove authentication data, but not encryption keys
     localStorage.removeItem(USER_KEY);
     localStorage.removeItem('lastActivityTimestamp');
+    
+    // Logout-Zeit für Sicherheit protokollieren
+    if (currentUser && currentUser.email) {
+      localStorage.setItem(`${KEY_PREFIX}${currentUser.email}_lastLogout`, Date.now().toString());
+    }
     
     // Clear session cookies (if present)
     document.cookie.split(';').forEach(cookie => {
@@ -190,13 +338,16 @@ export const logoutUser = (): void => {
       }
     });
     
+    // In-Memory Cache löschen
+    saveToStorage('userData_backup', null);
+    
     console.log('User successfully logged out');
   } catch (error) {
     console.error('Logout error:', error);
   }
 };
 
-// Sitzung auf Ablaufzeit prüfen
+// Sitzung auf Ablaufzeit prüfen mit zusätzlichen Sicherheitsmerkmalen
 export const isSessionValid = (): boolean => {
   try {
     const lastActivity = localStorage.getItem('lastActivityTimestamp');
@@ -211,7 +362,16 @@ export const isSessionValid = (): boolean => {
       return false;
     }
     
-    const sessionTimeout = 24 * 60 * 60 * 1000; // Auf 24 Stunden erhöhen für bessere Benutzererfahrung
+    // Browser-Fingerprint prüfen, um Session-Hijacking zu verhindern
+    const storedFingerprint = localStorage.getItem('browser_fingerprint');
+    const currentFingerprint = generateBrowserFingerprint();
+    
+    if (!storedFingerprint || storedFingerprint !== currentFingerprint) {
+      console.warn('Möglicher Session-Hijacking-Versuch: Browser-Fingerprint hat sich geändert');
+      return false;
+    }
+    
+    const sessionTimeout = 24 * 60 * 60 * 1000; // 24 Stunden für bessere Benutzererfahrung
     
     return now - lastActivityTime < sessionTimeout;
   } catch (error) {
@@ -220,11 +380,51 @@ export const isSessionValid = (): boolean => {
   }
 };
 
-// Sitzungsaktivität aktualisieren
+// Sitzungsaktivität aktualisieren mit verbesserter Sicherheit
 export const updateSessionActivity = (): void => {
   try {
     localStorage.setItem('lastActivityTimestamp', Date.now().toString());
+    
+    // Browser-Fingerprint speichern
+    const fingerprint = generateBrowserFingerprint();
+    localStorage.setItem('browser_fingerprint', fingerprint);
   } catch (error) {
     console.error('Fehler beim Aktualisieren der Sitzungsaktivität:', error);
   }
+};
+
+// Einfachen Browser-Fingerprint generieren
+const generateBrowserFingerprint = (): string => {
+  const components = [
+    navigator.userAgent,
+    navigator.language,
+    screen.colorDepth,
+    `${screen.width}x${screen.height}`,
+    new Date().getTimezoneOffset()
+  ];
+  
+  return components.join('|');
+};
+
+// CSRF-Token für Formulare generieren
+export const generateCSRFToken = (): string => {
+  const token = generateSecureToken();
+  localStorage.setItem('csrf_token', token);
+  return token;
+};
+
+// CSRF-Token validieren
+export const validateCSRFToken = (token: string): boolean => {
+  const storedToken = localStorage.getItem('csrf_token');
+  if (!storedToken) return false;
+  
+  const isValid = constantTimeEqual(token, storedToken);
+  
+  // Token nach Validierung rotieren
+  if (isValid) {
+    localStorage.removeItem('csrf_token');
+    generateCSRFToken(); // Neuen Token generieren
+  }
+  
+  return isValid;
 };

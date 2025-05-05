@@ -8,11 +8,11 @@
  */
 export const generateKeyPair = async (): Promise<{ publicKey: string; privateKey: string }> => {
   try {
-    // Generate an RSA key pair
+    // Generate an RSA key pair with stronger key length (3072 bits instead of 2048)
     const keyPair = await window.crypto.subtle.generateKey(
       {
         name: "RSA-OAEP",
-        modulusLength: 2048,
+        modulusLength: 3072, // Upgraded from 2048 for better security
         publicExponent: new Uint8Array([1, 0, 1]),
         hash: "SHA-256",
       },
@@ -88,6 +88,23 @@ export const generateDataKey = async (): Promise<string> => {
 };
 
 /**
+ * Securely hashes a password for secure storage or validation
+ * @param password The password to hash
+ * @returns A promise that resolves to the hashed password
+ */
+export const hashPassword = async (password: string): Promise<string> => {
+  // Convert password string to buffer
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  
+  // Hash the password using SHA-256
+  const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
+  
+  // Convert to base64 string
+  return bufferToBase64(hashBuffer);
+};
+
+/**
  * Encrypts user data with the provided public key
  * @param data The data to encrypt
  * @param publicKeyString The public key as a base64 string
@@ -136,12 +153,16 @@ export const encryptData = async (data: string, publicKeyString: string): Promis
       ["encrypt"]
     );
     
+    // Add salt for additional security
+    const salt = window.crypto.getRandomValues(new Uint8Array(16));
+    
     // Encrypt the actual data with AES-GCM
     const dataBuffer = new TextEncoder().encode(data);
     const encryptedData = await window.crypto.subtle.encrypt(
       {
         name: "AES-GCM",
         iv,
+        additionalData: salt // Add salt as additional authenticated data
       },
       aesKey,
       dataBuffer
@@ -151,8 +172,9 @@ export const encryptData = async (data: string, publicKeyString: string): Promis
     const result = {
       encryptedDataKey: bufferToBase64(encryptedDataKey),
       iv: bufferToBase64(iv),
+      salt: bufferToBase64(salt),
       encryptedData: bufferToBase64(encryptedData),
-      version: '1.1', // Added version tracking for future compatibility
+      version: '1.2', // Updated version tracking
     };
     
     // Return as JSON string
@@ -175,7 +197,9 @@ export const decryptData = async (encryptedPackage: string, privateKeyString: st
     const {
       encryptedDataKey,
       iv,
+      salt,
       encryptedData,
+      version
     } = JSON.parse(encryptedPackage);
     
     // Import the private key
@@ -191,7 +215,7 @@ export const decryptData = async (encryptedPackage: string, privateKeyString: st
       ["decrypt"]
     );
     
-    // Decrypt the data key with retries
+    // Decrypt the data key with retries and improved error handling
     let dataKeyBuffer;
     let retryCount = 0;
     const maxRetries = 3;
@@ -230,11 +254,21 @@ export const decryptData = async (encryptedPackage: string, privateKeyString: st
     // Decrypt the data
     const ivBuffer = base64ToBuffer(iv);
     const encryptedDataBuffer = base64ToBuffer(encryptedData);
+    
+    // Handle both old and new encryption formats
+    const decryptParams: any = {
+      name: "AES-GCM",
+      iv: new Uint8Array(ivBuffer),
+    };
+    
+    // Add additionalData for newer versions
+    if (version >= '1.2' && salt) {
+      const saltBuffer = base64ToBuffer(salt);
+      decryptParams.additionalData = saltBuffer;
+    }
+    
     const decryptedData = await window.crypto.subtle.decrypt(
-      {
-        name: "AES-GCM",
-        iv: new Uint8Array(ivBuffer),
-      },
+      decryptParams,
       aesKey,
       encryptedDataBuffer
     );
@@ -245,4 +279,33 @@ export const decryptData = async (encryptedPackage: string, privateKeyString: st
     console.error("Decryption error:", error);
     throw new Error("Failed to decrypt data");
   }
+};
+
+/**
+ * Generates a secure random token of specified length
+ * @param length The length of the token in bytes
+ * @returns A secure random token as a base64 string
+ */
+export const generateSecureToken = (length: number = 32): string => {
+  const randomValues = window.crypto.getRandomValues(new Uint8Array(length));
+  return bufferToBase64(randomValues);
+};
+
+/**
+ * Compare two strings in constant time to prevent timing attacks
+ * @param a First string
+ * @param b Second string
+ * @returns Whether the strings are equal
+ */
+export const constantTimeEqual = (a: string, b: string): boolean => {
+  if (a.length !== b.length) {
+    return false;
+  }
+  
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  
+  return result === 0;
 };

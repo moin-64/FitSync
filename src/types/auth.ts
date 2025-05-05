@@ -3,7 +3,7 @@ export interface User {
   id: string;
   username: string;
   email: string;
-  createdAt?: string; // Adding createdAt as an optional property
+  createdAt?: string;
 }
 
 export interface AuthContextType {
@@ -14,4 +14,5 @@ export interface AuthContextType {
   logout: () => void;
   isAuthenticated: boolean;
   retryAuth: () => Promise<void>;
+  validateCSRF: (token: string) => boolean;  // Neue Funktion für CSRF-Token-Validierung
 }
