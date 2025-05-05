@@ -10,7 +10,8 @@ import { Dumbbell, PlusSquare, Camera, LogOut, UserCircle } from 'lucide-react';
 import ProblemBar from '@/components/ProblemBar';
 import WorkoutCard from '@/components/WorkoutCard';
 import WorkoutScanner from '@/components/WorkoutScanner';
-import { Workout } from '@/types/user'; // Added import
+import CalorieTracker from '@/components/CalorieTracker';
+import { Workout } from '@/types/user';
 
 const Home = () => {
   const { profile, workouts, loading, deleteWorkout } = useUser();
@@ -156,6 +157,11 @@ const Home = () => {
           </div>
         </section>
         
+        <ProblemBar onLimitationAdded={handleLimitationAdded} />
+        
+        {/* Add the calorie tracker component here */}
+        <CalorieTracker />
+        
         {savedWorkouts.length > 0 && (
           <section>
             <h2 className="text-xl font-bold mb-4">Saved Workouts</h2>
@@ -177,8 +183,6 @@ const Home = () => {
           </section>
         )}
       </main>
-      
-      <ProblemBar onLimitationAdded={handleLimitationAdded} />
     </div>
   );
 };
