@@ -1,4 +1,3 @@
-
 import { Rank } from '../../rankingUtils';
 import { determineWeight } from '../../weightCalculationUtils';
 import { 
@@ -16,12 +15,12 @@ import { supabase } from '@/integrations/supabase/client';
 // Enhanced AI workout generation using OpenRouter API via Supabase Edge Function
 export const generateAIWorkout = async (
   limitations: string[] = [], 
-  rank: Rank = 'Beginner',
+  rank: Rank = Rank.BEGINNER,
   maxWeights: Record<string, number> = {}
 ) => {
   // Ensure rank is a valid Rank type
-  if (!['Beginner', 'Intermediate', 'Advanced', 'Expert', 'Master'].includes(rank)) {
-    rank = 'Beginner';
+  if (!Object.values(Rank).includes(rank)) {
+    rank = Rank.BEGINNER;
   }
 
   try {

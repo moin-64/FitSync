@@ -1,4 +1,3 @@
-
 import { Rank } from './rankingUtils';
 
 // Helper function to determine weight based on rank and exercise
@@ -10,11 +9,11 @@ export const determineWeight = (
 ): number => {
   // Base weights by rank (in kg)
   const baseWeightsByRank: Record<Rank, number> = {
-    'Beginner': 10,
-    'Intermediate': 25,
-    'Advanced': 45,
-    'Expert': 70,
-    'Master': 100
+    [Rank.BEGINNER]: 10,
+    [Rank.INTERMEDIATE]: 25,
+    [Rank.ADVANCED]: 45,
+    [Rank.EXPERT]: 70,
+    [Rank.ELITE]: 100
   };
 
   // Exercise-specific modifiers

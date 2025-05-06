@@ -34,7 +34,8 @@ export const useWorkoutCreation = (state: LocationState | undefined) => {
           // Add a short delay to show loading state
           await new Promise(resolve => setTimeout(resolve, 800));
           
-          const experienceLevel: Rank = (profile?.experienceLevel as Rank) || 'Beginner';
+          // Convert string to Rank enum to ensure type safety
+          const experienceLevel = profile?.experienceLevel as Rank || Rank.BEGINNER;
           
           console.log('Generating workout for experience level:', experienceLevel);
           console.log('User limitations:', profile?.limitations || []);
@@ -205,7 +206,8 @@ export const useWorkoutCreation = (state: LocationState | undefined) => {
       setGenerationAttempts(0);
       
       // Reset state as if we're starting fresh
-      const experienceLevel: Rank = (profile?.experienceLevel as Rank) || 'Beginner';
+      // Convert string to Rank enum to ensure type safety
+      const experienceLevel = profile?.experienceLevel as Rank || Rank.BEGINNER;
       const exerciseWeights = getUserMaxWeights(workouts || []);
       
       try {

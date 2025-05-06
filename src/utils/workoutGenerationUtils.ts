@@ -19,12 +19,12 @@ import { useToast } from '@/hooks/use-toast';
 // Enhanced AI workout generation using OpenRouter API via Supabase Edge Function
 export const generateAIWorkout = async (
   limitations: string[] = [], 
-  rank: Rank = 'Beginner',
+  rank: Rank = Rank.BEGINNER,
   maxWeights: Record<string, number> = {}
 ) => {
   // Ensure rank is a valid Rank type
-  if (!['Beginner', 'Intermediate', 'Advanced', 'Expert', 'Master'].includes(rank)) {
-    rank = 'Beginner';
+  if (!Object.values(Rank).includes(rank)) {
+    rank = Rank.BEGINNER;
   }
 
   try {

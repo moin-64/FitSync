@@ -85,20 +85,24 @@ const validateUserProfile = (profile: any) => {
   
   // Ensure experienceLevel is a valid Rank
   if (validatedProfile.experienceLevel && typeof validatedProfile.experienceLevel === 'string') {
-    // Capitalize first letter to match Rank type
-    validatedProfile.experienceLevel = validatedProfile.experienceLevel.charAt(0).toUpperCase() + 
-                                     validatedProfile.experienceLevel.slice(1).toLowerCase();
-    // Ensure it's a valid Rank
-    if (!['Beginner', 'Intermediate', 'Advanced', 'Expert', 'Master'].includes(validatedProfile.experienceLevel)) {
-      validatedProfile.experienceLevel = 'Beginner';
+    // Check if the value matches any of the Rank enum values
+    const rankValues = Object.values(Rank);
+    const matchingRank = rankValues.find(r => 
+      r.toLowerCase() === validatedProfile.experienceLevel.toLowerCase()
+    );
+    
+    if (matchingRank) {
+      validatedProfile.experienceLevel = matchingRank;
+    } else {
+      validatedProfile.experienceLevel = Rank.BEGINNER;
     }
   } else {
-    validatedProfile.experienceLevel = 'Beginner';
+    validatedProfile.experienceLevel = Rank.BEGINNER;
   }
   
   // Ensure Rank is properly set
   if (!validatedProfile.rank || typeof validatedProfile.rank !== 'string') {
-    validatedProfile.rank = validatedProfile.experienceLevel || 'Beginner';
+    validatedProfile.rank = validatedProfile.experienceLevel || Rank.BEGINNER;
   }
   
   // Ensure friends and friendRequests exist
