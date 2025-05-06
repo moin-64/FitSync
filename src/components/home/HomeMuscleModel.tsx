@@ -7,7 +7,7 @@ import ModelControls from '@/components/bodyscan/ModelControls';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUser } from '@/context/UserContext';
 import { useAuth } from '@/context/AuthContext';
-import { useSupabaseClient } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
 import useModelControls from '@/hooks/useModelControls';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card } from "@/components/ui/card";
@@ -15,7 +15,6 @@ import { BodyScanData } from '@/types/user';
 
 const HomeMuscleModel = () => {
   const { user } = useAuth();
-  const supabase = useSupabaseClient();
   const [bodyData, setBodyData] = useState<BodyScanData | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -76,7 +75,7 @@ const HomeMuscleModel = () => {
     };
     
     fetchBodyData();
-  }, [user?.id, supabase]);
+  }, [user?.id]);
   
   // Handle click outside to collapse the model
   useEffect(() => {

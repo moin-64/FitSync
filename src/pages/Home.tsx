@@ -178,7 +178,7 @@ const Home = () => {
                   exerciseCount={workout.exercises.length}
                   duration={workout.exercises.reduce((total: number, ex: any) => 
                     total + (ex.duration || 0) + (ex.sets * ex.restBetweenSets), 0) / 60}
-                  type={workout.type}
+                  type={workout.type as any}
                   onStart={handleStartWorkout}
                   onDelete={handleDeleteWorkout}
                 />

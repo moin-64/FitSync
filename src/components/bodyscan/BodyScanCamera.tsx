@@ -1,152 +1,104 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { Camera, X, RefreshCw } from 'lucide-react';
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import useCameraCapture from '@/hooks/useCameraCapture';
+import { Camera, CheckCircle2 } from 'lucide-react';
 
 interface BodyScanCameraProps {
-  videoRef: React.RefObject<HTMLVideoElement>;
-  canvasRef: React.RefObject<HTMLCanvasElement>;
-  onCapture: () => void;
-  instructions: string;
-  muscleGroup?: string;
+  onScanComplete: () => void;
 }
 
-const BodyScanCamera: React.FC<BodyScanCameraProps> = ({ 
-  videoRef, 
-  canvasRef, 
-  onCapture, 
-  instructions,
-  muscleGroup
-}) => {
-  const [error, setError] = useState<string | null>(null);
-  const { captureImage, startCamera, stopCamera, cameraReady } = useCameraCapture({ videoRef, canvasRef });
-  const [isCapturing, setIsCapturing] = useState(false);
+const BodyScanCamera: React.FC<BodyScanCameraProps> = ({ onScanComplete }) => {
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanProgress, setScanProgress] = useState(0);
   
-  // Starte die Kamera beim Mounten der Komponente
+  // Start scanning process
+  const handleStartScan = () => {
+    setIsScanning(true);
+    setScanProgress(0);
+  };
+  
+  // Simulate scan progress
   useEffect(() => {
-    const initCamera = async () => {
-      try {
-        setError(null);
-        const success = await startCamera();
-        if (!success) {
-          setError('Kamera konnte nicht initialisiert werden.');
-        }
-      } catch (err) {
-        console.error('Error initializing camera:', err);
-        setError('Fehler beim Initialisieren der Kamera. Bitte erlaube den Zugriff und lade die Seite neu.');
-      }
-    };
+    let interval: NodeJS.Timeout;
     
-    initCamera();
-    
-    // Cleanup-Funktion zum Stoppen der Kamera beim Unmounten
-    return () => {
-      stopCamera();
-    };
-  }, [startCamera, stopCamera]);
-  
-  const handleRestartCamera = async () => {
-    stopCamera();
-    setError(null);
-    setTimeout(async () => {
-      const success = await startCamera();
-      if (!success) {
-        setError('Kamera konnte nicht neu gestartet werden.');
-      }
-    }, 300);
-  };
-  
-  const handleCapture = () => {
-    if (isCapturing) return; // Verhindere mehrfaches Klicken
-    
-    try {
-      setIsCapturing(true);
-      setError(null);
-      
-      const imageData = captureImage();
-      if (imageData) {
-        onCapture();
-      } else {
-        setError('Fehler beim Erfassen des Bildes. Ist die Kamera bereit?');
-      }
-    } catch (err) {
-      console.error('Error capturing image:', err);
-      setError('Ein Fehler ist aufgetreten. Bitte versuche es erneut.');
-    } finally {
-      setIsCapturing(false);
+    if (isScanning && scanProgress < 100) {
+      interval = setInterval(() => {
+        setScanProgress(prev => {
+          const newProgress = prev + 5;
+          return newProgress;
+        });
+      }, 150);
     }
-  };
+    
+    if (scanProgress >= 100) {
+      setTimeout(() => {
+        setIsScanning(false);
+        onScanComplete();
+      }, 500);
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isScanning, scanProgress, onScanComplete]);
   
   return (
-    <div className="space-y-4">
-      {error && (
-        <Alert variant="destructive">
-          <AlertDescription className="flex items-center justify-between">
-            <span>{error}</span>
-            <Button variant="ghost" size="sm" onClick={handleRestartCamera}>
-              <RefreshCw className="h-4 w-4 mr-1" />
-              Kamera neustarten
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
-      
-      <div className="aspect-[3/4] bg-black rounded-lg overflow-hidden relative">
-        {muscleGroup && (
-          <div className="absolute top-2 left-2 bg-primary/80 text-primary-foreground px-3 py-1 rounded-full text-sm capitalize z-10">
-            {muscleGroup}
-          </div>
-        )}
-        <video 
-          ref={videoRef}
-          autoPlay 
-          playsInline
-          muted 
-          className="w-full h-full object-cover"
-          onError={(e) => {
-            console.error('Video error:', e);
-            setError('Fehler beim Laden des Videostreams.');
-          }}
-        />
-        
-        {/* Silhouette-Guide als Overlay */}
-        <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-          <div className="w-[60%] h-[80%] border-2 border-dashed border-white/40 rounded-full opacity-40"></div>
-        </div>
-        
-        {!cameraReady && !error && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-            <div className="text-center">
-              <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-white">Kamera wird initialisiert...</p>
+    <div className="flex flex-col items-center">
+      <div className="relative w-64 h-64 md:w-80 md:h-80 bg-black/10 rounded-lg mb-4 overflow-hidden">
+        {isScanning ? (
+          <>
+            {/* Scanning animation */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-full h-full relative">
+                {/* Scanner line animation */}
+                <div 
+                  className="absolute left-0 right-0 h-1 bg-primary"
+                  style={{ top: `${scanProgress}%`, boxShadow: '0px 0px 8px rgba(var(--primary), 0.8)' }}
+                ></div>
+                
+                {scanProgress >= 100 && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-green-500/20">
+                    <CheckCircle2 className="w-16 h-16 text-green-500" />
+                  </div>
+                )}
+              </div>
             </div>
+            
+            <div className="absolute bottom-4 left-0 right-0 flex justify-center">
+              <div className="bg-background/80 px-3 py-1 rounded-full">
+                <span className="text-sm font-medium">
+                  {scanProgress < 100 ? `Scanning... ${scanProgress}%` : 'Scan Complete!'}
+                </span>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center">
+            <Camera className="w-12 h-12 mb-2 text-muted-foreground" />
+            <p className="text-center text-muted-foreground">
+              Camera ready for body scan
+            </p>
           </div>
         )}
       </div>
       
-      <div className="text-center">
-        <p className="mb-4 text-sm text-muted-foreground">{instructions}</p>
+      {!isScanning ? (
         <Button 
-          onClick={handleCapture}
-          size="lg"
-          className="min-w-[200px]"
-          disabled={!cameraReady || isCapturing}
+          onClick={handleStartScan} 
+          className="w-full"
+          disabled={isScanning}
         >
-          {isCapturing ? (
-            <>
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-              Verarbeite...
-            </>
-          ) : (
-            <>
-              <Camera className="mr-2 h-5 w-5" />
-              Aufnehmen
-            </>
-          )}
+          <Camera className="mr-2 h-4 w-4" />
+          Begin Scan
         </Button>
-      </div>
+      ) : (
+        <div className="w-full bg-muted rounded-full h-2.5">
+          <div 
+            className="bg-primary h-2.5 rounded-full" 
+            style={{ width: `${scanProgress}%` }}
+          ></div>
+        </div>
+      )}
     </div>
   );
 };
