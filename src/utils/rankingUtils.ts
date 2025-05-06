@@ -1,9 +1,8 @@
-
 // Age categories
 export type AgeCategory = 'youth' | 'adult' | 'senior';
 
-// Rank definitions
-export type Rank = 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert' | 'Master';
+// Import the Rank enum from user.ts for consistency
+import { Rank } from '../types/user';
 
 // Rank requirements by age category and exercise type
 export interface RankRequirement {
@@ -13,37 +12,37 @@ export interface RankRequirement {
 }
 
 // Mapping of rank requirements by age category
-export const rankRequirements: Record<AgeCategory, Record<Rank, RankRequirement>> = {
+export const rankRequirements: Record<AgeCategory, Record<string, RankRequirement>> = {
   youth: {
-    Beginner: { weightLifting: 0, reps: 0, workoutCount: 0 },
-    Intermediate: { weightLifting: 30, reps: 10, workoutCount: 5 },
-    Advanced: { weightLifting: 50, reps: 15, workoutCount: 15 },
-    Expert: { weightLifting: 70, reps: 20, workoutCount: 30 },
-    Master: { weightLifting: 90, reps: 25, workoutCount: 50 },
+    [Rank.BEGINNER]: { weightLifting: 0, reps: 0, workoutCount: 0 },
+    [Rank.INTERMEDIATE]: { weightLifting: 30, reps: 10, workoutCount: 5 },
+    [Rank.ADVANCED]: { weightLifting: 50, reps: 15, workoutCount: 15 },
+    [Rank.EXPERT]: { weightLifting: 70, reps: 20, workoutCount: 30 },
+    [Rank.ELITE]: { weightLifting: 90, reps: 25, workoutCount: 50 },
   },
   adult: {
-    Beginner: { weightLifting: 0, reps: 0, workoutCount: 0 },
-    Intermediate: { weightLifting: 50, reps: 15, workoutCount: 5 },
-    Advanced: { weightLifting: 80, reps: 20, workoutCount: 15 },
-    Expert: { weightLifting: 120, reps: 30, workoutCount: 30 },
-    Master: { weightLifting: 150, reps: 40, workoutCount: 50 },
+    [Rank.BEGINNER]: { weightLifting: 0, reps: 0, workoutCount: 0 },
+    [Rank.INTERMEDIATE]: { weightLifting: 50, reps: 15, workoutCount: 5 },
+    [Rank.ADVANCED]: { weightLifting: 80, reps: 20, workoutCount: 15 },
+    [Rank.EXPERT]: { weightLifting: 120, reps: 30, workoutCount: 30 },
+    [Rank.ELITE]: { weightLifting: 150, reps: 40, workoutCount: 50 },
   },
   senior: {
-    Beginner: { weightLifting: 0, reps: 0, workoutCount: 0 },
-    Intermediate: { weightLifting: 30, reps: 10, workoutCount: 5 },
-    Advanced: { weightLifting: 50, reps: 15, workoutCount: 15 },
-    Expert: { weightLifting: 80, reps: 20, workoutCount: 30 },
-    Master: { weightLifting: 100, reps: 25, workoutCount: 50 },
+    [Rank.BEGINNER]: { weightLifting: 0, reps: 0, workoutCount: 0 },
+    [Rank.INTERMEDIATE]: { weightLifting: 30, reps: 10, workoutCount: 5 },
+    [Rank.ADVANCED]: { weightLifting: 50, reps: 15, workoutCount: 15 },
+    [Rank.EXPERT]: { weightLifting: 80, reps: 20, workoutCount: 30 },
+    [Rank.ELITE]: { weightLifting: 100, reps: 25, workoutCount: 50 },
   },
 };
 
 // Order of ranks for progression
 export const rankProgression: Rank[] = [
-  'Beginner',
-  'Intermediate',
-  'Advanced',
-  'Expert',
-  'Master',
+  Rank.BEGINNER,
+  Rank.INTERMEDIATE,
+  Rank.ADVANCED,
+  Rank.EXPERT,
+  Rank.ELITE,
 ];
 
 // Calculate age from birthdate
@@ -121,7 +120,7 @@ export const calculateEligibleRank = (
 ): Rank => {
   // Ensure current rank is a valid value
   if (!rankProgression.includes(currentRank)) {
-    return 'Beginner';
+    return Rank.BEGINNER;
   }
   
   // Sanity check for unreasonable values
@@ -142,7 +141,7 @@ export const calculateEligibleRank = (
   
   // Safety check for invalid ranks
   if (currentRankIndex === -1) {
-    return 'Beginner';
+    return Rank.BEGINNER;
   }
   
   // Progressive rank check - first check if eligible for highest possible rank

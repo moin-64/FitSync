@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Camera, CheckCircle2, FlipHorizontal, RefreshCw } from 'lucide-react';
@@ -32,7 +31,11 @@ const BodyScanCamera: React.FC<BodyScanCameraProps> = ({
   // Kamera starten, wenn die Komponente geladen wird
   useEffect(() => {
     const initCamera = async () => {
-      await startCamera({ facingMode: cameraFacing });
+      await startCamera({ 
+        facingMode: cameraFacing,
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      });
     };
     
     initCamera();
@@ -41,7 +44,7 @@ const BodyScanCamera: React.FC<BodyScanCameraProps> = ({
     return () => {
       stopCamera();
     };
-  }, [cameraFacing]);
+  }, [cameraFacing, startCamera, stopCamera]);
   
   // Kamera umschalten zwischen Vorder- und Rückseite
   const toggleCamera = async () => {

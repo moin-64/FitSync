@@ -1,16 +1,14 @@
-import { UserData, UserProfile, Friend, FriendRequest, Notification, Workout, WorkoutHistory } from '../types/user';
+import { UserData, UserProfile, Friend, FriendRequest, Notification, Workout, WorkoutHistory, Rank } from '../types/user';
 import { calculateEligibleRank, calculateMaxWeight, calculateMaxReps } from './rankingUtils';
 
 export const defaultUserProfile: UserProfile = {
-  birthdate: null,
-  height: null,
-  weight: null,
-  experienceLevel: null,
+  id: '',
+  username: '',
+  avatar_url: null,
+  fitness_score: 0,
+  experience: 0,
+  rank: Rank.BEGINNER,
   limitations: [],
-  rank: 'Beginner',
-  friends: [],
-  friendRequests: [],
-  notifications: []
 };
 
 export const defaultUserData: UserData = {
@@ -49,7 +47,7 @@ export const updateProfileRank = (userData: UserData): UserProfile => {
   
   // Determine eligible rank with improved calculation
   const eligibleRank = calculateEligibleRank(
-    updatedProfile.rank,
+    updatedProfile.rank as any,
     updatedProfile.birthdate,
     (userData.history || []).length,
     maxWeight,
@@ -58,7 +56,7 @@ export const updateProfileRank = (userData: UserData): UserProfile => {
   
   // Update rank if eligible for promotion
   if (eligibleRank !== updatedProfile.rank) {
-    updatedProfile.rank = eligibleRank;
+    updatedProfile.rank = eligibleRank as any;
   }
   
   return updatedProfile;

@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { User } from '../types/auth';
 import { UserData } from '../types/user';
@@ -192,7 +193,7 @@ export const useUserData = (user: User | null, isAuthenticated: boolean) => {
                   ...e,
                   name: sanitizeInput(e.name),
                   equipment: sanitizeInput(e.equipment),
-                  videoUrl: e.videoUrl ? sanitizeInput(e.videoUrl) : undefined
+                  video_url: e.video_url ? sanitizeInput(e.video_url) : undefined
                 }))
               : []
           }))

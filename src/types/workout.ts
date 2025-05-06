@@ -7,14 +7,14 @@ export interface Exercise {
   duration?: number;
   restBetweenSets: number;
   equipment: string;
-  videoUrl?: string;
-  weight?: number; // Neues Feld für Gewicht
+  video_url?: string;
+  weight?: number;
 }
 
 export interface Workout {
   id: string;
   name: string;
-  type: 'manual' | 'ai' | 'scanned';
+  type: 'manual' | 'ai' | 'scanned' | 'strength' | 'cardio' | 'hybrid' | 'custom';
   exercises: Exercise[];
   createdAt: string;
   completed: boolean;
@@ -25,8 +25,8 @@ export interface WorkoutHistory {
   workoutId: string;
   date: string;
   duration: number;
-  heartRate?: number;
-  caloriesBurned?: number;
-  oxygenSaturation?: number;
+  heart_rate?: number;
+  calories_burned?: number;
+  oxygen_saturation?: number;
   performance: number; // 0-100 Bewertung
 }

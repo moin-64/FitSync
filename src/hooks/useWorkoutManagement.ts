@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { UserData, Workout, WorkoutHistory } from '@/types/user';
 import { updateProfileRank } from '@/utils/userContext.utils';
@@ -16,11 +15,18 @@ export function useWorkoutManagement(
     completeWorkout: completeWorkoutInSupabase
   } = useSupabaseWorkouts();
 
-  const addWorkout = async (workout: Omit<Workout, 'id' | 'createdAt'>): Promise<Workout> => {
+  const addWorkout = async (workout: Omit<Workout, 'id' | 'created_at'>): Promise<Workout> => {
     setIsProcessing(true);
     try {
+      // Convert the workout to the format expected by Supabase
+      const workoutForSupabase = {
+        ...workout,
+        // Ensure the type is one of the allowed values in the workout.ts type
+        type: workout.type as any
+      };
+      
       // Save to Supabase
-      const savedWorkout = await saveWorkoutToSupabase(workout);
+      const savedWorkout = await saveWorkoutToSupabase(workoutForSupabase as any);
       
       if (!savedWorkout) {
         throw new Error('Failed to save workout to Supabase');
@@ -43,8 +49,15 @@ export function useWorkoutManagement(
   const updateWorkout = async (id: string, data: Partial<Workout>) => {
     setIsProcessing(true);
     try {
+      // Convert the workout data to the format expected by Supabase
+      const workoutDataForSupabase = {
+        ...data,
+        // Ensure the type is one of the allowed values if it's being updated
+        type: data.type as any
+      };
+      
       // Update in Supabase
-      const success = await updateWorkoutInSupabase(id, data);
+      const success = await updateWorkoutInSupabase(id, workoutDataForSupabase as any);
       
       if (!success) {
         throw new Error('Failed to update workout in Supabase');
@@ -67,33 +80,17 @@ export function useWorkoutManagement(
     }
   };
 
-  const deleteWorkout = async (id: string) => {
-    setIsProcessing(true);
-    try {
-      // Delete from Supabase
-      const success = await deleteWorkoutFromSupabase(id);
-      
-      if (!success) {
-        throw new Error('Failed to delete workout from Supabase');
-      }
-      
-      // Update local state
-      const updatedWorkouts = userData.workouts.filter(w => w.id !== id);
-      const updatedData = { ...userData, workouts: updatedWorkouts };
-      setUserData(updatedData);
-    } catch (error) {
-      console.error('Failed to delete workout:', error);
-      throw error;
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
   const completeWorkout = async (id: string, stats: Omit<WorkoutHistory, 'id' | 'workoutId' | 'date'>) => {
     setIsProcessing(true);
     try {
+      // Ensure the stats object has the required duration property
+      const statsWithRequiredFields = {
+        ...stats,
+        duration: stats.duration || 0, // Default to 0 if not provided
+      };
+      
       // Complete workout in Supabase
-      const success = await completeWorkoutInSupabase(id, stats);
+      const success = await completeWorkoutInSupabase(id, statsWithRequiredFields as any);
       
       if (!success) {
         throw new Error('Failed to complete workout in Supabase');
@@ -127,6 +124,28 @@ export function useWorkoutManagement(
       setUserData(updatedData);
     } catch (error) {
       console.error('Failed to complete workout:', error);
+      throw error;
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const deleteWorkout = async (id: string) => {
+    setIsProcessing(true);
+    try {
+      // Delete from Supabase
+      const success = await deleteWorkoutFromSupabase(id);
+      
+      if (!success) {
+        throw new Error('Failed to delete workout from Supabase');
+      }
+      
+      // Update local state
+      const updatedWorkouts = userData.workouts.filter(w => w.id !== id);
+      const updatedData = { ...userData, workouts: updatedWorkouts };
+      setUserData(updatedData);
+    } catch (error) {
+      console.error('Failed to delete workout:', error);
       throw error;
     } finally {
       setIsProcessing(false);

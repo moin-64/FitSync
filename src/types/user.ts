@@ -124,7 +124,7 @@ export interface WorkoutHistory {
   id: string;
   workoutId: string;
   date: string;
-  duration?: number;
+  duration: number;
   heart_rate?: number;
   calories_burned?: number;
   oxygen_saturation?: number;
