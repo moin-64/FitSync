@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
@@ -159,7 +158,7 @@ const Home = () => {
         
         <ProblemBar onLimitationAdded={handleLimitationAdded} />
         
-        {/* Add the calorie tracker component here */}
+        {/* Calorie tracker positioned between ProblemBar and saved workouts */}
         <CalorieTracker />
         
         {savedWorkouts.length > 0 && (

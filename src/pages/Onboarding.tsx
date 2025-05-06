@@ -1,5 +1,4 @@
-
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { Button } from "@/components/ui/button";
@@ -12,6 +11,7 @@ import { Loader2, Scan, Camera, Check } from 'lucide-react';
 import { Slider } from "@/components/ui/slider";
 import { Rank } from '@/utils/rankingUtils';
 import useCameraCapture from '@/hooks/useCameraCapture';
+import { supabase } from '@/integrations/supabase/client';
 
 const Onboarding = () => {
   const [currentStep, setCurrentStep] = useState(0);
@@ -21,6 +21,16 @@ const Onboarding = () => {
   const [experienceLevel, setExperienceLevel] = useState<Rank>('Beginner');
   const [isLoading, setIsLoading] = useState(false);
   const [bodyScanComplete, setBodyScanComplete] = useState(false);
+  const [bodyData, setBodyData] = useState({
+    bodyFatPercentage: 15.0,
+    muscleMass: 30.5,
+    chestSize: 95,
+    waistSize: 80,
+    hipSize: 90,
+    armSize: 32,
+    legSize: 55
+  });
+  
   const { updateProfile } = useUser();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -30,11 +40,50 @@ const Onboarding = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { captureImage, startCamera, stopCamera, cameraReady } = useCameraCapture({ videoRef, canvasRef });
 
+  // Calculate BMI for body stats estimation
+  useEffect(() => {
+    if (height > 0 && weight > 0) {
+      const bmi = weight / Math.pow(height/100, 2);
+      
+      // Use BMI to estimate other body metrics
+      // This is a very simplified approximation
+      let bodyFat = 0;
+      if (bmi < 18.5) {
+        bodyFat = 10 + (bmi - 16) * 2;
+      } else if (bmi < 25) {
+        bodyFat = 15 + (bmi - 18.5) * 1.5;
+      } else {
+        bodyFat = 25 + (bmi - 25);
+      }
+      
+      // Clamp values to reasonable ranges
+      bodyFat = Math.max(5, Math.min(bodyFat, 40));
+      
+      // Calculate other metrics based on height and weight
+      const muscleMass = weight * (1 - bodyFat/100) * 0.85;
+      const chestSize = Math.round(height * 0.54 * (1 + (bmi - 22) * 0.01));
+      const waistSize = Math.round(height * 0.45 * (1 + (bmi - 22) * 0.015));
+      const hipSize = Math.round(height * 0.51 * (1 + (bmi - 22) * 0.012));
+      const armSize = Math.round(height * 0.18 * (1 + (bmi - 22) * 0.008));
+      const legSize = Math.round(height * 0.31 * (1 + (bmi - 22) * 0.008));
+      
+      setBodyData({
+        bodyFatPercentage: parseFloat(bodyFat.toFixed(1)),
+        muscleMass: parseFloat(muscleMass.toFixed(1)),
+        chestSize,
+        waistSize,
+        hipSize,
+        armSize,
+        legSize
+      });
+    }
+  }, [height, weight]);
+
   const handleSubmit = async () => {
     if (!birthdate) {
       toast({
-        title: 'Missing information',
-        description: 'Please enter your birthdate',
+        title: 'Fehlende Information',
+        description: 'Bitte gib dein Geburtsdatum ein',
         variant: 'destructive',
       });
       return;
@@ -42,12 +91,64 @@ const Onboarding = () => {
     
     try {
       setIsLoading(true);
+      
+      // Update user profile
       await updateProfile({
         birthdate,
         height,
         weight,
         experienceLevel,
       });
+      
+      // Save body scan data to database if scan is complete
+      if (bodyScanComplete) {
+        const { error } = await supabase
+          .from('body_scans')
+          .insert([{
+            user_id: (await supabase.auth.getUser()).data.user?.id,
+            height,
+            weight,
+            body_fat_percentage: bodyData.bodyFatPercentage,
+            muscle_mass: bodyData.muscleMass,
+            chest_size: bodyData.chestSize,
+            waist_size: bodyData.waistSize,
+            hip_size: bodyData.hipSize,
+            arm_size: bodyData.armSize,
+            leg_size: bodyData.legSize
+          }]);
+        
+        if (error) {
+          console.error('Error saving body scan data:', error);
+        }
+      }
+      
+      // Calculate and save nutrition goals
+      if (height > 0 && weight > 0) {
+        try {
+          const response = await fetch(`https://vlvaytsqqlzfprphvgll.supabase.co/functions/v1/nutrition-goals/calculate`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+            },
+            body: JSON.stringify({
+              user_id: (await supabase.auth.getUser()).data.user?.id,
+              weight,
+              height,
+              age: calculateAge(birthdate),
+              gender: 'male', // Default - would ideally be collected in onboarding
+              activityLevel: experienceLevelToActivity(experienceLevel)
+            })
+          });
+          
+          if (!response.ok) {
+            throw new Error(`Failed to calculate nutrition goals: ${response.statusText}`);
+          }
+          
+        } catch (error) {
+          console.error('Error calculating nutrition goals:', error);
+        }
+      }
       
       toast({
         title: 'Profil erstellt',
@@ -61,19 +162,42 @@ const Onboarding = () => {
     } catch (error) {
       console.error('Profile setup failed:', error);
       toast({
-        title: 'Setup failed',
-        description: 'There was a problem setting up your profile',
+        title: 'Setup fehlgeschlagen',
+        description: 'Bei der Einrichtung deines Profils ist ein Problem aufgetreten',
         variant: 'destructive',
       });
       setIsLoading(false);
+    }
+  };
+  
+  // Helper to calculate age from birthdate
+  const calculateAge = (birthdate: string): number => {
+    const today = new Date();
+    const birthDate = new Date(birthdate);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+    }
+    return age;
+  };
+  
+  // Map experience level to activity level for TDEE calculation
+  const experienceLevelToActivity = (level: Rank): string => {
+    switch(level) {
+      case 'Beginner': return 'light';
+      case 'Intermediate': return 'moderate';
+      case 'Advanced': return 'active';
+      case 'Elite': return 'very_active';
+      default: return 'moderate';
     }
   };
 
   const nextStep = () => {
     if (currentStep === 0 && !birthdate) {
       toast({
-        title: 'Missing information',
-        description: 'Please enter your birthdate',
+        title: 'Fehlende Information',
+        description: 'Bitte gib dein Geburtsdatum ein',
         variant: 'destructive',
       });
       return;
@@ -110,7 +234,7 @@ const Onboarding = () => {
       const imageData = captureImage();
       if (imageData) {
         // In a real implementation, we would send this image to our AI analysis service
-        // For now, we'll simulate the scan completion
+        // For now, we'll simulate the scan completion with the previously calculated data
         await new Promise(resolve => setTimeout(resolve, 2000));
         
         setBodyScanComplete(true);
@@ -252,13 +376,46 @@ const Onboarding = () => {
             </div>
             
             {bodyScanComplete ? (
-              <div className="flex flex-col items-center space-y-4">
-                <div className="rounded-full bg-green-100 p-3">
-                  <Check className="h-8 w-8 text-green-500" />
+              <div>
+                <div className="flex flex-col items-center space-y-4 mb-6">
+                  <div className="rounded-full bg-green-100 p-3">
+                    <Check className="h-8 w-8 text-green-500" />
+                  </div>
+                  <div className="text-center">
+                    <h4 className="font-medium">Scan abgeschlossen</h4>
+                    <p className="text-sm text-muted-foreground">Deine Körperdaten wurden erfolgreich erfasst</p>
+                  </div>
                 </div>
-                <div className="text-center">
-                  <h4 className="font-medium">Scan abgeschlossen</h4>
-                  <p className="text-sm text-muted-foreground">Deine Körperdaten wurden erfolgreich erfasst</p>
+                
+                <div className="space-y-4 mt-6 bg-muted/30 p-4 rounded-lg">
+                  <h4 className="font-medium text-center">Analyse Ergebnisse</h4>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Körperfettanteil</p>
+                      <p className="font-medium">{bodyData.bodyFatPercentage}%</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Muskelmasse</p>
+                      <p className="font-medium">{bodyData.muscleMass} kg</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Brustumfang</p>
+                      <p className="font-medium">{bodyData.chestSize} cm</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Taillenumfang</p>
+                      <p className="font-medium">{bodyData.waistSize} cm</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Hüftumfang</p>
+                      <p className="font-medium">{bodyData.hipSize} cm</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Armumfang</p>
+                      <p className="font-medium">{bodyData.armSize} cm</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             ) : (

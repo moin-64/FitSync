@@ -17,7 +17,7 @@ interface CalorieEntry {
   protein: number;
   carbs: number;
   fat: number;
-  createdAt: string;
+  created_at: string;
 }
 
 const CalorieTracker = () => {
@@ -57,8 +57,9 @@ const CalorieTracker = () => {
 
         // Set entries and calculate totals
         if (data) {
-          setEntries(data as CalorieEntry[]);
-          calculateTotals(data as CalorieEntry[]);
+          const typedEntries = data as CalorieEntry[];
+          setEntries(typedEntries);
+          calculateTotals(typedEntries);
         }
 
         // Fetch user's calorie goal
@@ -137,9 +138,9 @@ const CalorieTracker = () => {
 
       if (data) {
         // Add new entry to state
-        const updatedEntries = [...entries, data[0] as CalorieEntry];
-        setEntries(updatedEntries);
-        calculateTotals(updatedEntries);
+        const newEntries = [...entries, data[0] as CalorieEntry];
+        setEntries(newEntries);
+        calculateTotals(newEntries);
 
         toast({
           title: "Eintrag hinzugefügt",
