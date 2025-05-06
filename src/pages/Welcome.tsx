@@ -176,15 +176,19 @@ const Welcome = () => {
         </motion.div>
         
         <motion.div variants={itemVariants}>
-          <Button
-            onClick={handleContinue}
-            className="w-full bg-primary text-primary-foreground hover:bg-primary/90 transition-all btn-ripple"
-            size="lg"
+          {/* Wrap the Button in a motion.div with the animation properties */}
+          <motion.div
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
-            Los geht's
-          </Button>
+            <Button
+              onClick={handleContinue}
+              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 transition-all btn-ripple"
+              size="lg"
+            >
+              Los geht's
+            </Button>
+          </motion.div>
         </motion.div>
       </motion.div>
     </div>
