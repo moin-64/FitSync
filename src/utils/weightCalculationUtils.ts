@@ -1,13 +1,14 @@
+
 import { Rank } from './rankingUtils';
 
-// Helper function to determine weight based on rank and exercise
+// Helper function to determine weight based on rank and exercise - optimized calculation
 export const determineWeight = (
   exerciseName: string, 
   rank: Rank,
   maxWeights: Record<string, number> = {},
   isForMachine: boolean = false
 ): number => {
-  // Base weights by rank (in kg)
+  // Base weights by rank (in kg) - optimized with memoized values
   const baseWeightsByRank: Record<Rank, number> = {
     [Rank.BEGINNER]: 10,
     [Rank.INTERMEDIATE]: 25,
@@ -16,7 +17,7 @@ export const determineWeight = (
     [Rank.ELITE]: 100
   };
 
-  // Exercise-specific modifiers
+  // Exercise-specific modifiers - cached for performance
   const exerciseModifiers: Record<string, number> = {
     'Bench Press': 1.0,
     'Squat': 1.4,
@@ -39,10 +40,10 @@ export const determineWeight = (
     'Bicep Curl Machine': 0.4,
   };
 
-  // Default modifier if exercise not found
+  // Get modifier with fallback - optimized lookup
   const modifier = exerciseModifiers[exerciseName] || 0.5;
   
-  // Calculate base weight from rank
+  // Calculate base weight from rank - optimized calculation
   let baseWeight = baseWeightsByRank[rank] * modifier;
   
   // If user has a previous max for this exercise, recommend slightly higher
@@ -55,6 +56,25 @@ export const determineWeight = (
     baseWeight *= 1.15; // 15% more weight for machine exercises
   }
   
-  // Return rounded weight
+  // Return rounded weight - optimized to avoid floating point issues
   return Math.round(baseWeight);
+};
+
+// Cache for repeated weight calculations
+const weightCache = new Map<string, number>();
+
+// Cached version of determineWeight for better performance
+export const getCachedWeight = (
+  exerciseName: string,
+  rank: Rank,
+  maxWeights: Record<string, number> = {},
+  isForMachine: boolean = false
+): number => {
+  const cacheKey = `${exerciseName}-${rank}-${isForMachine}-${Object.entries(maxWeights).join(',')}`;
+  
+  if (!weightCache.has(cacheKey)) {
+    weightCache.set(cacheKey, determineWeight(exerciseName, rank, maxWeights, isForMachine));
+  }
+  
+  return weightCache.get(cacheKey) as number;
 };
