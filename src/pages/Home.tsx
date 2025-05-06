@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
@@ -10,6 +11,7 @@ import ProblemBar from '@/components/ProblemBar';
 import WorkoutCard from '@/components/WorkoutCard';
 import WorkoutScanner from '@/components/WorkoutScanner';
 import CalorieTracker from '@/components/CalorieTracker';
+import HomeMuscleModel from '@/components/home/HomeMuscleModel';
 import { Workout } from '@/types/user';
 
 const Home = () => {
@@ -79,9 +81,12 @@ const Home = () => {
       
       <header className="glass border-b border-border/30 sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-            FitSync
-          </h1>
+          <div className="flex items-center space-x-4">
+            <HomeMuscleModel />
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+              FitSync
+            </h1>
+          </div>
           
           <div className="flex items-center space-x-2">
             <div className="glass px-3 py-1 rounded-full text-sm font-medium">

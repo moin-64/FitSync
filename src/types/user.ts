@@ -1,54 +1,64 @@
 
-import { Workout, WorkoutHistory, Exercise } from './workout';
-import { FriendRequest, Friend } from './friends';
-import { Notification } from './notifications';
-import { Rank } from '@/utils/rankingUtils';
+export enum Rank {
+  BEGINNER = "Beginner",
+  INTERMEDIATE = "Intermediate",
+  ADVANCED = "Advanced",
+  EXPERT = "Expert",
+  ELITE = "Elite"
+}
 
-export type { Workout, WorkoutHistory, Exercise } from './workout';
-export type { Friend, FriendRequest } from './friends';
-export type { Notification } from './notifications';
-
-export interface UserProfile {
-  birthdate: string | null;
-  height: number | null;
-  weight: number | null;
-  experienceLevel: Rank;
-  limitations: string[];
+export interface ProfileData {
+  id: string;
+  username: string;
+  avatar_url?: string;
   rank: Rank;
-  friends: Friend[];
-  friendRequests: FriendRequest[];
-  notifications?: Notification[];
-  username?: string;
-  id?: string;
+  experience: number;
+  fitness_score: number;
+  limitations: string[];
+  height?: number;
+  weight?: number;
+  bodyFat?: number;
+  created_at?: string;
 }
 
-export interface UserData {
-  profile: UserProfile;
-  workouts: Workout[];
-  history: WorkoutHistory[];
+export interface Exercise {
+  id: string;
+  name: string;
+  sets: number;
+  reps: number;
+  weight?: number;
+  duration?: number;
+  restBetweenSets: number;
+  equipment: string;
+  video_url?: string;
 }
 
-export interface UserContextType {
-  profile: UserProfile;
-  workouts: Workout[];
-  history: WorkoutHistory[];
-  loading: boolean;
-  csrfToken: string;
-  updateProfile: (profile: Partial<UserProfile>) => Promise<void>;
-  addWorkout: (workout: Omit<Workout, 'id' | 'createdAt'>) => Promise<Workout | null>;
-  updateWorkout: (id: string, workout: Partial<Workout>) => Promise<boolean>;
-  deleteWorkout: (id: string) => Promise<boolean>;
-  completeWorkout: (workoutId: string, performance: WorkoutHistory) => Promise<boolean>;
-  addLimitation: (limitation: string) => Promise<boolean>;
-  removeLimitation: (limitation: string) => Promise<boolean>;
-  // Friend functions
-  addFriend: (friendId: string) => Promise<boolean>;
-  acceptFriendRequest: (requestId: string) => Promise<boolean>;
-  declineFriendRequest: (requestId: string) => Promise<boolean>;
-  getFriends: () => Friend[];
-  getFriendRequests: () => FriendRequest[];
-  // Notification functions
-  getNotifications: () => Notification[];
-  markNotificationAsRead: (notificationId: string) => Promise<boolean>;
-  clearNotification: (notificationId: string) => Promise<boolean>;
+export interface Workout {
+  id: string;
+  name: string;
+  exercises: Exercise[];
+  type: 'strength' | 'cardio' | 'hybrid' | 'custom';
+  completed?: boolean;
+  created_at?: string;
+}
+
+export interface MuscleGroupData {
+  size: number;
+  strength: number;
+  development: number;
+}
+
+export interface BodyScanData {
+  age?: number;
+  height?: number;
+  weight?: number;
+  bodyFat?: number;
+  muscleGroups: {
+    chest: MuscleGroupData;
+    back: MuscleGroupData;
+    shoulders: MuscleGroupData;
+    arms: MuscleGroupData;
+    abs: MuscleGroupData;
+    legs: MuscleGroupData;
+  }
 }

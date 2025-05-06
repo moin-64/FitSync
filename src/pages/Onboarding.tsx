@@ -1,544 +1,459 @@
-import React, { useState, useRef, useEffect } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { useUser } from '../context/UserContext';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
-import { Loader2, Scan, Camera, Check } from 'lucide-react';
-import { Slider } from "@/components/ui/slider";
-import { Rank } from '@/utils/rankingUtils';
-import useCameraCapture from '@/hooks/useCameraCapture';
-import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Slider } from '@/components/ui/slider';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardFooter, 
+  CardHeader, 
+  CardTitle 
+} from '@/components/ui/card';
+import { 
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+} from '@/components/ui/form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
+import { Dumbbell, ArrowRight, Heart, Scale } from 'lucide-react';
+import BodyScanCamera from '@/components/bodyscan/BodyScanCamera';
+import BodyScanIntro from '@/components/bodyscan/BodyScanIntro';
+import { Rank } from '@/types/user';
+
+const fitnessLevels = [
+  { level: 'Beginner', description: 'New to fitness, just starting out' },
+  { level: 'Intermediate', description: 'Regular exerciser for 6+ months' },
+  { level: 'Advanced', description: 'Consistent training for 2+ years' }
+];
+
+const onboardingSchema = z.object({
+  height: z.number().min(120).max(240),
+  weight: z.number().min(30).max(300),
+  fitnessLevel: z.string(),
+  fitnessGoals: z.array(z.string()),
+  limitations: z.array(z.string()).optional(),
+});
+
+type OnboardingData = z.infer<typeof onboardingSchema>;
 
 const Onboarding = () => {
-  const [currentStep, setCurrentStep] = useState(0);
-  const [birthdate, setBirthdate] = useState('');
-  const [height, setHeight] = useState(175); // default in cm
-  const [weight, setWeight] = useState(70); // default in kg
-  const [experienceLevel, setExperienceLevel] = useState<Rank>('Beginner');
-  const [isLoading, setIsLoading] = useState(false);
-  const [bodyScanComplete, setBodyScanComplete] = useState(false);
-  const [bodyData, setBodyData] = useState({
-    bodyFatPercentage: 15.0,
-    muscleMass: 30.5,
-    chestSize: 95,
-    waistSize: 80,
-    hipSize: 90,
-    armSize: 32,
-    legSize: 55
-  });
-  
-  const { updateProfile } = useUser();
+  const { user } = useAuth();
+  const { updateProfile, loading } = useUser();
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  // Refs for body scan camera
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { captureImage, startCamera, stopCamera, cameraReady } = useCameraCapture({ videoRef, canvasRef });
-
-  // Calculate BMI for body stats estimation
-  useEffect(() => {
-    if (height > 0 && weight > 0) {
-      const bmi = weight / Math.pow(height/100, 2);
-      
-      // Use BMI to estimate other body metrics
-      // This is a very simplified approximation
-      let bodyFat = 0;
-      if (bmi < 18.5) {
-        bodyFat = 10 + (bmi - 16) * 2;
-      } else if (bmi < 25) {
-        bodyFat = 15 + (bmi - 18.5) * 1.5;
-      } else {
-        bodyFat = 25 + (bmi - 25);
-      }
-      
-      // Clamp values to reasonable ranges
-      bodyFat = Math.max(5, Math.min(bodyFat, 40));
-      
-      // Calculate other metrics based on height and weight
-      const muscleMass = weight * (1 - bodyFat/100) * 0.85;
-      const chestSize = Math.round(height * 0.54 * (1 + (bmi - 22) * 0.01));
-      const waistSize = Math.round(height * 0.45 * (1 + (bmi - 22) * 0.015));
-      const hipSize = Math.round(height * 0.51 * (1 + (bmi - 22) * 0.012));
-      const armSize = Math.round(height * 0.18 * (1 + (bmi - 22) * 0.008));
-      const legSize = Math.round(height * 0.31 * (1 + (bmi - 22) * 0.008));
-      
-      setBodyData({
-        bodyFatPercentage: parseFloat(bodyFat.toFixed(1)),
-        muscleMass: parseFloat(muscleMass.toFixed(1)),
-        chestSize,
-        waistSize,
-        hipSize,
-        armSize,
-        legSize
-      });
-    }
-  }, [height, weight]);
-
-  const handleSubmit = async () => {
-    if (!birthdate) {
-      toast({
-        title: 'Fehlende Information',
-        description: 'Bitte gib dein Geburtsdatum ein',
-        variant: 'destructive',
-      });
-      return;
-    }
-    
-    try {
-      setIsLoading(true);
-      
-      // Update user profile
-      await updateProfile({
-        birthdate,
-        height,
-        weight,
-        experienceLevel,
-      });
-      
-      // Save body scan data to database if scan is complete
-      if (bodyScanComplete) {
-        const { error } = await supabase
-          .from('body_scans')
-          .insert([{
-            user_id: (await supabase.auth.getUser()).data.user?.id,
-            height,
-            weight,
-            body_fat_percentage: bodyData.bodyFatPercentage,
-            muscle_mass: bodyData.muscleMass,
-            chest_size: bodyData.chestSize,
-            waist_size: bodyData.waistSize,
-            hip_size: bodyData.hipSize,
-            arm_size: bodyData.armSize,
-            leg_size: bodyData.legSize
-          }]);
-        
-        if (error) {
-          console.error('Error saving body scan data:', error);
-        }
-      }
-      
-      // Calculate and save nutrition goals
-      if (height > 0 && weight > 0) {
-        try {
-          const response = await fetch(`https://vlvaytsqqlzfprphvgll.supabase.co/functions/v1/nutrition-goals/calculate`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-            },
-            body: JSON.stringify({
-              user_id: (await supabase.auth.getUser()).data.user?.id,
-              weight,
-              height,
-              age: calculateAge(birthdate),
-              gender: 'male', // Default - would ideally be collected in onboarding
-              activityLevel: experienceLevelToActivity(experienceLevel)
-            })
-          });
-          
-          if (!response.ok) {
-            throw new Error(`Failed to calculate nutrition goals: ${response.statusText}`);
-          }
-          
-        } catch (error) {
-          console.error('Error calculating nutrition goals:', error);
-        }
-      }
-      
-      toast({
-        title: 'Profil erstellt',
-        description: 'Dein Profil wurde erfolgreich eingerichtet!',
-      });
-      
-      // Simulate loading to show the user something is happening
-      setTimeout(() => {
-        navigate('/home');
-      }, 1500);
-    } catch (error) {
-      console.error('Profile setup failed:', error);
-      toast({
-        title: 'Setup fehlgeschlagen',
-        description: 'Bei der Einrichtung deines Profils ist ein Problem aufgetreten',
-        variant: 'destructive',
-      });
-      setIsLoading(false);
-    }
-  };
+  const [currentStep, setCurrentStep] = useState(1);
+  const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
+  const [selectedLimitations, setSelectedLimitations] = useState<string[]>([]);
+  const [isScanningBody, setIsScanningBody] = useState(false);
+  const [scanComplete, setScanComplete] = useState(false);
   
-  // Helper to calculate age from birthdate
-  const calculateAge = (birthdate: string): number => {
-    const today = new Date();
-    const birthDate = new Date(birthdate);
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const m = today.getMonth() - birthDate.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-        age--;
-    }
-    return age;
-  };
+  const form = useForm<OnboardingData>({
+    resolver: zodResolver(onboardingSchema),
+    defaultValues: {
+      height: 175,
+      weight: 70,
+      fitnessLevel: 'Beginner',
+      fitnessGoals: [],
+      limitations: [],
+    },
+  });
   
-  // Map experience level to activity level for TDEE calculation
-  const experienceLevelToActivity = (level: Rank): string => {
-    switch(level) {
-      case 'Beginner': return 'light';
-      case 'Intermediate': return 'moderate';
-      case 'Advanced': return 'active';
-      case 'Elite': return 'very_active';
-      default: return 'moderate';
-    }
-  };
-
+  const goals = [
+    'Lose Weight',
+    'Build Muscle',
+    'Improve Endurance',
+    'Increase Strength',
+    'Better Flexibility',
+    'Overall Health'
+  ];
+  
+  const limitations = [
+    'Back Pain',
+    'Knee Problems',
+    'Shoulder Injury',
+    'Limited Mobility',
+    'Heart Condition',
+    'None'
+  ];
+  
   const nextStep = () => {
-    if (currentStep === 0 && !birthdate) {
-      toast({
-        title: 'Fehlende Information',
-        description: 'Bitte gib dein Geburtsdatum ein',
-        variant: 'destructive',
-      });
+    if (currentStep < 4) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+  
+  const prevStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+  
+  const toggleGoal = (goal: string) => {
+    if (selectedGoals.includes(goal)) {
+      setSelectedGoals(selectedGoals.filter(g => g !== goal));
+    } else {
+      setSelectedGoals([...selectedGoals, goal]);
+    }
+  };
+  
+  const toggleLimitation = (limitation: string) => {
+    if (limitation === 'None') {
+      setSelectedLimitations(['None']);
       return;
     }
     
-    // If we're moving to the body scan step, initialize the camera
-    if (currentStep === 2) {
-      setTimeout(() => {
-        startCamera();
-      }, 500);
+    if (selectedLimitations.includes('None')) {
+      setSelectedLimitations([limitation]);
+      return;
     }
     
-    // If we're moving away from the body scan step, stop the camera
-    if (currentStep === 3) {
-      stopCamera();
+    if (selectedLimitations.includes(limitation)) {
+      setSelectedLimitations(selectedLimitations.filter(l => l !== limitation));
+    } else {
+      setSelectedLimitations([...selectedLimitations, limitation]);
     }
-    
-    setCurrentStep(prev => prev + 1);
   };
-
-  const prevStep = () => {
-    // If we're moving away from the body scan step, stop the camera
-    if (currentStep === 3) {
-      stopCamera();
-    }
-    
-    setCurrentStep(prev => prev - 1);
+  
+  const handleStartScan = () => {
+    setIsScanningBody(true);
   };
-
-  const handleBodyScan = async () => {
-    setIsLoading(true);
-    
+  
+  const handleScanComplete = () => {
+    setScanComplete(true);
+    setIsScanningBody(false);
+    setTimeout(() => {
+      nextStep();
+    }, 1500);
+  };
+  
+  const onSubmit = async (values: OnboardingData) => {
     try {
-      const imageData = captureImage();
-      if (imageData) {
-        // In a real implementation, we would send this image to our AI analysis service
-        // For now, we'll simulate the scan completion with the previously calculated data
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        setBodyScanComplete(true);
-        toast({
-          title: 'Bodyscan erfolgreich',
-          description: 'Deine Körperdaten wurden erfasst und analysiert.',
-        });
-      } else {
-        toast({
-          title: 'Scan fehlgeschlagen',
-          description: 'Die Kamera konnte kein klares Bild aufnehmen.',
-          variant: 'destructive',
-        });
+      // Map fitness level to rank enum
+      let userRank: Rank;
+      
+      switch (values.fitnessLevel) {
+        case 'Beginner':
+          userRank = Rank.BEGINNER;
+          break;
+        case 'Intermediate':
+          userRank = Rank.INTERMEDIATE;
+          break;
+        case 'Advanced':
+          userRank = Rank.ADVANCED;
+          break;
+        default:
+          userRank = Rank.BEGINNER;
       }
-    } catch (error) {
-      console.error('Body scan failed:', error);
-      toast({
-        title: 'Scan fehlgeschlagen',
-        description: 'Ein unerwarteter Fehler ist aufgetreten.',
-        variant: 'destructive',
+      
+      // Combine data and update profile
+      await updateProfile({
+        height: values.height,
+        weight: values.weight,
+        rank: userRank,
+        limitations: selectedLimitations.includes('None') ? [] : selectedLimitations,
+        experience: 0,
+        fitness_score: calculateFitnessScore(values, selectedGoals),
       });
-    } finally {
-      setIsLoading(false);
+      
+      toast({
+        title: "Profile Updated",
+        description: "Your profile has been successfully set up!",
+      });
+      
+      navigate('/home');
+    } catch (error) {
+      console.error("Failed to update profile:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update your profile. Please try again.",
+        variant: "destructive",
+      });
     }
   };
-
-  const renderStep = () => {
+  
+  const calculateFitnessScore = (data: OnboardingData, goals: string[]) => {
+    // Simple fitness score calculation based on user inputs
+    let score = 50; // Base score
+    
+    // Adjust based on fitness level
+    if (data.fitnessLevel === 'Intermediate') score += 15;
+    if (data.fitnessLevel === 'Advanced') score += 30;
+    
+    // Adjust based on BMI (simplified)
+    const heightInMeters = data.height / 100;
+    const bmi = data.weight / (heightInMeters * heightInMeters);
+    if (bmi >= 18.5 && bmi <= 24.9) score += 10;
+    
+    // Adjust based on goals
+    if (goals.includes('Overall Health')) score += 5;
+    if (goals.includes('Improve Endurance')) score += 5;
+    
+    // Cap the score at 100
+    return Math.min(score, 100);
+  };
+  
+  if (loading) {
+    return <div className="h-screen flex items-center justify-center">
+      <Skeleton className="h-[300px] w-[300px] rounded-full" />
+    </div>;
+  }
+  
+  const renderStepContent = () => {
     switch (currentStep) {
-      case 0:
-        return (
-          <div className="space-y-4 animate-fade-in">
-            <div className="space-y-2">
-              <Label htmlFor="birthdate">Geburtsdatum</Label>
-              <Input
-                id="birthdate"
-                type="date"
-                value={birthdate}
-                onChange={(e) => setBirthdate(e.target.value)}
-                max={new Date().toISOString().split('T')[0]}
-                disabled={isLoading}
-              />
-            </div>
-          </div>
-        );
       case 1:
         return (
-          <div className="space-y-6 animate-fade-in">
-            <div className="space-y-2">
-              <Label htmlFor="height">Größe (cm)</Label>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>150 cm</span>
-                  <span>200 cm</span>
-                </div>
-                <Slider
-                  id="height"
-                  min={150}
-                  max={200}
-                  step={1}
-                  value={[height]}
-                  onValueChange={(values) => setHeight(values[0])}
-                  disabled={isLoading}
-                />
-                <div className="text-center font-medium text-lg">
-                  {height} cm
-                </div>
-              </div>
-            </div>
+          <CardContent className="space-y-6 px-6">
+            <FormField
+              control={form.control}
+              name="height"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-base">Height (cm)</FormLabel>
+                  <FormControl>
+                    <div className="flex items-center space-x-4">
+                      <Slider
+                        min={120}
+                        max={240}
+                        step={1}
+                        value={[field.value]}
+                        onValueChange={(values) => field.onChange(values[0])}
+                        className="flex-1"
+                      />
+                      <span className="w-12 text-center">{field.value}</span>
+                    </div>
+                  </FormControl>
+                </FormItem>
+              )}
+            />
             
-            <div className="space-y-2 pt-4">
-              <Label htmlFor="weight">Gewicht (kg)</Label>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>40 kg</span>
-                  <span>150 kg</span>
-                </div>
-                <Slider
-                  id="weight"
-                  min={40}
-                  max={150}
-                  step={1}
-                  value={[weight]}
-                  onValueChange={(values) => setWeight(values[0])}
-                  disabled={isLoading}
-                />
-                <div className="text-center font-medium text-lg">
-                  {weight} kg
-                </div>
-              </div>
-            </div>
-          </div>
+            <FormField
+              control={form.control}
+              name="weight"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-base">Weight (kg)</FormLabel>
+                  <FormControl>
+                    <div className="flex items-center space-x-4">
+                      <Slider
+                        min={30}
+                        max={300}
+                        step={1}
+                        value={[field.value]}
+                        onValueChange={(values) => field.onChange(values[0])}
+                        className="flex-1"
+                      />
+                      <span className="w-12 text-center">{field.value}</span>
+                    </div>
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="fitnessLevel"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-base">Fitness Level</FormLabel>
+                  <Select
+                    value={field.value}
+                    onValueChange={field.onChange}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select fitness level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {fitnessLevels.map((level) => (
+                        <SelectItem key={level.level} value={level.level}>
+                          <div>
+                            <div>{level.level}</div>
+                            <div className="text-xs text-muted-foreground">{level.description}</div>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormItem>
+              )}
+            />
+          </CardContent>
         );
       case 2:
         return (
-          <div className="space-y-4 animate-fade-in">
-            <Label htmlFor="experience">Erfahrungslevel</Label>
-            <RadioGroup
-              id="experience"
-              value={experienceLevel}
-              onValueChange={(value: Rank) => setExperienceLevel(value)}
-              className="space-y-3"
-              disabled={isLoading}
-            >
-              <div className="flex items-center space-x-2 glass p-3 rounded-lg transition-all hover:border-primary cursor-pointer">
-                <RadioGroupItem value="Beginner" id="beginner" />
-                <Label htmlFor="beginner" className="flex-1 cursor-pointer">
-                  <div className="font-medium">Anfänger</div>
-                  <div className="text-sm text-muted-foreground">Neu im Fitness oder nach langer Pause zurück</div>
-                </Label>
-              </div>
-              
-              <div className="flex items-center space-x-2 glass p-3 rounded-lg transition-all hover:border-primary cursor-pointer">
-                <RadioGroupItem value="Intermediate" id="intermediate" />
-                <Label htmlFor="intermediate" className="flex-1 cursor-pointer">
-                  <div className="font-medium">Fortgeschritten</div>
-                  <div className="text-sm text-muted-foreground">Regelmäßiges Training seit mehreren Monaten</div>
-                </Label>
-              </div>
-              
-              <div className="flex items-center space-x-2 glass p-3 rounded-lg transition-all hover:border-primary cursor-pointer">
-                <RadioGroupItem value="Advanced" id="advanced" />
-                <Label htmlFor="advanced" className="flex-1 cursor-pointer">
-                  <div className="font-medium">Erfahren</div>
-                  <div className="text-sm text-muted-foreground">Konstantes Training seit Jahren mit guter Form</div>
-                </Label>
-              </div>
-            </RadioGroup>
-          </div>
+          <CardContent className="px-6">
+            <FormLabel className="text-base block mb-4">Fitness Goals (Select all that apply)</FormLabel>
+            <div className="grid grid-cols-2 gap-3">
+              {goals.map((goal) => (
+                <div
+                  key={goal}
+                  onClick={() => toggleGoal(goal)}
+                  className={`p-3 rounded-lg border transition-all cursor-pointer ${
+                    selectedGoals.includes(goal)
+                      ? 'bg-primary/20 border-primary'
+                      : 'hover:bg-muted'
+                  }`}
+                >
+                  {goal}
+                </div>
+              ))}
+            </div>
+            
+            <FormLabel className="text-base block mt-6 mb-4">Physical Limitations (if any)</FormLabel>
+            <div className="grid grid-cols-2 gap-3">
+              {limitations.map((limitation) => (
+                <div
+                  key={limitation}
+                  onClick={() => toggleLimitation(limitation)}
+                  className={`p-3 rounded-lg border transition-all cursor-pointer ${
+                    selectedLimitations.includes(limitation)
+                      ? 'bg-primary/20 border-primary'
+                      : 'hover:bg-muted'
+                  }`}
+                >
+                  {limitation}
+                </div>
+              ))}
+            </div>
+          </CardContent>
         );
       case 3:
         return (
-          <div className="space-y-4 animate-fade-in">
-            <div className="text-center mb-4">
-              <Scan className="h-12 w-12 mx-auto mb-2 text-primary" />
-              <h3 className="text-xl font-bold">Körperscan</h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                Für eine präzise Trainingsanalyse benötigen wir einen Scan deines Körpers
-              </p>
-            </div>
-            
-            {bodyScanComplete ? (
-              <div>
-                <div className="flex flex-col items-center space-y-4 mb-6">
-                  <div className="rounded-full bg-green-100 p-3">
-                    <Check className="h-8 w-8 text-green-500" />
-                  </div>
-                  <div className="text-center">
-                    <h4 className="font-medium">Scan abgeschlossen</h4>
-                    <p className="text-sm text-muted-foreground">Deine Körperdaten wurden erfolgreich erfasst</p>
-                  </div>
-                </div>
-                
-                <div className="space-y-4 mt-6 bg-muted/30 p-4 rounded-lg">
-                  <h4 className="font-medium text-center">Analyse Ergebnisse</h4>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Körperfettanteil</p>
-                      <p className="font-medium">{bodyData.bodyFatPercentage}%</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Muskelmasse</p>
-                      <p className="font-medium">{bodyData.muscleMass} kg</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Brustumfang</p>
-                      <p className="font-medium">{bodyData.chestSize} cm</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Taillenumfang</p>
-                      <p className="font-medium">{bodyData.waistSize} cm</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Hüftumfang</p>
-                      <p className="font-medium">{bodyData.hipSize} cm</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Armumfang</p>
-                      <p className="font-medium">{bodyData.armSize} cm</p>
-                    </div>
-                  </div>
-                </div>
+          <CardContent className="px-6">
+            {isScanningBody ? (
+              <div className="space-y-4">
+                <BodyScanCamera onScanComplete={handleScanComplete} />
               </div>
             ) : (
               <>
-                <div className="relative aspect-[3/4] bg-muted rounded-lg overflow-hidden">
-                  <video 
-                    ref={videoRef}
-                    autoPlay 
-                    playsInline
-                    muted 
-                    className="w-full h-full object-cover"
-                  />
-                  
-                  {/* Silhouette-Guide als Overlay */}
-                  <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                    <div className="w-[60%] h-[80%] border-2 border-dashed border-white/40 rounded-full opacity-40"></div>
-                  </div>
-                  
-                  {!cameraReady && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                      <div className="text-center">
-                        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                        <p className="text-white">Kamera wird initialisiert...</p>
-                      </div>
+                {scanComplete ? (
+                  <div className="flex flex-col items-center justify-center py-10 space-y-4">
+                    <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
+                      <Scale className="h-8 w-8 text-green-600" />
                     </div>
-                  )}
-                </div>
-                
-                <div className="text-center mt-4">
-                  <p className="mb-4 text-sm text-muted-foreground">
-                    Stelle dich vollständig ins Bild. Achte darauf, dass dein ganzer Körper sichtbar ist.
-                  </p>
-                  
-                  <Button 
-                    onClick={handleBodyScan}
-                    size="lg"
-                    className="min-w-[200px]"
-                    disabled={!cameraReady || isLoading}
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Verarbeite...
-                      </>
-                    ) : (
-                      <>
-                        <Camera className="mr-2 h-5 w-5" />
-                        Scan starten
-                      </>
-                    )}
-                  </Button>
-                </div>
+                    <h3 className="text-xl font-medium">Scan Completed!</h3>
+                    <p className="text-center text-muted-foreground">
+                      Your body metrics have been recorded. We'll use this data to customize your experience.
+                    </p>
+                  </div>
+                ) : (
+                  <BodyScanIntro onStartScan={handleStartScan} />
+                )}
               </>
             )}
-            
-            <canvas ref={canvasRef} className="hidden" />
-          </div>
+          </CardContent>
+        );
+      case 4:
+        return (
+          <CardContent className="px-6">
+            <div className="space-y-6 py-8">
+              <div className="flex flex-col items-center justify-center space-y-4">
+                <div className="w-24 h-24 rounded-full bg-primary/20 flex items-center justify-center">
+                  <Heart className="h-12 w-12 text-primary" />
+                </div>
+                <h3 className="text-2xl font-bold text-center">You're All Set!</h3>
+                <p className="text-center text-muted-foreground max-w-md">
+                  We've gathered all the information we need to personalize your fitness journey. Get ready to achieve your goals!
+                </p>
+              </div>
+              
+              <div className="space-y-3 py-4">
+                <div className="flex justify-between items-center py-3 border-b">
+                  <span className="text-muted-foreground">Height</span>
+                  <span className="font-medium">{form.getValues('height')} cm</span>
+                </div>
+                <div className="flex justify-between items-center py-3 border-b">
+                  <span className="text-muted-foreground">Weight</span>
+                  <span className="font-medium">{form.getValues('weight')} kg</span>
+                </div>
+                <div className="flex justify-between items-center py-3 border-b">
+                  <span className="text-muted-foreground">Fitness Level</span>
+                  <span className="font-medium">{form.getValues('fitnessLevel')}</span>
+                </div>
+                <div className="flex justify-between items-center py-3">
+                  <span className="text-muted-foreground">Goals</span>
+                  <span className="font-medium text-right">{selectedGoals.join(', ')}</span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
         );
       default:
         return null;
     }
   };
-
+  
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-      <Card className="glass w-full max-w-md">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <Card className="w-full max-w-lg">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">Dein Profil</CardTitle>
-          <CardDescription className="text-center">
-            Richte dein Fitness-Profil ein, um deine Erfahrung zu personalisieren
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <Dumbbell className="h-6 w-6 text-primary" />
+              <CardTitle className="text-2xl">Setup Your Profile</CardTitle>
+            </div>
+            <div className="text-sm text-muted-foreground">
+              Step {currentStep} of 4
+            </div>
+          </div>
+          <CardDescription>
+            Let's personalize your fitness journey
           </CardDescription>
         </CardHeader>
         
-        <CardContent>
-          <div className="mb-6">
-            <div className="flex justify-between mb-2">
-              {[0, 1, 2, 3].map((step) => (
-                <div
-                  key={step}
-                  className={`w-[23%] h-1 rounded-full ${
-                    step <= currentStep ? 'bg-primary' : 'bg-muted'
-                  }`}
-                />
-              ))}
-            </div>
-            <div className="text-center text-sm text-muted-foreground">
-              Schritt {currentStep + 1} von 4
-            </div>
-          </div>
-          
-          {renderStep()}
-        </CardContent>
-        
-        <CardFooter className="flex justify-between">
-          {currentStep > 0 ? (
-            <Button
-              variant="outline"
-              onClick={prevStep}
-              disabled={isLoading}
-            >
-              Zurück
-            </Button>
-          ) : (
-            <div />
-          )}
-          
-          {currentStep < 3 ? (
-            <Button onClick={nextStep} disabled={isLoading}>
-              Weiter
-            </Button>
-          ) : (
-            <Button onClick={handleSubmit} disabled={isLoading || !bodyScanComplete}>
-              {isLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Einrichtung...
-                </>
-              ) : (
-                'Einrichtung abschließen'
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            {renderStepContent()}
+            
+            <CardFooter className="flex justify-between border-t p-6">
+              {currentStep > 1 && (
+                <Button 
+                  type="button" 
+                  variant="outline"
+                  onClick={prevStep}
+                  disabled={currentStep === 1 || isScanningBody}
+                >
+                  Back
+                </Button>
               )}
-            </Button>
-          )}
-        </CardFooter>
+              
+              {currentStep < 4 ? (
+                <Button 
+                  type="button" 
+                  className={currentStep === 1 ? "w-full" : ""}
+                  onClick={nextStep}
+                  disabled={isScanningBody || (currentStep === 2 && selectedGoals.length === 0)}
+                >
+                  Continue
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              ) : (
+                <Button type="submit" className="w-full">
+                  Complete Setup
+                </Button>
+              )}
+            </CardFooter>
+          </form>
+        </Form>
       </Card>
     </div>
   );
