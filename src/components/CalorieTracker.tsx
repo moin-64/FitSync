@@ -80,22 +80,27 @@ const CalorieTracker = () => {
         }
       } catch (error) {
         console.error('Error fetching calorie data:', error);
+        toast({
+          title: "Fehler beim Laden",
+          description: "Deine Mahlzeiten konnten nicht geladen werden.",
+          variant: "destructive"
+        });
       }
     };
 
-    if (profile.id) {
+    if (profile && profile.id) {
       fetchCalorieData();
     }
-  }, [profile.id]);
+  }, [profile, toast]);
 
   // Calculate nutrition totals
   const calculateTotals = (entries: CalorieEntry[]) => {
     const totals = entries.reduce((acc, entry) => {
       return {
         totalCalories: acc.totalCalories + entry.calories,
-        totalProtein: acc.totalProtein + entry.protein,
-        totalCarbs: acc.totalCarbs + entry.carbs,
-        totalFat: acc.totalFat + entry.fat
+        totalProtein: acc.totalProtein + (entry.protein || 0),
+        totalCarbs: acc.totalCarbs + (entry.carbs || 0),
+        totalFat: acc.totalFat + (entry.fat || 0)
       };
     }, {
       totalCalories: 0,
@@ -112,6 +117,7 @@ const CalorieTracker = () => {
 
   // Add new calorie entry
   const handleAddEntry = async () => {
+    // Validate form data
     if (!newEntry.name || newEntry.calories <= 0) {
       toast({
         title: "Fehlerhafte Eingabe",
@@ -121,30 +127,45 @@ const CalorieTracker = () => {
       return;
     }
 
+    // Prevent negative values
+    const sanitizedEntry = {
+      ...newEntry,
+      calories: Math.max(0, newEntry.calories),
+      protein: Math.max(0, newEntry.protein),
+      carbs: Math.max(0, newEntry.carbs),
+      fat: Math.max(0, newEntry.fat)
+    };
+
     try {
+      // Create the entry in database
       const { data, error } = await supabase
         .from('calorie_entries')
         .insert([{
           user_id: profile.id,
-          name: newEntry.name,
-          calories: newEntry.calories,
-          protein: newEntry.protein,
-          carbs: newEntry.carbs,
-          fat: newEntry.fat
+          name: sanitizedEntry.name,
+          calories: sanitizedEntry.calories,
+          protein: sanitizedEntry.protein,
+          carbs: sanitizedEntry.carbs,
+          fat: sanitizedEntry.fat
         }])
         .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error details:', error);
+        throw error;
+      }
 
-      if (data) {
+      if (data && data.length > 0) {
         // Add new entry to state
-        const newEntries = [...entries, data[0] as CalorieEntry];
+        const newEntryWithId = data[0] as CalorieEntry;
+        const newEntries = [...entries, newEntryWithId];
+        
         setEntries(newEntries);
         calculateTotals(newEntries);
 
         toast({
           title: "Eintrag hinzugefügt",
-          description: `${newEntry.name} mit ${newEntry.calories} Kalorien wurde hinzugefügt.`
+          description: `${sanitizedEntry.name} mit ${sanitizedEntry.calories} Kalorien wurde hinzugefügt.`
         });
 
         // Reset form
@@ -156,12 +177,14 @@ const CalorieTracker = () => {
           fat: 0
         });
         setShowAddForm(false);
+      } else {
+        throw new Error("Keine Daten vom Server erhalten");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding entry:', error);
       toast({
         title: "Fehler",
-        description: "Der Eintrag konnte nicht gespeichert werden.",
+        description: "Der Eintrag konnte nicht gespeichert werden: " + (error.message || "Unbekannter Fehler"),
         variant: "destructive"
       });
     }
@@ -192,7 +215,7 @@ const CalorieTracker = () => {
       </div>
 
       {showAddForm && (
-        <Card className="mb-4">
+        <Card className="mb-4 animate-in fade-in-50 duration-300">
           <CardContent className="pt-4">
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div className="col-span-2">
@@ -211,7 +234,10 @@ const CalorieTracker = () => {
                   type="number" 
                   min="0"
                   value={newEntry.calories || ''}
-                  onChange={(e) => setNewEntry({...newEntry, calories: parseInt(e.target.value) || 0})}
+                  onChange={(e) => setNewEntry({
+                    ...newEntry, 
+                    calories: e.target.value === '' ? 0 : parseInt(e.target.value)
+                  })}
                 />
               </div>
               <div>
@@ -221,7 +247,10 @@ const CalorieTracker = () => {
                   type="number" 
                   min="0"
                   value={newEntry.protein || ''}
-                  onChange={(e) => setNewEntry({...newEntry, protein: parseInt(e.target.value) || 0})}
+                  onChange={(e) => setNewEntry({
+                    ...newEntry, 
+                    protein: e.target.value === '' ? 0 : parseInt(e.target.value)
+                  })}
                 />
               </div>
               <div>
@@ -231,7 +260,10 @@ const CalorieTracker = () => {
                   type="number" 
                   min="0"
                   value={newEntry.carbs || ''}
-                  onChange={(e) => setNewEntry({...newEntry, carbs: parseInt(e.target.value) || 0})}
+                  onChange={(e) => setNewEntry({
+                    ...newEntry, 
+                    carbs: e.target.value === '' ? 0 : parseInt(e.target.value)
+                  })}
                 />
               </div>
               <div>
@@ -241,7 +273,10 @@ const CalorieTracker = () => {
                   type="number" 
                   min="0"
                   value={newEntry.fat || ''}
-                  onChange={(e) => setNewEntry({...newEntry, fat: parseInt(e.target.value) || 0})}
+                  onChange={(e) => setNewEntry({
+                    ...newEntry, 
+                    fat: e.target.value === '' ? 0 : parseInt(e.target.value)
+                  })}
                 />
               </div>
             </div>
@@ -253,22 +288,25 @@ const CalorieTracker = () => {
               >
                 Abbrechen
               </Button>
-              <Button onClick={handleAddEntry}>Hinzufügen</Button>
+              <Button onClick={handleAddEntry} className="relative overflow-hidden group">
+                <span className="absolute inset-0 bg-primary/10 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></span>
+                <span className="relative">Hinzufügen</span>
+              </Button>
             </div>
           </CardContent>
         </Card>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="col-span-1 md:col-span-2">
+        <Card className="col-span-1 md:col-span-2 transition-all duration-300 hover:shadow-md">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg">Heute</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col space-y-2">
-              <div className="w-full bg-muted rounded-full h-4 mb-2">
+              <div className="w-full bg-muted rounded-full h-4 mb-2 overflow-hidden">
                 <div 
-                  className={`h-4 rounded-full ${
+                  className={`h-4 rounded-full transition-all duration-700 ease-out ${
                     dailyStats.totalCalories > dailyStats.calorieGoal 
                       ? 'bg-destructive' 
                       : 'bg-primary'
@@ -298,14 +336,17 @@ const CalorieTracker = () => {
             </div>
 
             {entries.length === 0 ? (
-              <div className="text-center py-6 text-muted-foreground">
+              <div className="text-center py-6 text-muted-foreground animate-pulse">
                 <Utensils className="mx-auto h-8 w-8 mb-2 opacity-50" />
                 <p>Keine Mahlzeiten für heute eingetragen.</p>
               </div>
             ) : (
               <div className="mt-4 space-y-2">
                 {entries.map((entry) => (
-                  <div key={entry.id} className="flex justify-between p-2 bg-muted/30 rounded">
+                  <div 
+                    key={entry.id} 
+                    className="flex justify-between p-2 bg-muted/30 rounded hover:bg-muted/50 transition-all"
+                  >
                     <div className="flex items-center">
                       <Apple className="h-5 w-5 mr-2 text-primary" />
                       <span>{entry.name}</span>
@@ -318,7 +359,7 @@ const CalorieTracker = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="transition-all duration-300 hover:shadow-md">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg">Makronährstoffe</CardTitle>
           </CardHeader>
@@ -335,6 +376,8 @@ const CalorieTracker = () => {
                       outerRadius={70}
                       paddingAngle={2}
                       dataKey="value"
+                      animationBegin={200}
+                      animationDuration={800}
                     >
                       {macroData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
