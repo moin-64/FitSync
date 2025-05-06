@@ -200,7 +200,7 @@ export function useSupabaseWorkouts() {
         duration: e.duration || null,
         rest_between_sets: e.restBetweenSets,
         equipment: e.equipment,
-        video_url: e.videoUrl || null,
+        video_url: e.video_url || null,
         weight: e.weight || null
       }));
 
@@ -220,7 +220,7 @@ export function useSupabaseWorkouts() {
         duration: e.duration || undefined,
         restBetweenSets: e.rest_between_sets,
         equipment: e.equipment,
-        videoUrl: e.video_url || undefined,
+        video_url: e.video_url || undefined,
         weight: e.weight ? Number(e.weight) : undefined
       }));
 
@@ -287,7 +287,7 @@ export function useSupabaseWorkouts() {
                 duration: exercise.duration || null,
                 rest_between_sets: exercise.restBetweenSets,
                 equipment: exercise.equipment,
-                video_url: exercise.videoUrl || null,
+                video_url: exercise.video_url || null,
                 weight: exercise.weight || null
               })
               .eq('id', exercise.id)
@@ -306,7 +306,7 @@ export function useSupabaseWorkouts() {
                 duration: exercise.duration || null,
                 rest_between_sets: exercise.restBetweenSets,
                 equipment: exercise.equipment,
-                video_url: exercise.videoUrl || null,
+                video_url: exercise.video_url || null,
                 weight: exercise.weight || null
               });
             
@@ -381,9 +381,9 @@ export function useSupabaseWorkouts() {
           user_id: user.id,
           workout_id: workoutId,
           duration: stats.duration,
-          heart_rate: stats.heartRate || null,
-          calories_burned: stats.caloriesBurned || null,
-          oxygen_saturation: stats.oxygenSaturation || null,
+          heart_rate: stats.heart_rate || null,
+          calories_burned: stats.calories_burned || null,
+          oxygen_saturation: stats.oxygen_saturation || null,
           performance: stats.performance
         });
 

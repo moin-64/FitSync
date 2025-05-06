@@ -1,4 +1,3 @@
-
 export enum Rank {
   BEGINNER = "Beginner",
   INTERMEDIATE = "Intermediate",
@@ -45,9 +44,9 @@ export interface Workout {
   id: string;
   name: string;
   exercises: Exercise[];
-  type: 'strength' | 'cardio' | 'hybrid' | 'custom' | 'manual' | 'ai' | 'scanned';
+  type: 'manual' | 'ai' | 'scanned' | 'strength' | 'cardio' | 'hybrid' | 'custom';
   completed?: boolean;
-  created_at?: string;
+  createdAt?: string;
 }
 
 export interface MuscleGroupData {
@@ -139,7 +138,7 @@ export interface UserContextType {
   loading: boolean;
   csrfToken: string;
   updateProfile: (data: Partial<UserProfile>) => Promise<void>;
-  addWorkout: (workout: Omit<Workout, 'id' | 'created_at'>) => Promise<Workout>;
+  addWorkout: (workout: Omit<Workout, 'id' | 'createdAt'>) => Promise<Workout>;
   updateWorkout: (id: string, workout: Partial<Workout>) => Promise<boolean>;
   deleteWorkout: (id: string) => Promise<boolean>;
   completeWorkout: (workoutId: string, performance: any) => Promise<boolean>;

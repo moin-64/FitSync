@@ -1,8 +1,15 @@
+
 // Age categories
 export type AgeCategory = 'youth' | 'adult' | 'senior';
 
-// Import the Rank enum from user.ts for consistency
-import { Rank } from '../types/user';
+// Export the Rank enum
+export enum Rank {
+  BEGINNER = "Beginner",
+  INTERMEDIATE = "Intermediate",
+  ADVANCED = "Advanced",
+  EXPERT = "Expert",
+  ELITE = "Elite"
+}
 
 // Rank requirements by age category and exercise type
 export interface RankRequirement {

@@ -8,7 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
 import 'react-circular-progressbar/dist/styles.css';
 import { cn } from "@/lib/utils";
-import { CheckCircle, Clock, Heart, Activity, Fire, AlertTriangle } from 'lucide-react';
+import { CheckCircle, Clock, Heart, Activity, Flame, AlertTriangle } from 'lucide-react';
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -216,7 +216,7 @@ const ExecuteWorkout = () => {
                 <div className="text-center">
                   <p className="text-sm font-medium">Kalorien</p>
                   <div className="flex items-center justify-center">
-                    <Fire className="mr-2 h-4 w-4 text-muted-foreground" />
+                    <Flame className="mr-2 h-4 w-4 text-muted-foreground" />
                     <span>{caloriesBurned.toFixed(0)}</span>
                   </div>
                 </div>
