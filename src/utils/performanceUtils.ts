@@ -175,7 +175,7 @@ interface IdleDeadline {
 
 type IdleRequestCallback = (deadline: IdleDeadline) => void;
 
-// Fix for TypeScript errors - define the Window interface extension once
+// Fix TypeScript errors by defining the Window interface extension properly
 declare global {
   interface Window {
     requestIdleCallback: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
@@ -194,8 +194,7 @@ export const scheduleIdleTask = (
     return window.requestIdleCallback(callback, { timeout });
   } else {
     // Fallback for browsers that don't support requestIdleCallback
-    // Use explicit window.setTimeout to avoid type errors
-    return window.setTimeout(() => {
+    return setTimeout(() => {
       callback({
         didTimeout: false,
         timeRemaining: () => 50
@@ -211,8 +210,8 @@ export const cancelIdleTask = (id: number): void => {
   if ('cancelIdleCallback' in window) {
     window.cancelIdleCallback(id);
   } else {
-    // Use explicit window.clearTimeout to avoid type errors
-    window.clearTimeout(id);
+    // Fallback for browsers that don't support cancelIdleCallback
+    clearTimeout(id);
   }
 };
 
