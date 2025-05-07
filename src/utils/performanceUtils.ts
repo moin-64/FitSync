@@ -1,3 +1,4 @@
+
 // New utility file for performance optimizations
 
 /**
@@ -161,6 +162,26 @@ export const getConnectionSpeed = (): 'slow' | 'medium' | 'fast' => {
   // Default when Network Information API isn't available
   return 'medium';
 };
+
+// Define the IdleRequestCallback interface if it doesn't exist in the TypeScript environment
+interface IdleRequestOptions {
+  timeout: number;
+}
+
+interface IdleDeadline {
+  didTimeout: boolean;
+  timeRemaining: () => number;
+}
+
+type IdleRequestCallback = (deadline: IdleDeadline) => void;
+
+// Declare the requestIdleCallback and cancelIdleCallback if they're not in lib.dom.d.ts
+declare global {
+  interface Window {
+    requestIdleCallback: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
+    cancelIdleCallback: (handle: number) => void;
+  }
+}
 
 /**
  * Add idle callbacks that execute when the browser is not busy
