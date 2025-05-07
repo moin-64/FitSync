@@ -1,4 +1,3 @@
-
 import { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -14,10 +13,9 @@ const Welcome = lazy(() => import("./pages/Welcome"));
 const Login = lazy(() => import("./pages/Login"));
 const Register = lazy(() => import("./pages/Register"));
 
-// Defer non-critical pages
+// Defer non-critical pages - Fix the Onboarding import issue
 const Onboarding = lazy(() => 
   import("./pages/Onboarding").then(module => {
-    // Artificial delay for improved UX - showing loading state is better than flashing content
     return new Promise(resolve => setTimeout(() => resolve(module), 100));
   })
 );

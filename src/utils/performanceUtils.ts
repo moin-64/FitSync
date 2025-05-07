@@ -1,4 +1,3 @@
-
 // New utility file for performance optimizations
 
 /**
@@ -173,7 +172,7 @@ export const scheduleIdleTask = (
   if ('requestIdleCallback' in window) {
     return window.requestIdleCallback(callback, { timeout });
   } else {
-    // Fallback for browsers that don't support requestIdleCallback
+    // Corrected type for setTimeout return value
     return window.setTimeout(() => callback({ didTimeout: false, timeRemaining: () => 50 }), 1);
   }
 };

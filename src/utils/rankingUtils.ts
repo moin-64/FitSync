@@ -1,4 +1,3 @@
-
 // Age categories
 export type AgeCategory = 'youth' | 'adult' | 'senior';
 

@@ -1,4 +1,3 @@
-
 import { encryptData, decryptData } from './encryption';
 import { USER_DATA_KEY } from '../constants/authConstants';
 import { saveToStorage, getFromStorage } from './localStorage';
@@ -173,7 +172,7 @@ const validateUserProfile = (profile: any) => {
     'intermediate': Rank.INTERMEDIATE, 
     'advanced': Rank.ADVANCED,
     'expert': Rank.EXPERT,
-    'master': Rank.MASTER
+    'elite': Rank.ELITE
   };
   
   if (validatedProfile.experienceLevel && typeof validatedProfile.experienceLevel === 'string') {
