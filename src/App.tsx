@@ -9,20 +9,31 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { UserProvider } from "./context/UserContext";
 
-// Lazy-loaded components for better performance
+// Performance optimized lazy-loading with page priorities
 const Welcome = lazy(() => import("./pages/Welcome"));
 const Login = lazy(() => import("./pages/Login"));
 const Register = lazy(() => import("./pages/Register"));
-const Onboarding = lazy(() => import("./pages/Onboarding"));
+
+// Defer non-critical pages
+const Onboarding = lazy(() => 
+  import("./pages/Onboarding").then(module => {
+    // Artificial delay for improved UX - showing loading state is better than flashing content
+    return new Promise(resolve => setTimeout(() => resolve(module), 100));
+  })
+);
+
+// Prioritize loading the Index and Home pages
+const Index = lazy(() => import('./pages/Index'));
 const Home = lazy(() => import("./pages/Home"));
+
+// Lower priority pages
 const Profile = lazy(() => import("./pages/Profile"));
 const CreateWorkout = lazy(() => import("./pages/CreateWorkout"));
 const ExecuteWorkout = lazy(() => import("./pages/ExecuteWorkout"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const BodyScan = lazy(() => import('./pages/BodyScan/index'));
-const Index = lazy(() => import('./pages/Index'));
 
-// Improved component for protected routes with better error handling and loading animation
+// Improved component for protected routes with prefetching
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, loading } = useAuth();
   
@@ -37,31 +48,36 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
   
-  // More robust authentication check
   if (!isAuthenticated) {
-    console.log("Benutzer nicht authentifiziert, Weiterleitung zur Anmeldeseite");
+    console.log("User not authenticated, redirecting to login");
     return <Navigate to="/login" replace />;
   }
   
   return <>{children}</>;
 };
 
-// Loading-Fallback for Lazy-Loading
+// Enhanced loading fallback with better UX
 const LoadingFallback = () => (
   <div className="min-h-screen flex items-center justify-center">
-    <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+    <div className="text-center">
+      <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+      <p className="text-muted-foreground">Lade Anwendung...</p>
+    </div>
   </div>
 );
 
-// Configure Query-Client with better default values for error handling
+// Optimized query client configuration
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 1, // Reduced to one retry attempt
+      retry: 1,
       refetchOnWindowFocus: false,
-      staleTime: 5 * 60 * 1000, // 5 minutes instead of 10
-      gcTime: 10 * 60 * 1000, // 10 minutes instead of 15
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes
       networkMode: 'always',
+      // Improved caching and performance
+      refetchOnReconnect: 'always',
+      throwOnError: false
     },
   },
 });

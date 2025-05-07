@@ -1,10 +1,15 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { User } from '../types/auth';
 import { UserData } from '../types/user';
 import { defaultUserData } from '../utils/userContext.utils';
 import { useSupabaseWorkouts } from './useSupabaseWorkouts';
 import { useToast } from './use-toast';
+
+// Cache timeouts and request limits
+const CACHE_VALIDITY = 60000; // 1 minute
+const MIN_TIME_BETWEEN_FETCHES = 3000; // 3 seconds
+const REQUEST_TIMEOUT = 8000; // 8 seconds
 
 export const useUserData = (user: User | null, isAuthenticated: boolean) => {
   const [userData, setUserData] = useState<UserData>(defaultUserData);
@@ -12,73 +17,64 @@ export const useUserData = (user: User | null, isAuthenticated: boolean) => {
   const [error, setError] = useState<Error | null>(null);
   const [lastFetchTime, setLastFetchTime] = useState<number>(0);
   const [isFetching, setIsFetching] = useState<boolean>(false);
+  const [cacheTimestamp, setCacheTimestamp] = useState<number>(0);
+  
   const { fetchUserWorkouts } = useSupabaseWorkouts();
   const { toast } = useToast();
-  
-  // Caching mechanism to reduce redundant fetches
-  const [cacheTimestamp, setCacheTimestamp] = useState<number>(0);
-  const CACHE_VALIDITY = 60000; // Cache valid for 1 minute
 
-  // Optimierte Funktion zum Laden von Benutzerdaten mit Timeout und Ratenbegrenzung
+  // Optimized loading function with improved caching and error handling
   const loadUserData = useCallback(async (forceRefresh = false) => {
+    // Skip if not authenticated
     if (!isAuthenticated || !user) {
       setLoading(false);
       return;
     }
     
-    // Skip fetching if already in progress
+    // Prevent concurrent fetches
     if (isFetching) {
-      console.log('Bereits beim Laden der Daten, Anfrage übersprungen');
+      console.log('Already fetching data, request skipped');
       return;
     }
 
-    // Check cache validity unless force refresh
+    // Use cache unless force refresh requested
     const now = Date.now();
     if (!forceRefresh && now - cacheTimestamp < CACHE_VALIDITY) {
-      console.log('Verwende zwischengespeicherte Daten', { 
-        cacheAge: (now - cacheTimestamp) / 1000 + 's',
-        validFor: (CACHE_VALIDITY - (now - cacheTimestamp)) / 1000 + 's'
-      });
+      console.log(`Using cached data (valid for ${((CACHE_VALIDITY - (now - cacheTimestamp)) / 1000).toFixed(1)}s)`);
       setLoading(false);
       return;
     }
 
-    // Prüfen auf zu häufige Anfragen (Rate-Limiting)
-    const minTimeBetweenFetches = 3000; // 3 Sekunden zwischen Anfragen
-    
-    if (now - lastFetchTime < minTimeBetweenFetches) {
-      console.log('Zu viele Anfragen in kurzer Zeit, Anfrage verzögert...');
-      await new Promise(resolve => setTimeout(resolve, minTimeBetweenFetches - (now - lastFetchTime)));
+    // Rate limiting
+    if (now - lastFetchTime < MIN_TIME_BETWEEN_FETCHES) {
+      console.log('Rate limiting applied, delaying request...');
+      await new Promise(resolve => setTimeout(resolve, MIN_TIME_BETWEEN_FETCHES - (now - lastFetchTime)));
     }
     
     setIsFetching(true);
     setLoading(true);
     setError(null);
-    setLastFetchTime(now);
+    setLastFetchTime(Date.now());
     
-    // Setzen eines Timeouts für die Datenabfrage
+    // Set request timeout
     let timeoutId: NodeJS.Timeout | null = null;
     const timeoutPromise = new Promise<never>((_, reject) => {
-      timeoutId = setTimeout(() => reject(new Error('Timeout beim Laden der Benutzerdaten')), 8000);
+      timeoutId = setTimeout(() => reject(new Error('Data loading timeout')), REQUEST_TIMEOUT);
     });
 
     try {
-      console.log("Lade Benutzerdaten für Benutzer:", user?.id);
-      
-      // Race zwischen Datenabfrage und Timeout
+      // Race between data fetch and timeout
       const workoutResponse = await Promise.race([
         fetchUserWorkouts(),
         timeoutPromise
       ]);
       
-      // Clear timeout if request succeeded
       if (timeoutId) clearTimeout(timeoutId);
       
       if (!workoutResponse) {
-        throw new Error('Keine Daten vom Server erhalten');
+        throw new Error('No data received from server');
       }
       
-      // Sanitierung und Validierung der empfangenen Daten
+      // Data sanitization and validation
       const sanitizedWorkouts = workoutResponse.workouts?.map(workout => ({
         ...workout,
         name: sanitizeInput(workout.name),
@@ -93,13 +89,13 @@ export const useUserData = (user: User | null, isAuthenticated: boolean) => {
         ...hist
       })) || [];
       
-      // Validierung der Datenintegrität
+      // Data integrity validation
       const hasValidData = validateWorkoutData(sanitizedWorkouts);
       if (!hasValidData) {
-        console.warn('Ungültige oder verdächtige Daten empfangen, verwende vorherige Daten');
+        console.warn('Invalid data received, using previous data');
         toast({
-          title: 'Datenvalidierung fehlgeschlagen',
-          description: 'Es wurden ungültige Daten empfangen. Ihre vorherigen Daten werden verwendet.',
+          title: 'Data validation failed',
+          description: 'Invalid data received. Using previous data.',
           variant: 'destructive'
         });
         setLoading(false);
@@ -116,22 +112,41 @@ export const useUserData = (user: User | null, isAuthenticated: boolean) => {
       setUserData(updatedData);
       setCacheTimestamp(now);
       
-      console.log('Benutzerdaten erfolgreich geladen:', { 
+      // Save to localStorage for offline access
+      try {
+        localStorage.setItem('userData_cache', JSON.stringify({
+          data: updatedData,
+          timestamp: now
+        }));
+      } catch (e) {
+        console.warn('Failed to cache user data:', e);
+      }
+      
+      console.log('User data loaded successfully', { 
         workoutsCount: sanitizedWorkouts.length, 
         historyCount: sanitizedHistory.length 
       });
     } catch (err) {
-      console.error('Fehler beim Laden der Benutzerdaten:', err);
-      setError(err instanceof Error ? err : new Error('Unbekannter Fehler beim Laden der Benutzerdaten'));
+      console.error('Error loading user data:', err);
+      setError(err instanceof Error ? err : new Error('Unknown error loading user data'));
       
-      // Fallback auf zwischengespeicherte Daten, wenn vorhanden
-      if (userData.workouts.length > 0 || userData.history.length > 0) {
-        console.log('Verwende zwischengespeicherte Daten als Fallback');
-        toast({
-          title: 'Fehler beim Laden',
-          description: 'Die neuesten Daten konnten nicht abgerufen werden. Offline-Daten werden verwendet.',
-          variant: 'destructive'
-        });
+      // Try to load from localStorage cache
+      try {
+        const cachedDataJson = localStorage.getItem('userData_cache');
+        if (cachedDataJson) {
+          const cachedData = JSON.parse(cachedDataJson);
+          if (cachedData && cachedData.data) {
+            console.log('Using cached data as fallback');
+            setUserData(cachedData.data);
+            toast({
+              title: 'Using offline data',
+              description: 'Could not connect to server. Using cached data.',
+              variant: 'destructive'
+            });
+          }
+        }
+      } catch (e) {
+        console.error('Failed to retrieve cached data:', e);
       }
     } finally {
       setLoading(false);
@@ -139,18 +154,21 @@ export const useUserData = (user: User | null, isAuthenticated: boolean) => {
     }
   }, [isAuthenticated, user, fetchUserWorkouts, userData, lastFetchTime, cacheTimestamp, toast, isFetching]);
 
-  // Hilfsfunktion zur Validierung der Datenintegrität
+  // Use memo for derived values
+  const hasData = useMemo(() => 
+    userData.workouts.length > 0 || userData.history.length > 0, 
+    [userData.workouts.length, userData.history.length]
+  );
+
+  // Helper functions for data validation
   const validateWorkoutData = (workouts: any[]): boolean => {
     if (!Array.isArray(workouts)) return false;
     
-    // Überprüfen auf verdächtige Daten oder Injektionsversuche
     return !workouts.some(workout => {
       if (typeof workout !== 'object' || workout === null) return true;
       
-      // Überprüfen auf verdächtige Eigenschaftswerte
       if (workout.name && containsSuspiciousPatterns(workout.name)) return true;
       
-      // Überprüfen der Übungen
       if (Array.isArray(workout.exercises)) {
         return workout.exercises.some(exercise => {
           if (typeof exercise !== 'object' || exercise === null) return true;
@@ -165,24 +183,22 @@ export const useUserData = (user: User | null, isAuthenticated: boolean) => {
     });
   };
   
-  // Überprüfung auf verdächtige Muster (XSS, SQL-Injection, etc.)
   const containsSuspiciousPatterns = (str: string): boolean => {
     if (typeof str !== 'string') return false;
     
     const suspiciousPatterns = [
-      /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, // Script-Tags
-      /javascript:/gi, // JavaScript-URLs
-      /on\w+=/gi, // Event-Handler
-      /(\%27)|(\')|(\-\-)|(\%23)|(#)/gi, // SQL-Injection
-      /(\%3C)|<[^>]+>|(\%3E)/gi // HTML-Tags
+      /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
+      /javascript:/gi,
+      /on\w+=/gi,
+      /(\%27)|(\')|(\-\-)|(\%23)|(#)/gi,
+      /(\%3C)|<[^>]+>|(\%3E)/gi
     ];
     
     return suspiciousPatterns.some(pattern => pattern.test(str));
   };
   
-  // Überprüfung auf gültige URLs
   const isValidURL = (url: string): boolean => {
-    if (!url) return true; // Allow empty URLs
+    if (!url) return true;
     
     try {
       const parsedUrl = new URL(url);
@@ -192,28 +208,53 @@ export const useUserData = (user: User | null, isAuthenticated: boolean) => {
     }
   };
   
-  // Sanitieren von Benutzereingaben
   const sanitizeInput = (input: string): string => {
     if (typeof input !== 'string') return '';
     return input
-      .replace(/<[^>]*>/g, '') // Entfernen von HTML-Tags
-      .replace(/javascript:/gi, '') // Entfernen von JavaScript-URLs
+      .replace(/<[^>]*>/g, '')
+      .replace(/javascript:/gi, '')
       .trim();
   };
 
-  // Daten laden, wenn sich der Authentifizierungsstatus ändert
+  // Load data on authentication state change with debouncing
   useEffect(() => {
+    let debounceTimeout: NodeJS.Timeout;
+    
     if (isAuthenticated && user) {
-      console.log("Authentifizierungsstatus geändert, lade Benutzerdaten");
-      loadUserData();
+      // Use debounce to prevent multiple quick loads
+      debounceTimeout = setTimeout(() => {
+        console.log("Loading user data after auth change");
+        loadUserData();
+      }, 300);
     } else {
-      console.log("Benutzer nicht authentifiziert, keine Daten laden");
+      console.log("User not authenticated, skipping data load");
+      setLoading(false);
     }
+    
+    return () => {
+      clearTimeout(debounceTimeout);
+    };
   }, [isAuthenticated, user, loadUserData]);
 
-  // Vereinfachte setUserData-Funktion, da wir die Persistenz in bestimmten Hooks behandeln
-  const updateUserDataState = useCallback(async (newData: UserData) => {
-    // Validierung und Sanitierung der Daten vor dem Update
+  // Try to load cached data on startup for instant UI feedback
+  useEffect(() => {
+    try {
+      const cachedDataJson = localStorage.getItem('userData_cache');
+      if (cachedDataJson && isAuthenticated) {
+        const cachedData = JSON.parse(cachedDataJson);
+        if (cachedData && cachedData.data) {
+          console.log('Using initially cached data while fetching fresh data');
+          setUserData(cachedData.data);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load initial cached data:', e);
+    }
+  }, [isAuthenticated]);
+
+  // Optimized update function with validation
+  const updateUserDataState = useCallback((newData: UserData) => {
+    // Sanitize and validate before update
     const sanitizedData = {
       ...newData,
       profile: {
@@ -239,21 +280,40 @@ export const useUserData = (user: User | null, isAuthenticated: boolean) => {
     };
     
     setUserData(sanitizedData);
-    // Update cache timestamp to avoid unnecessary refetches
     setCacheTimestamp(Date.now());
+    
+    // Update local cache
+    try {
+      localStorage.setItem('userData_cache', JSON.stringify({
+        data: sanitizedData,
+        timestamp: Date.now()
+      }));
+    } catch (e) {
+      console.warn('Failed to update cached user data:', e);
+    }
   }, []);
 
-  // Daten neu laden zur Wiederherstellung nach Fehlern
+  // Force reload function with optimistic UI updates
   const reloadData = useCallback((force = false) => {
-    console.log("Lade Benutzerdaten neu", force ? "(erzwungen)" : "");
+    console.log("Reloading user data", force ? "(forced)" : "");
+    
+    if (force) {
+      // Show toast for better UX during reload
+      toast({
+        title: 'Refreshing data',
+        description: 'Loading the latest data from the server...'
+      });
+    }
+    
     loadUserData(force);
-  }, [loadUserData]);
+  }, [loadUserData, toast]);
 
   return { 
     userData, 
     setUserData: updateUserDataState, 
     loading, 
     error,
-    reloadData
+    reloadData,
+    hasData
   };
 };

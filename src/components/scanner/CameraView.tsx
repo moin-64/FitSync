@@ -1,5 +1,5 @@
 
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Camera, X, RefreshCw } from 'lucide-react';
 import useCameraCapture from '@/hooks/useCameraCapture';
@@ -22,34 +22,45 @@ const CameraView: React.FC<CameraViewProps> = ({ onCancel, onCapture }) => {
     canvasRef
   });
   
-  useEffect(() => {
-    const initCamera = async () => {
-      try {
-        setIsRetrying(true);
-        const result = await startCamera();
-        if (!result) {
-          setError("Die Kamera konnte nicht gestartet werden.");
-        } else {
-          setError(null);
-        }
-      } catch (err) {
-        console.error("Kamerafehler:", err);
-        setError("Fehler beim Zugriff auf die Kamera. Bitte überprüfe deine Berechtigungen.");
-      } finally {
-        setIsRetrying(false);
+  // Optimized camera initialization with retry mechanism
+  const initCamera = useCallback(async () => {
+    try {
+      setIsRetrying(true);
+      const result = await startCamera();
+      if (!result) {
+        setError("Die Kamera konnte nicht gestartet werden.");
+      } else {
+        setError(null);
       }
-    };
-    
+    } catch (err) {
+      console.error("Kamerafehler:", err);
+      setError("Fehler beim Zugriff auf die Kamera. Bitte überprüfe deine Berechtigungen.");
+    } finally {
+      setIsRetrying(false);
+    }
+  }, [startCamera]);
+  
+  // Initial camera setup
+  useEffect(() => {
     initCamera();
     
+    // Cleanup
     return () => {
       stopCamera();
     };
-  }, [startCamera, stopCamera]);
+  }, [initCamera, stopCamera]);
   
-  const handleCapture = () => {
+  // Optimized capture handling
+  const handleCapture = useCallback(() => {
     try {
+      // Use performance.now to measure capture time
+      const startTime = performance.now();
+      
       const imageData = captureImage();
+      
+      const endTime = performance.now();
+      console.log(`Image capture took ${endTime - startTime}ms`);
+      
       if (imageData) {
         onCapture(imageData);
       } else {
@@ -67,13 +78,17 @@ const CameraView: React.FC<CameraViewProps> = ({ onCancel, onCapture }) => {
         variant: "destructive"
       });
     }
-  };
+  }, [captureImage, onCapture, toast]);
   
-  const handleRetry = async () => {
+  const handleRetry = useCallback(async () => {
     setError(null);
     await stopCamera();
-    await startCamera();
-  };
+    
+    // Add a small delay between stopping and starting to ensure hardware has time to reset
+    setTimeout(() => {
+      initCamera();
+    }, 300);
+  }, [stopCamera, initCamera]);
   
   return (
     <div className="space-y-4">
@@ -109,6 +124,7 @@ const CameraView: React.FC<CameraViewProps> = ({ onCancel, onCapture }) => {
               ref={videoRef}
               autoPlay 
               playsInline 
+              muted
               className={`w-full h-full object-cover transition-opacity duration-300 ${cameraReady ? 'opacity-100' : 'opacity-0'}`}
             />
             {!cameraReady && (
@@ -120,6 +136,7 @@ const CameraView: React.FC<CameraViewProps> = ({ onCancel, onCapture }) => {
         )}
       </div>
       
+      {/* Hidden canvas for capturing images */}
       <canvas ref={canvasRef} className="hidden" />
       
       <div className="flex justify-between">
@@ -139,4 +156,4 @@ const CameraView: React.FC<CameraViewProps> = ({ onCancel, onCapture }) => {
   );
 };
 
-export default CameraView;
+export default React.memo(CameraView);

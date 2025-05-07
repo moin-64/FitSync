@@ -1,12 +1,12 @@
 
-import React, { useCallback, memo, useEffect } from 'react';
+import React, { useCallback, memo, useEffect, Suspense, lazy } from 'react';
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { ArrowRight, Dumbbell, Brain, Scan } from "lucide-react";
 import { motion } from 'framer-motion';
 
-// Optimized Feature-Icon component with memoization for better performance
+// Optimized Feature-Icon component with memoization
 const FeatureIcon = memo(({ icon: Icon, text }: { icon: React.ElementType, text: string }) => (
   <div className="flex items-center justify-center space-x-2 text-muted-foreground">
     <Icon className="w-4 h-4" />
@@ -16,7 +16,7 @@ const FeatureIcon = memo(({ icon: Icon, text }: { icon: React.ElementType, text:
 
 FeatureIcon.displayName = 'FeatureIcon';
 
-// Animation variants for staggered animations
+// Animation variants
 const containerVariants = {
   hidden: { opacity: 0, y: 20 },
   visible: {
@@ -45,20 +45,22 @@ const Index = () => {
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   
-  // Redirect authenticated users who have already seen this page
+  // Redirect authenticated users who have already seen this page - optimized logic
   useEffect(() => {
-    const hasVisitedBefore = localStorage.getItem('hasVisitedBefore');
-    if (isAuthenticated && hasVisitedBefore === 'true') {
-      navigate('/home');
-    }
+    if (!isAuthenticated) return;
     
-    // Set flag for future visits
-    if (isAuthenticated) {
+    const hasVisitedBefore = localStorage.getItem('hasVisitedBefore');
+    if (hasVisitedBefore === 'true') {
+      // Using requestAnimationFrame for smoother transitions
+      requestAnimationFrame(() => {
+        navigate('/home');
+      });
+    } else {
       localStorage.setItem('hasVisitedBefore', 'true');
     }
   }, [isAuthenticated, navigate]);
   
-  // Memoized button components for better rendering performance
+  // Memoized button components to prevent unnecessary re-renders
   const AuthenticatedButtons = memo(() => (
     <>
       <Button asChild className="w-full group">
@@ -101,7 +103,7 @@ const Index = () => {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-gray-900 to-gray-800 p-4">
       <motion.div 
-        className="max-w-md w-full bg-card/90 backdrop-blur-lg rounded-lg shadow-lg p-8 text-center"
+        className="max-w-md w-full bg-card/90 backdrop-blur-lg rounded-lg shadow-lg p-8 text-center will-change-transform"
         initial="hidden"
         animate="visible"
         variants={containerVariants}
@@ -147,5 +149,5 @@ const Index = () => {
   );
 };
 
-// Export with React.memo for optimized rendering
+// Export with memo for optimized rendering
 export default memo(Index);
