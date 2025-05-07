@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Camera, CheckCircle2, FlipHorizontal, RefreshCw } from 'lucide-react';
@@ -7,12 +8,14 @@ interface BodyScanCameraProps {
   onScanComplete: (imageData: string | null) => void;
   instructions?: string;
   muscleGroup?: string;
+  isProcessing?: boolean; // Added this prop
 }
 
 const BodyScanCamera: React.FC<BodyScanCameraProps> = ({ 
   onScanComplete, 
   instructions = "Positioniere dich im Bild für den Scan",
-  muscleGroup
+  muscleGroup,
+  isProcessing = false // Default to false
 }) => {
   const [isScanning, setIsScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
@@ -164,6 +167,7 @@ const BodyScanCamera: React.FC<BodyScanCameraProps> = ({
             variant="secondary" 
             className="absolute top-2 right-2 w-8 h-8 rounded-full opacity-80"
             onClick={toggleCamera}
+            disabled={isProcessing}
           >
             <FlipHorizontal className="h-4 w-4" />
           </Button>
@@ -176,7 +180,7 @@ const BodyScanCamera: React.FC<BodyScanCameraProps> = ({
         <Button 
           onClick={handleStartScan} 
           className="w-full"
-          disabled={isScanning || !cameraReady}
+          disabled={isScanning || !cameraReady || isProcessing}
         >
           <Camera className="mr-2 h-4 w-4" />
           Scan starten

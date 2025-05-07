@@ -42,7 +42,7 @@ const BodyScan = () => {
       toast({
         title: "Verarbeitung läuft",
         description: "Bitte warten Sie, bis der aktuelle Schritt abgeschlossen ist.",
-        variant: "warning"
+        variant: "destructive" // Changed from "warning" to "destructive"
       });
       return;
     }
