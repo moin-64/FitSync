@@ -172,8 +172,13 @@ export const scheduleIdleTask = (
   if ('requestIdleCallback' in window) {
     return window.requestIdleCallback(callback, { timeout });
   } else {
-    // Corrected type for setTimeout return value
-    return window.setTimeout(() => callback({ didTimeout: false, timeRemaining: () => 50 }), 1);
+    // Fallback for browsers that don't support requestIdleCallback
+    return window.setTimeout(() => {
+      callback({
+        didTimeout: false,
+        timeRemaining: () => 50
+      });
+    }, 1);
   }
 };
 

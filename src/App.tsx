@@ -13,12 +13,8 @@ const Welcome = lazy(() => import("./pages/Welcome"));
 const Login = lazy(() => import("./pages/Login"));
 const Register = lazy(() => import("./pages/Register"));
 
-// Defer non-critical pages - Fix the Onboarding import issue
-const Onboarding = lazy(() => 
-  import("./pages/Onboarding").then(module => {
-    return new Promise(resolve => setTimeout(() => resolve(module), 100));
-  })
-);
+// Fixed Onboarding import by using the same pattern as other components
+const Onboarding = lazy(() => import("./pages/Onboarding"));
 
 // Prioritize loading the Index and Home pages
 const Index = lazy(() => import('./pages/Index'));
