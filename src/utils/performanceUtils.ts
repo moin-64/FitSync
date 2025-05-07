@@ -1,4 +1,3 @@
-
 // New utility file for performance optimizations
 
 /**
@@ -175,8 +174,10 @@ interface IdleDeadline {
 
 type IdleRequestCallback = (deadline: IdleDeadline) => void;
 
-// Define the Window interface extension properly without duplication
+// Define the Window interface extension properly
+// Using 'declare global' to avoid duplicate declarations
 declare global {
+  // Use the Window interface directly without extending it in different places
   interface Window {
     requestIdleCallback: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
     cancelIdleCallback: (handle: number) => void;
