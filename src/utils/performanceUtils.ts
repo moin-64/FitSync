@@ -163,7 +163,7 @@ export const getConnectionSpeed = (): 'slow' | 'medium' | 'fast' => {
   return 'medium';
 };
 
-// Define the IdleRequestCallback interface if it doesn't exist in the TypeScript environment
+// Define the types for requestIdleCallback
 interface IdleRequestOptions {
   timeout: number;
 }
@@ -175,7 +175,7 @@ interface IdleDeadline {
 
 type IdleRequestCallback = (deadline: IdleDeadline) => void;
 
-// Declare the requestIdleCallback and cancelIdleCallback if they're not in lib.dom.d.ts
+// Fix for TypeScript errors - define the Window interface extension once
 declare global {
   interface Window {
     requestIdleCallback: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
@@ -194,6 +194,7 @@ export const scheduleIdleTask = (
     return window.requestIdleCallback(callback, { timeout });
   } else {
     // Fallback for browsers that don't support requestIdleCallback
+    // Use explicit window.setTimeout to avoid type errors
     return window.setTimeout(() => {
       callback({
         didTimeout: false,
@@ -210,6 +211,7 @@ export const cancelIdleTask = (id: number): void => {
   if ('cancelIdleCallback' in window) {
     window.cancelIdleCallback(id);
   } else {
+    // Use explicit window.clearTimeout to avoid type errors
     window.clearTimeout(id);
   }
 };
