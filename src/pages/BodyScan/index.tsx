@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -42,7 +41,7 @@ const BodyScan = () => {
       toast({
         title: "Verarbeitung läuft",
         description: "Bitte warten Sie, bis der aktuelle Schritt abgeschlossen ist.",
-        variant: "destructive" // Changed from "warning" to "destructive"
+        variant: "destructive"
       });
       return;
     }

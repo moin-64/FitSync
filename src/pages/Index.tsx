@@ -1,7 +1,7 @@
 
-import React, { useCallback, memo } from 'react';
+import React, { useCallback, memo, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { ArrowRight, Dumbbell, Brain, Scan } from "lucide-react";
 import { motion } from 'framer-motion';
@@ -42,7 +42,21 @@ const itemVariants = {
 
 // Main Component with enhanced performance
 const Index = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const navigate = useNavigate();
+  
+  // Redirect authenticated users who have already seen this page
+  useEffect(() => {
+    const hasVisitedBefore = localStorage.getItem('hasVisitedBefore');
+    if (isAuthenticated && hasVisitedBefore === 'true') {
+      navigate('/home');
+    }
+    
+    // Set flag for future visits
+    if (isAuthenticated) {
+      localStorage.setItem('hasVisitedBefore', 'true');
+    }
+  }, [isAuthenticated, navigate]);
   
   // Memoized button components for better rendering performance
   const AuthenticatedButtons = memo(() => (

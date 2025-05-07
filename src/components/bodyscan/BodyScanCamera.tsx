@@ -8,14 +8,14 @@ interface BodyScanCameraProps {
   onScanComplete: (imageData: string | null) => void;
   instructions?: string;
   muscleGroup?: string;
-  isProcessing?: boolean; // Added this prop
+  isProcessing?: boolean;
 }
 
 const BodyScanCamera: React.FC<BodyScanCameraProps> = ({ 
   onScanComplete, 
   instructions = "Positioniere dich im Bild für den Scan",
   muscleGroup,
-  isProcessing = false // Default to false
+  isProcessing = false
 }) => {
   const [isScanning, setIsScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);

@@ -58,7 +58,7 @@ export const useUserData = (user: User | null, isAuthenticated: boolean) => {
     
     // Setzen eines Timeouts für die Datenabfrage
     let timeoutId: NodeJS.Timeout | null = null;
-    const timeoutPromise = new Promise((_, reject) => {
+    const timeoutPromise = new Promise<never>((_, reject) => {
       timeoutId = setTimeout(() => reject(new Error('Timeout beim Laden der Benutzerdaten')), 8000);
     });
 
@@ -69,10 +69,14 @@ export const useUserData = (user: User | null, isAuthenticated: boolean) => {
       const workoutResponse = await Promise.race([
         fetchUserWorkouts(),
         timeoutPromise
-      ]) as ReturnType<typeof fetchUserWorkouts> extends Promise<infer T> ? T : never;
+      ]);
       
       // Clear timeout if request succeeded
       if (timeoutId) clearTimeout(timeoutId);
+      
+      if (!workoutResponse) {
+        throw new Error('Keine Daten vom Server erhalten');
+      }
       
       // Sanitierung und Validierung der empfangenen Daten
       const sanitizedWorkouts = workoutResponse.workouts?.map(workout => ({
@@ -178,6 +182,8 @@ export const useUserData = (user: User | null, isAuthenticated: boolean) => {
   
   // Überprüfung auf gültige URLs
   const isValidURL = (url: string): boolean => {
+    if (!url) return true; // Allow empty URLs
+    
     try {
       const parsedUrl = new URL(url);
       return parsedUrl.protocol === 'https:' || parsedUrl.protocol === 'http:';
