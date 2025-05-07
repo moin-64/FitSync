@@ -9,7 +9,6 @@ import { Friend, FriendRequest } from "@/types/user";
 import { findFriendByUsername, hasPendingRequest } from "@/utils/userContext.utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { PostgrestSingleResponse } from "@supabase/supabase-js";
 
 interface FriendSearchProps {
   onSendFriendRequest: (username: string) => void;
@@ -49,6 +48,12 @@ const FriendSearch = ({ onSendFriendRequest, isSearching, friends, friendRequest
     try {
       const trimmedQuery = searchQuery.trim();
       
+      // Show loading toast
+      toast({
+        title: "Suche läuft",
+        description: `Suche nach Benutzer "${trimmedQuery}"...`,
+      });
+      
       // Search for users in Supabase profiles table
       const { data: supabaseUsers, error } = await supabase
         .from('profiles')
@@ -70,6 +75,11 @@ const FriendSearch = ({ onSendFriendRequest, isSearching, friends, friendRequest
           hasPendingRequest: hasPendingRequest(friendRequests, user.username),
           exists: true
         }));
+        
+        toast({
+          title: "Benutzer gefunden",
+          description: `${results.length} Benutzer gefunden.`,
+        });
       } else {
         // If no users found, check if the exact username exists
         const { data: exactUser } = await supabase
@@ -86,6 +96,11 @@ const FriendSearch = ({ onSendFriendRequest, isSearching, friends, friendRequest
             hasPendingRequest: hasPendingRequest(friendRequests, exactUser.username),
             exists: true
           }];
+          
+          toast({
+            title: "Benutzer gefunden",
+            description: `Benutzer "${exactUser.username}" gefunden.`,
+          });
         } else {
           // No user found, show "not found" result
           results = [{
@@ -122,6 +137,23 @@ const FriendSearch = ({ onSendFriendRequest, isSearching, friends, friendRequest
       handleSearch();
     }
   };
+  
+  // Handle friend request with optimistic UI update
+  const handleSendRequest = (username: string) => {
+    if (!username) return;
+    
+    // Update UI immediately for better user experience
+    setSearchResults(prev => 
+      prev.map(user => 
+        user.username === username 
+          ? { ...user, hasPendingRequest: true } 
+          : user
+      )
+    );
+    
+    // Call the actual function
+    onSendFriendRequest(username);
+  };
 
   return (
     <div className="space-y-4">
@@ -139,14 +171,14 @@ const FriendSearch = ({ onSendFriendRequest, isSearching, friends, friendRequest
         <Button 
           onClick={handleSearch} 
           disabled={isSearching || isSearchingDatabase || !searchQuery.trim()}
-          className={isMobile ? "w-full" : ""}
+          className={`${isMobile ? "w-full" : ""} transition-all duration-200 ${isSearchingDatabase ? "animate-pulse" : ""}`}
         >
           {isSearchingDatabase ? "Suche läuft..." : "Suchen"}
         </Button>
       </div>
 
       {searchResults.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-2 animate-in fade-in duration-300">
           {searchResults.map((user) => (
             <div
               key={user.id}
@@ -168,7 +200,8 @@ const FriendSearch = ({ onSendFriendRequest, isSearching, friends, friendRequest
               <Button
                 size="sm"
                 disabled={user.isFriend || user.hasPendingRequest || isSearching || !user.exists}
-                onClick={() => user.exists && onSendFriendRequest(user.username)}
+                onClick={() => user.exists && handleSendRequest(user.username)}
+                className={user.hasPendingRequest ? "bg-muted hover:bg-muted" : ""}
               >
                 {user.isFriend
                   ? "Freund"

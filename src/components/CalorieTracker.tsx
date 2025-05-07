@@ -21,10 +21,11 @@ interface CalorieEntry {
 }
 
 const CalorieTracker = () => {
-  const { profile, csrfToken } = useUser();
+  const { profile } = useUser();
   const { toast } = useToast();
   const [entries, setEntries] = useState<CalorieEntry[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [newEntry, setNewEntry] = useState({
     name: '',
     calories: 0,
@@ -43,7 +44,15 @@ const CalorieTracker = () => {
   // Load calorie entries and user's goal from database
   useEffect(() => {
     const fetchCalorieData = async () => {
+      if (!profile?.id) return;
+      
       try {
+        // Show loading state
+        toast({
+          title: "Daten werden geladen",
+          description: "Lädt deine Mahlzeiten...",
+        });
+        
         // Fetch today's entries
         const today = new Date().toISOString().split('T')[0];
         const { data, error } = await supabase
@@ -60,6 +69,14 @@ const CalorieTracker = () => {
           const typedEntries = data as CalorieEntry[];
           setEntries(typedEntries);
           calculateTotals(typedEntries);
+          
+          // Notify success only if we found entries
+          if (typedEntries.length > 0) {
+            toast({
+              title: "Daten geladen",
+              description: `${typedEntries.length} Mahlzeiten für heute gefunden.`,
+            });
+          }
         }
 
         // Fetch user's calorie goal
@@ -97,7 +114,7 @@ const CalorieTracker = () => {
   const calculateTotals = (entries: CalorieEntry[]) => {
     const totals = entries.reduce((acc, entry) => {
       return {
-        totalCalories: acc.totalCalories + entry.calories,
+        totalCalories: acc.totalCalories + (entry.calories || 0),
         totalProtein: acc.totalProtein + (entry.protein || 0),
         totalCarbs: acc.totalCarbs + (entry.carbs || 0),
         totalFat: acc.totalFat + (entry.fat || 0)
@@ -115,21 +132,54 @@ const CalorieTracker = () => {
     }));
   };
 
+  // Handle input changes with proper type conversion
+  const handleInputChange = (field: string, value: string) => {
+    // Convert to number or use 0 if empty
+    const numValue = value === '' ? 0 : Number(value);
+    
+    setNewEntry(prev => ({
+      ...prev,
+      [field]: field === 'name' ? value : numValue
+    }));
+  };
+
   // Add new calorie entry
   const handleAddEntry = async () => {
     // Validate form data
-    if (!newEntry.name || newEntry.calories <= 0) {
+    if (!newEntry.name || newEntry.name.trim() === '') {
       toast({
-        title: "Fehlerhafte Eingabe",
-        description: "Bitte gib einen Namen und Kalorien ein.",
+        title: "Fehlende Eingabe",
+        description: "Bitte gib einen Namen für die Mahlzeit ein.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (newEntry.calories <= 0) {
+      toast({
+        title: "Ungültige Kalorien",
+        description: "Bitte gib einen Wert größer als 0 für Kalorien ein.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!profile?.id) {
+      toast({
+        title: "Nicht angemeldet",
+        description: "Du musst angemeldet sein, um Mahlzeiten zu speichern.",
         variant: "destructive"
       });
       return;
     }
 
+    // Prevent multiple submissions
+    setIsSubmitting(true);
+
     // Prevent negative values
     const sanitizedEntry = {
       ...newEntry,
+      name: newEntry.name.trim(),
       calories: Math.max(0, newEntry.calories),
       protein: Math.max(0, newEntry.protein),
       carbs: Math.max(0, newEntry.carbs),
@@ -137,6 +187,12 @@ const CalorieTracker = () => {
     };
 
     try {
+      // Show loading state
+      toast({
+        title: "Wird gespeichert",
+        description: "Deine Mahlzeit wird gespeichert...",
+      });
+      
       // Create the entry in database
       const { data, error } = await supabase
         .from('calorie_entries')
@@ -187,6 +243,8 @@ const CalorieTracker = () => {
         description: "Der Eintrag konnte nicht gespeichert werden: " + (error.message || "Unbekannter Fehler"),
         variant: "destructive"
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -208,6 +266,7 @@ const CalorieTracker = () => {
           variant="outline" 
           size="sm" 
           onClick={() => setShowAddForm(!showAddForm)}
+          className="transition-all duration-200 hover:bg-primary hover:text-primary-foreground"
         >
           <Plus className="mr-1 h-4 w-4" />
           Mahlzeit
@@ -215,7 +274,7 @@ const CalorieTracker = () => {
       </div>
 
       {showAddForm && (
-        <Card className="mb-4 animate-in fade-in-50 duration-300">
+        <Card className="mb-4 animate-in fade-in slide-in-from-top duration-300">
           <CardContent className="pt-4">
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div className="col-span-2">
@@ -224,7 +283,7 @@ const CalorieTracker = () => {
                   id="food-name" 
                   placeholder="z.B. Frühstück, Mittagessen" 
                   value={newEntry.name}
-                  onChange={(e) => setNewEntry({...newEntry, name: e.target.value})}
+                  onChange={(e) => handleInputChange('name', e.target.value)}
                 />
               </div>
               <div>
@@ -234,10 +293,7 @@ const CalorieTracker = () => {
                   type="number" 
                   min="0"
                   value={newEntry.calories || ''}
-                  onChange={(e) => setNewEntry({
-                    ...newEntry, 
-                    calories: e.target.value === '' ? 0 : parseInt(e.target.value)
-                  })}
+                  onChange={(e) => handleInputChange('calories', e.target.value)}
                 />
               </div>
               <div>
@@ -247,10 +303,7 @@ const CalorieTracker = () => {
                   type="number" 
                   min="0"
                   value={newEntry.protein || ''}
-                  onChange={(e) => setNewEntry({
-                    ...newEntry, 
-                    protein: e.target.value === '' ? 0 : parseInt(e.target.value)
-                  })}
+                  onChange={(e) => handleInputChange('protein', e.target.value)}
                 />
               </div>
               <div>
@@ -260,10 +313,7 @@ const CalorieTracker = () => {
                   type="number" 
                   min="0"
                   value={newEntry.carbs || ''}
-                  onChange={(e) => setNewEntry({
-                    ...newEntry, 
-                    carbs: e.target.value === '' ? 0 : parseInt(e.target.value)
-                  })}
+                  onChange={(e) => handleInputChange('carbs', e.target.value)}
                 />
               </div>
               <div>
@@ -273,10 +323,7 @@ const CalorieTracker = () => {
                   type="number" 
                   min="0"
                   value={newEntry.fat || ''}
-                  onChange={(e) => setNewEntry({
-                    ...newEntry, 
-                    fat: e.target.value === '' ? 0 : parseInt(e.target.value)
-                  })}
+                  onChange={(e) => handleInputChange('fat', e.target.value)}
                 />
               </div>
             </div>
@@ -285,12 +332,17 @@ const CalorieTracker = () => {
                 onClick={() => setShowAddForm(false)} 
                 variant="ghost" 
                 className="mr-2"
+                disabled={isSubmitting}
               >
                 Abbrechen
               </Button>
-              <Button onClick={handleAddEntry} className="relative overflow-hidden group">
+              <Button 
+                onClick={handleAddEntry} 
+                className="relative overflow-hidden group"
+                disabled={isSubmitting}
+              >
                 <span className="absolute inset-0 bg-primary/10 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></span>
-                <span className="relative">Hinzufügen</span>
+                <span className="relative">{isSubmitting ? 'Speichern...' : 'Hinzufügen'}</span>
               </Button>
             </div>
           </CardContent>
@@ -315,8 +367,8 @@ const CalorieTracker = () => {
                 ></div>
               </div>
               <div className="flex justify-between text-sm">
-                <span>{dailyStats.totalCalories} kcal</span>
-                <span>{dailyStats.calorieGoal} kcal Ziel</span>
+                <span className="font-medium">{dailyStats.totalCalories} kcal</span>
+                <span className="text-muted-foreground">{dailyStats.calorieGoal} kcal Ziel</span>
               </div>
               
               <div className="grid grid-cols-3 gap-2 mt-4 text-center">
@@ -345,7 +397,7 @@ const CalorieTracker = () => {
                 {entries.map((entry) => (
                   <div 
                     key={entry.id} 
-                    className="flex justify-between p-2 bg-muted/30 rounded hover:bg-muted/50 transition-all"
+                    className="flex justify-between p-2 bg-muted/30 rounded hover:bg-muted/50 transition-all animate-in fade-in duration-300"
                   >
                     <div className="flex items-center">
                       <Apple className="h-5 w-5 mr-2 text-primary" />

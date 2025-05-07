@@ -22,12 +22,13 @@ export const useWorkoutCreation = (state: LocationState | undefined) => {
   const [generationError, setGenerationError] = useState<string | null>(null);
   
   useEffect(() => {
-    if (state?.type === 'ai') {
+    // Only generate on initial mount
+    const shouldGenerate = state?.type === 'ai' && exercises.length === 0;
+    
+    if (shouldGenerate) {
       setIsGenerating(true);
       setGenerationError(null);
       setWorkoutName('KI-generiertes Workout');
-      
-      const exerciseWeights = getUserMaxWeights(workouts || []);
       
       const generateWorkout = async () => {
         try {
@@ -36,6 +37,7 @@ export const useWorkoutCreation = (state: LocationState | undefined) => {
           
           // Convert string to Rank enum to ensure type safety
           const experienceLevel = profile?.experienceLevel as Rank || Rank.BEGINNER;
+          const exerciseWeights = getUserMaxWeights(workouts || []);
           
           console.log('Generating workout for experience level:', experienceLevel);
           console.log('User limitations:', profile?.limitations || []);
@@ -155,7 +157,8 @@ export const useWorkoutCreation = (state: LocationState | undefined) => {
       
       generateWorkout();
       
-    } else if (state?.type === 'manual') {
+    } else if (state?.type === 'manual' && exercises.length === 0) {
+      // For manual workouts, just add a warmup exercise template
       setExercises([
         {
           id: `ex-warmup-${Date.now()}`,
@@ -170,7 +173,7 @@ export const useWorkoutCreation = (state: LocationState | undefined) => {
       ]);
       setWorkoutName('Mein eigenes Workout');
     }
-  }, [state?.type, profile?.limitations, profile?.experienceLevel, workouts, generationAttempts, toast]);
+  }, [state?.type]);
   
   const addExercise = () => {
     const newExercise: Exercise = {

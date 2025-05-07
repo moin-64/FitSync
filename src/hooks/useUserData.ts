@@ -11,41 +11,68 @@ export const useUserData = (user: User | null, isAuthenticated: boolean) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [lastFetchTime, setLastFetchTime] = useState<number>(0);
+  const [isFetching, setIsFetching] = useState<boolean>(false);
   const { fetchUserWorkouts } = useSupabaseWorkouts();
   const { toast } = useToast();
+  
+  // Caching mechanism to reduce redundant fetches
+  const [cacheTimestamp, setCacheTimestamp] = useState<number>(0);
+  const CACHE_VALIDITY = 60000; // Cache valid for 1 minute
 
   // Optimierte Funktion zum Laden von Benutzerdaten mit Timeout und Ratenbegrenzung
-  const loadUserData = useCallback(async () => {
+  const loadUserData = useCallback(async (forceRefresh = false) => {
     if (!isAuthenticated || !user) {
+      setLoading(false);
+      return;
+    }
+    
+    // Skip fetching if already in progress
+    if (isFetching) {
+      console.log('Bereits beim Laden der Daten, Anfrage übersprungen');
+      return;
+    }
+
+    // Check cache validity unless force refresh
+    const now = Date.now();
+    if (!forceRefresh && now - cacheTimestamp < CACHE_VALIDITY) {
+      console.log('Verwende zwischengespeicherte Daten', { 
+        cacheAge: (now - cacheTimestamp) / 1000 + 's',
+        validFor: (CACHE_VALIDITY - (now - cacheTimestamp)) / 1000 + 's'
+      });
       setLoading(false);
       return;
     }
 
     // Prüfen auf zu häufige Anfragen (Rate-Limiting)
-    const now = Date.now();
-    const minTimeBetweenFetches = 5000; // 5 Sekunden zwischen Anfragen
+    const minTimeBetweenFetches = 3000; // 3 Sekunden zwischen Anfragen
     
     if (now - lastFetchTime < minTimeBetweenFetches) {
       console.log('Zu viele Anfragen in kurzer Zeit, Anfrage verzögert...');
       await new Promise(resolve => setTimeout(resolve, minTimeBetweenFetches - (now - lastFetchTime)));
     }
     
+    setIsFetching(true);
+    setLoading(true);
+    setError(null);
+    setLastFetchTime(now);
+    
     // Setzen eines Timeouts für die Datenabfrage
+    let timeoutId: NodeJS.Timeout | null = null;
     const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Timeout beim Laden der Benutzerdaten')), 5000);
+      timeoutId = setTimeout(() => reject(new Error('Timeout beim Laden der Benutzerdaten')), 8000);
     });
 
     try {
       console.log("Lade Benutzerdaten für Benutzer:", user?.id);
-      setLoading(true);
-      setError(null);
-      setLastFetchTime(Date.now());
       
       // Race zwischen Datenabfrage und Timeout
       const workoutResponse = await Promise.race([
         fetchUserWorkouts(),
         timeoutPromise
       ]) as ReturnType<typeof fetchUserWorkouts> extends Promise<infer T> ? T : never;
+      
+      // Clear timeout if request succeeded
+      if (timeoutId) clearTimeout(timeoutId);
       
       // Sanitierung und Validierung der empfangenen Daten
       const sanitizedWorkouts = workoutResponse.workouts?.map(workout => ({
@@ -69,8 +96,10 @@ export const useUserData = (user: User | null, isAuthenticated: boolean) => {
         toast({
           title: 'Datenvalidierung fehlgeschlagen',
           description: 'Es wurden ungültige Daten empfangen. Ihre vorherigen Daten werden verwendet.',
-          variant: 'destructive' // Changed from 'warning' to 'destructive'
+          variant: 'destructive'
         });
+        setLoading(false);
+        setIsFetching(false);
         return;
       }
       
@@ -81,6 +110,8 @@ export const useUserData = (user: User | null, isAuthenticated: boolean) => {
       };
       
       setUserData(updatedData);
+      setCacheTimestamp(now);
+      
       console.log('Benutzerdaten erfolgreich geladen:', { 
         workoutsCount: sanitizedWorkouts.length, 
         historyCount: sanitizedHistory.length 
@@ -95,13 +126,14 @@ export const useUserData = (user: User | null, isAuthenticated: boolean) => {
         toast({
           title: 'Fehler beim Laden',
           description: 'Die neuesten Daten konnten nicht abgerufen werden. Offline-Daten werden verwendet.',
-          variant: 'destructive' // Changed from 'warning' to 'destructive'
+          variant: 'destructive'
         });
       }
     } finally {
       setLoading(false);
+      setIsFetching(false);
     }
-  }, [isAuthenticated, user, fetchUserWorkouts, userData, lastFetchTime, toast]);
+  }, [isAuthenticated, user, fetchUserWorkouts, userData, lastFetchTime, cacheTimestamp, toast, isFetching]);
 
   // Hilfsfunktion zur Validierung der Datenintegrität
   const validateWorkoutData = (workouts: any[]): boolean => {
@@ -120,7 +152,7 @@ export const useUserData = (user: User | null, isAuthenticated: boolean) => {
           if (typeof exercise !== 'object' || exercise === null) return true;
           if (exercise.name && containsSuspiciousPatterns(exercise.name)) return true;
           if (exercise.equipment && containsSuspiciousPatterns(exercise.equipment)) return true;
-          if (exercise.videoUrl && !isValidURL(exercise.videoUrl)) return true;
+          if (exercise.video_url && !isValidURL(exercise.video_url)) return true;
           return false;
         });
       }
@@ -201,12 +233,14 @@ export const useUserData = (user: User | null, isAuthenticated: boolean) => {
     };
     
     setUserData(sanitizedData);
+    // Update cache timestamp to avoid unnecessary refetches
+    setCacheTimestamp(Date.now());
   }, []);
 
   // Daten neu laden zur Wiederherstellung nach Fehlern
-  const reloadData = useCallback(() => {
-    console.log("Lade Benutzerdaten neu");
-    loadUserData();
+  const reloadData = useCallback((force = false) => {
+    console.log("Lade Benutzerdaten neu", force ? "(erzwungen)" : "");
+    loadUserData(force);
   }, [loadUserData]);
 
   return { 
