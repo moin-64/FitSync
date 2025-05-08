@@ -44,7 +44,7 @@ async function analyzeBodyImage(imageBase64: string) {
         'X-Title': 'Fitness Trainer App'
       },
       body: JSON.stringify({
-        model: "anthropic/claude-3-5-sonnet",
+        model: "google/gemini-1.5-flash", // Using free tier Google model
         messages: [
           {
             role: 'system',
@@ -119,7 +119,7 @@ async function analyzeMuscleGroup(muscleGroup: string, imageBase64: string) {
         'X-Title': 'Fitness Trainer App'
       },
       body: JSON.stringify({
-        model: "anthropic/claude-3-5-sonnet",
+        model: "mistralai/mistral-small", // Free tier fallback model
         messages: [
           {
             role: 'system',

@@ -14,7 +14,7 @@ import { browserSupports, getConnectionSpeed } from '../browser/featureDetection
 import { 
   scheduleIdleTask, 
   cancelIdleTask, 
-  markNonBlockingOperation 
+  processInChunks 
 } from '../scheduling/idleProcessing';
 
 // Bundle all utilities into a single export
@@ -28,5 +28,5 @@ export default {
   getConnectionSpeed,
   scheduleIdleTask,
   cancelIdleTask,
-  markNonBlockingOperation
+  processInChunks
 };

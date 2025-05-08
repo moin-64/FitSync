@@ -81,9 +81,9 @@ serve(async (req) => {
     
     console.log('Preparing to call API with prompt')
 
-    // Try Claude model first
+    // Try Google Gemini model first (free tier)
     try {
-      console.log('Calling Claude model')
+      console.log('Calling Gemini model (free)')
       const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -93,7 +93,7 @@ serve(async (req) => {
           "X-Title": "Fitness Trainer App",
         },
         body: JSON.stringify({
-          model: "anthropic/claude-3-5-sonnet",
+          model: "google/gemini-1.5-flash", // Using free tier Google model
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: userPrompt }
@@ -123,7 +123,7 @@ serve(async (req) => {
     } catch (primaryError) {
       console.warn("Primary model failed, trying fallback model:", primaryError)
       
-      // Try fallback model
+      // Try fallback model - Mistral small (also has a free tier)
       try {
         console.log('Calling fallback model')
         const fallbackResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -135,7 +135,7 @@ serve(async (req) => {
             "X-Title": "Fitness Trainer App",
           },
           body: JSON.stringify({
-            model: "google/gemini-1.5-flash",
+            model: "mistralai/mistral-small", // Free tier fallback model
             messages: [
               { role: "system", content: systemPrompt },
               { role: "user", content: userPrompt }

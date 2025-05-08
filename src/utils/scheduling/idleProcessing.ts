@@ -12,7 +12,7 @@ interface IdleDeadline {
 type IdleRequestCallback = (deadline: IdleDeadline) => void;
 
 // Define the global window with optional idle callback properties
-interface WindowWithIdleCallback extends Window {
+interface WindowWithIdleCallback {
   requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
   cancelIdleCallback?: (handle: number) => void;
 }
@@ -20,7 +20,7 @@ interface WindowWithIdleCallback extends Window {
 // Modern polyfill for requestIdleCallback for browsers that don't support it
 export const scheduleIdleTask = (callback: IdleRequestCallback, options?: IdleRequestOptions): number => {
   // Cast the window to our interface
-  const win = window as WindowWithIdleCallback;
+  const win = window as (Window & WindowWithIdleCallback);
 
   // Use native requestIdleCallback if available
   if (win.requestIdleCallback) {
@@ -43,7 +43,7 @@ export const scheduleIdleTask = (callback: IdleRequestCallback, options?: IdleRe
 // Cancel an idle task
 export const cancelIdleTask = (handle: number): void => {
   // Cast the window to our interface
-  const win = window as WindowWithIdleCallback;
+  const win = window as (Window & WindowWithIdleCallback);
 
   // Use native cancelIdleCallback if available
   if (win.cancelIdleCallback) {
