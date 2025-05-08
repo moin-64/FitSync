@@ -14,7 +14,7 @@ export const {
   getConnectionSpeed,
   scheduleIdleTask,
   cancelIdleTask,
-  markNonBlockingOperation
+  processInChunks
 } = performanceUtils;
 
 export default performanceUtils;

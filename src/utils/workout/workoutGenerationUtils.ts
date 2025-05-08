@@ -15,7 +15,7 @@ import {
 } from '../trainingParametersUtils';
 import { supabase } from '@/integrations/supabase/client';
 
-// Enhanced AI workout generation using OpenRouter API via Supabase Edge Function
+// Enhanced AI workout generation using free AI models via Supabase Edge Function
 export const generateAIWorkout = async (
   limitations: string[] = [], 
   rank: Rank = Rank.BEGINNER,
@@ -31,8 +31,8 @@ export const generateAIWorkout = async (
     let aiSuggestions = '';
     let aiError = null;
     
-    // First try to get enhanced AI suggestions
-    console.log('Requesting AI workout from Edge Function...');
+    // First try to get enhanced AI suggestions using free models
+    console.log('Requesting AI workout from Edge Function using free model...');
     try {
       const { data: aiData, error } = await supabase.functions.invoke('ai-workout', {
         body: { 

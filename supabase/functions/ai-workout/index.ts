@@ -79,7 +79,7 @@ serve(async (req) => {
       throw new Error(`Invalid request type: ${type}`)
     }
     
-    console.log('Preparing to call API with prompt')
+    console.log('Preparing to call API with free models')
 
     // Try Google Gemini model first (free tier)
     try {
