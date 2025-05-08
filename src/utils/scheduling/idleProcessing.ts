@@ -13,9 +13,9 @@ interface IdleDeadline {
 
 type IdleRequestCallback = (deadline: IdleDeadline) => void;
 
-// Instead of using declare global, we'll use a type assertion approach
-// to avoid conflicts with existing TypeScript lib declarations
-interface CustomWindow extends Window {
+// Fix for the type error - instead of extending Window,
+// create a standalone interface that matches our needs
+interface WindowWithIdleCallback {
   requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
   cancelIdleCallback?: (handle: number) => void;
 }
@@ -27,10 +27,11 @@ export const scheduleIdleTask = (
   callback: IdleRequestCallback,
   timeout = 2000
 ): number => {
-  const customWindow = window as CustomWindow;
+  // Cast window as our custom interface with optional idle callback methods
+  const win = window as unknown as WindowWithIdleCallback;
   
-  if (customWindow.requestIdleCallback) {
-    return customWindow.requestIdleCallback(callback, { timeout });
+  if (win.requestIdleCallback) {
+    return win.requestIdleCallback(callback, { timeout });
   } else {
     // Fallback for browsers that don't support requestIdleCallback
     // Explicitly convert setTimeout's return to number
@@ -47,10 +48,11 @@ export const scheduleIdleTask = (
  * Cancel idle tasks
  */
 export const cancelIdleTask = (id: number): void => {
-  const customWindow = window as CustomWindow;
+  // Cast window as our custom interface with optional idle callback methods
+  const win = window as unknown as WindowWithIdleCallback;
   
-  if (customWindow.cancelIdleCallback) {
-    customWindow.cancelIdleCallback(id);
+  if (win.cancelIdleCallback) {
+    win.cancelIdleCallback(id);
   } else {
     // Fallback for browsers that don't support cancelIdleCallback
     clearTimeout(id);
