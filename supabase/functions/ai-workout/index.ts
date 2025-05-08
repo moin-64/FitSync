@@ -34,11 +34,13 @@ serve(async (req) => {
     
     // Configure prompt based on request type
     if (type === "workout") {
-      systemPrompt = `Du bist ein erfahrener Fitnesstrainer mit Expertise in der Erstellung personalisierter Trainingspläne.
-      Deine Aufgabe ist es, wissenschaftsbasierte Trainingspläne zu erstellen, die auf das individuelle Leistungsniveau, 
-      spezifische Ziele und physische Einschränkungen der Person abgestimmt sind. Du kennst die neuesten Forschungsergebnisse
-      in Sportwissenschaft und Trainingsmethodik. Liefere detaillierte Übungsempfehlungen mit präzisen Angaben zu Sätzen, 
-      Wiederholungen und empfohlener Intensität. Achte auf ein ausgewogenes Training aller Muskelgruppen und Bewegungsmuster.`
+      // Domain-specific knowledge for workout plans
+      systemPrompt = `Du bist ein spezialisierter Fitness-KI-Trainer mit Expertise in individueller Trainingsplanerstellung.
+      Du verfügst über fundierte Kenntnisse in Sportmedizin, Bewegungswissenschaften und Trainingsperiodisierung.
+      Deine Aufgabe ist es, wissenschaftsbasierte Trainingspläne zu erstellen, die perfekt auf das individuelle Leistungsniveau, 
+      die körperlichen Einschränkungen und die spezifischen Ziele der Person abgestimmt sind.
+      Nutze progressive Überlastung und Periodisierung für optimale Ergebnisse.
+      Berücksichtige physiologische Prinzipien wie Muskelfasertypen und Energiesysteme in deinen Empfehlungen.`
       
       userPrompt = `Erstelle einen personalisierten Trainingsplan für einen Trainierenden auf ${data.rank} Niveau` + 
                   (data.limitations && data.limitations.length > 0 ? 
@@ -46,12 +48,15 @@ serve(async (req) => {
                   ' ohne körperliche Einschränkungen. ') + 
                   `Empfehle genau 5 geeignete Übungen mit spezifischen Sätzen, Wiederholungen und Gewichtsempfehlungen.
                   Berücksichtige progressive Überlastung, funktionelles Training und eine ausgewogene Muskelgruppenbeanspruchung.
-                  Füge für jede Übung eine kurze Erklärung ein, warum sie für dieses Niveau und diese Einschränkungen geeignet ist.`
+                  Füge für jede Übung eine kurze Erklärung ein, warum sie für dieses Niveau und diese Einschränkungen geeignet ist.
+                  ${data.forceRegeneration ? 'Erstelle einen komplett neuen Plan ohne Übungen aus vorherigen Vorschlägen zu wiederholen.' : ''}`
     } else if (type === "problem") {
-      systemPrompt = `Du bist ein Spezialist für Trainingsanpassungen und therapeutische Übungen, der Expertise in Anatomie, 
-      Biomechanik und Rehabilitation besitzt. Deine Aufgabe ist es, einschränkungsspezifische Trainingsmodifikationen zu empfehlen,
-      die sicher, effektiv und wissenschaftlich fundiert sind. Berücksichtige die Schwere der Einschränkungen, Trainingsalternativen
-      und Progressionsmöglichkeiten in deinen Empfehlungen.`
+      // Domain-specific knowledge for physical limitations
+      systemPrompt = `Du bist ein Spezialist für Trainingsanpassungen und therapeutische Übungen mit Expertise in Anatomie, 
+      Biomechanik und Rehabilitation. Deine Aufgabe ist es, einschränkungsspezifische Trainingsmodifikationen zu empfehlen,
+      die sicher, effektiv und wissenschaftlich fundiert sind. Deine Analysen basieren auf evidenzbasierten Erkenntnissen
+      und berücksichtigen individuelle Faktoren wie Schweregrad, Vorgeschichte und funktionelle Ziele.
+      Du verstehst die komplexen Zusammenhänge zwischen verschiedenen Körpersystemen und passt Empfehlungen entsprechend an.`
       
       userPrompt = `Analysiere diese körperliche Einschränkung detailliert: "${data.limitation}". 
                     Welche spezifischen Übungen sollten unter diesen Umständen vermieden werden und warum? 
@@ -59,10 +64,12 @@ serve(async (req) => {
                     Wie könnte ein angepasster Trainingsplan für jemanden mit dieser Einschränkung aussehen?
                     Gehe auf biomechanische Aspekte und Belastungsgrenzen ein.`
     } else if (type === "evaluation") {
-      systemPrompt = `Du bist ein Trainingsanalyst mit Expertise in Leistungsdiagnostik und Trainingswissenschaft.
-      Du interpretierst Trainingsdaten präzise und ziehst daraus fundierte Schlussfolgerungen für zukünftige Trainingsanpassungen.
-      Deine Analysen berücksichtigen physiologische Marker, Training Load und Regenerationsstatus.
-      Du kannst motivierende und konstruktive Rückmeldungen geben, die sowohl wissenschaftlich korrekt als auch praktisch umsetzbar sind.`
+      // Domain-specific knowledge for workout analysis
+      systemPrompt = `Du bist ein Trainingsanalyst mit Expertise in Leistungsdiagnostik und Sportwissenschaft.
+      Du interpretierst biometrische Daten und physiologische Reaktionen auf Training mit höchster Präzision.
+      Deine Analysen berücksichtigen alle relevanten Faktoren wie Herzfrequenz, Kalorienverbrauch, Sauerstoffsättigung,
+      Trainingsdauer und subjektive Anstrengung. Du kannst Trainingseffekte auf verschiedene Körpersysteme identifizieren
+      und optimale Erholungsstrategien sowie Anpassungen für zukünftige Trainingseinheiten empfehlen.`
       
       userPrompt = `Analysiere folgende Trainingsdaten eines Workouts: 
                     Dauer: ${data.duration}s, 
