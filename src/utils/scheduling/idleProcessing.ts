@@ -1,72 +1,97 @@
 
-/**
- * Types for idle processing
- */
+// Types for requestIdleCallback
 interface IdleRequestOptions {
   timeout: number;
 }
 
 interface IdleDeadline {
-  didTimeout: boolean;
+  readonly didTimeout: boolean;
   timeRemaining: () => number;
 }
 
 type IdleRequestCallback = (deadline: IdleDeadline) => void;
 
-// Fix for the type error - instead of extending Window,
-// create a standalone interface that matches our needs
-interface WindowWithIdleCallback {
+// Define the global window with optional idle callback properties
+interface WindowWithIdleCallback extends Window {
   requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
   cancelIdleCallback?: (handle: number) => void;
 }
 
-/**
- * Add idle callbacks that execute when the browser is not busy
- */
-export const scheduleIdleTask = (
-  callback: IdleRequestCallback,
-  timeout = 2000
-): number => {
-  // Cast window as our custom interface with optional idle callback methods
-  const win = window as unknown as WindowWithIdleCallback;
-  
+// Modern polyfill for requestIdleCallback for browsers that don't support it
+export const scheduleIdleTask = (callback: IdleRequestCallback, options?: IdleRequestOptions): number => {
+  // Cast the window to our interface
+  const win = window as WindowWithIdleCallback;
+
+  // Use native requestIdleCallback if available
   if (win.requestIdleCallback) {
-    return win.requestIdleCallback(callback, { timeout });
-  } else {
-    // Fallback for browsers that don't support requestIdleCallback
-    // Explicitly convert setTimeout's return to number
-    return Number(setTimeout(() => {
-      callback({
-        didTimeout: false,
-        timeRemaining: () => 50
-      });
-    }, 1));
+    return win.requestIdleCallback(callback, options);
   }
-};
 
-/**
- * Cancel idle tasks
- */
-export const cancelIdleTask = (id: number): void => {
-  // Cast window as our custom interface with optional idle callback methods
-  const win = window as unknown as WindowWithIdleCallback;
-  
-  if (win.cancelIdleCallback) {
-    win.cancelIdleCallback(id);
-  } else {
-    // Fallback for browsers that don't support cancelIdleCallback
-    clearTimeout(id);
-  }
-};
-
-/**
- * Use this to mark operations that shouldn't block rendering
- */
-export const markNonBlockingOperation = <T>(operation: () => T): Promise<T> => {
-  return new Promise((resolve) => {
-    scheduleIdleTask(() => {
-      const result = operation();
-      resolve(result);
+  // Fallback using setTimeout
+  const timeout = options?.timeout || 50;
+  return setTimeout(() => {
+    const start = Date.now();
+    
+    // Create a deadline object that mimics IdleDeadline
+    callback({
+      didTimeout: false,
+      timeRemaining: () => Math.max(0, 50 - (Date.now() - start))
     });
+  }, timeout) as unknown as number;
+};
+
+// Cancel an idle task
+export const cancelIdleTask = (handle: number): void => {
+  // Cast the window to our interface
+  const win = window as WindowWithIdleCallback;
+
+  // Use native cancelIdleCallback if available
+  if (win.cancelIdleCallback) {
+    win.cancelIdleCallback(handle);
+    return;
+  }
+
+  // Fallback using clearTimeout
+  clearTimeout(handle);
+};
+
+// Helper function to break up heavy work
+export const processInChunks = <T>(
+  items: T[],
+  processItem: (item: T) => void,
+  chunkSize: number = 5,
+  timeBudget: number = 10
+): Promise<void> => {
+  return new Promise((resolve) => {
+    let index = 0;
+    
+    const processChunk = (deadline: IdleDeadline) => {
+      // Process until we run out of time or items
+      while ((deadline.timeRemaining() > 0 || deadline.didTimeout) && index < items.length) {
+        const endOfChunk = Math.min(index + chunkSize, items.length);
+        
+        // Process the next chunk
+        for (let i = index; i < endOfChunk; i++) {
+          processItem(items[i]);
+        }
+        
+        index = endOfChunk;
+        
+        // Break out if we're done
+        if (index >= items.length) {
+          break;
+        }
+      }
+      
+      // If we have more items to process, schedule the next chunk
+      if (index < items.length) {
+        scheduleIdleTask(processChunk, { timeout: timeBudget });
+      } else {
+        resolve();
+      }
+    };
+    
+    // Start processing
+    scheduleIdleTask(processChunk, { timeout: timeBudget });
   });
 };

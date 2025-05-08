@@ -1,3 +1,4 @@
+
 import { Rank } from '../rankingUtils';
 import { determineWeight } from '../weightCalculationUtils';
 import { 
@@ -16,7 +17,8 @@ import { supabase } from '@/integrations/supabase/client';
 export const generateAIWorkout = async (
   limitations: string[] = [], 
   rank: Rank = Rank.BEGINNER,
-  maxWeights: Record<string, number> = {}
+  maxWeights: Record<string, number> = {},
+  forceRegeneration = false
 ) => {
   // Ensure rank is a valid Rank type
   if (!Object.values(Rank).includes(rank)) {
@@ -33,7 +35,8 @@ export const generateAIWorkout = async (
           type: "workout", 
           data: { 
             rank,
-            limitations: Array.isArray(limitations) ? limitations : []
+            limitations: Array.isArray(limitations) ? limitations : [],
+            forceRegeneration
           }
         }
       });

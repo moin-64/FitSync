@@ -40,6 +40,8 @@ async function analyzeBodyImage(imageBase64: string) {
       headers: {
         'Authorization': `Bearer ${openaiApiKey}`,
         'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://lovable.app', 
+        'X-Title': 'Fitness Trainer App'
       },
       body: JSON.stringify({
         model: "anthropic/claude-3-5-sonnet",
@@ -113,6 +115,8 @@ async function analyzeMuscleGroup(muscleGroup: string, imageBase64: string) {
       headers: {
         'Authorization': `Bearer ${openaiApiKey}`,
         'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://lovable.app',
+        'X-Title': 'Fitness Trainer App'
       },
       body: JSON.stringify({
         model: "anthropic/claude-3-5-sonnet",
