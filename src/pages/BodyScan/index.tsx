@@ -2,9 +2,9 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import BodyScanIntro from '@/components/bodyscan/BodyScanIntro';
-import BodyScanCamera from '@/components/bodyscan/BodyScanCamera';
+import BodyScan360 from '@/components/bodyscan/BodyScan360';
 import BodyScanLayout from './BodyScanLayout';
-import BodyScanAnalysis from './BodyScanAnalysis';
+import BodyScan360Analysis from './BodyScan360Analysis';
 import BodyScanResults from './BodyScanResults';
 import { useToast } from '@/hooks/use-toast';
 
@@ -22,9 +22,9 @@ const BodyScan = () => {
   const [bodyData, setBodyData] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   
-  // Scan-Bilder
-  const [fullBodyImage, setFullBodyImage] = useState<string | null>(null);
-  const [muscleImages, setMuscleImages] = useState<Record<string, string>>({});
+  // 360° Scan-Bilder
+  const [fullBodyImages, setFullBodyImages] = useState<string[]>([]);
+  const [muscleImages, setMuscleImages] = useState<Record<string, string[]>>({});
   
   // Muskelgruppen-Sequenz
   const muscleGroupSequence: MuscleGroup[] = ['chest', 'back', 'shoulders', 'arms', 'abs', 'legs'];
@@ -37,7 +37,6 @@ const BodyScan = () => {
   
   const handleBackClick = () => {
     if (isProcessing) {
-      // Prevent navigation during processing
       toast({
         title: "Verarbeitung läuft",
         description: "Bitte warten Sie, bis der aktuelle Schritt abgeschlossen ist.",
@@ -66,18 +65,23 @@ const BodyScan = () => {
     }
   };
   
-  const handleCaptureFullBody = (imageData: string | null) => {
-    if (imageData) {
+  const handleCaptureFullBody = (images: string[]) => {
+    if (images && images.length > 0) {
       setIsProcessing(true);
       try {
-        setFullBodyImage(imageData);
+        setFullBodyImages(images);
         setTimeout(() => {
           setScanStage('muscle-groups');
           setSelectedMuscleGroup(muscleGroupSequence[0]);
           setIsProcessing(false);
-        }, 500); // Short delay for better UX
+        }, 500);
+        
+        toast({
+          title: "360° Körperscan abgeschlossen",
+          description: `${images.length} Winkel erfolgreich aufgenommen`,
+        });
       } catch (error) {
-        console.error('Error processing full body image:', error);
+        console.error('Error processing full body images:', error);
         setIsProcessing(false);
         toast({
           title: "Fehler beim Scannen",
@@ -88,24 +92,22 @@ const BodyScan = () => {
     } else {
       toast({
         title: "Fehler beim Scannen",
-        description: "Bild konnte nicht aufgenommen werden. Bitte versuche es erneut.",
+        description: "Keine Bilder konnten aufgenommen werden. Bitte versuche es erneut.",
         variant: "destructive"
       });
     }
   };
   
-  const handleCaptureMuscleGroup = (imageData: string | null) => {
-    if (imageData && selectedMuscleGroup) {
+  const handleCaptureMuscleGroup = (images: string[]) => {
+    if (images && images.length > 0 && selectedMuscleGroup) {
       setIsProcessing(true);
       
       try {
-        // Speichere das Bild für die aktuelle Muskelgruppe
         setMuscleImages(prev => ({
           ...prev,
-          [selectedMuscleGroup]: imageData
+          [selectedMuscleGroup]: images
         }));
         
-        // Gehe zur nächsten Muskelgruppe oder zur Analyse, wenn alle gescannt wurden
         setTimeout(() => {
           if (currentMuscleGroupIndex < muscleGroupSequence.length - 1) {
             const nextIndex = currentMuscleGroupIndex + 1;
@@ -115,9 +117,14 @@ const BodyScan = () => {
             setScanStage('analysis');
           }
           setIsProcessing(false);
-        }, 500); // Short delay for better UX
+        }, 500);
+        
+        toast({
+          title: "Muskelgruppen-Scan abgeschlossen",
+          description: `${images.length} Winkel für ${selectedMuscleGroup} aufgenommen`,
+        });
       } catch (error) {
-        console.error('Error processing muscle group image:', error);
+        console.error('Error processing muscle group images:', error);
         setIsProcessing(false);
         toast({
           title: "Fehler beim Scannen",
@@ -128,7 +135,7 @@ const BodyScan = () => {
     } else {
       toast({
         title: "Fehler beim Scannen",
-        description: "Bild konnte nicht aufgenommen werden. Bitte versuche es erneut.",
+        description: "Keine Bilder konnten aufgenommen werden. Bitte versuche es erneut.",
         variant: "destructive"
       });
     }
@@ -141,10 +148,10 @@ const BodyScan = () => {
   
   const getStageName = () => {
     switch (scanStage) {
-      case 'intro': return 'Körperscan';
-      case 'full-body': return 'Gesamtkörperscan';
+      case 'intro': return '360° Körperscan';
+      case 'full-body': return '360° Gesamtkörperscan';
       case 'muscle-groups': 
-        return `Muskelgruppenscan: ${
+        return `360° Muskelgruppenscan: ${
           selectedMuscleGroup === 'chest' ? 'Brust' : 
           selectedMuscleGroup === 'back' ? 'Rücken' : 
           selectedMuscleGroup === 'shoulders' ? 'Schultern' : 
@@ -153,22 +160,20 @@ const BodyScan = () => {
           selectedMuscleGroup === 'legs' ? 'Beine' : 
           'Muskelgruppe'
         }`;
-      case 'analysis': return 'Analyse';
-      case 'results': return 'Ergebnisse';
-      default: return 'Körperscan';
+      case 'analysis': return '360° Analyse';
+      case 'results': return '360° Ergebnisse';
+      default: return '360° Körperscan';
     }
   };
   
-  // Clean up function to ensure we don't leak memory
+  // Clean up function
   useEffect(() => {
     return () => {
-      // Clean up image memory on component unmount
-      setFullBodyImage(null);
+      setFullBodyImages([]);
       setMuscleImages({});
     };
   }, []);
-
-  // Progress indicator for muscle groups scan
+  
   const getProgress = () => {
     if (scanStage !== 'muscle-groups') return null;
     return {
@@ -185,9 +190,9 @@ const BodyScan = () => {
       
       case 'full-body':
         return (
-          <BodyScanCamera
+          <BodyScan360
             onScanComplete={handleCaptureFullBody}
-            instructions="Stelle dich vollständig ins Bild. Drehe dich langsam im Kreis für einen vollständigen Scan."
+            scanType="full-body"
             isProcessing={isProcessing}
           />
         );
@@ -206,17 +211,9 @@ const BodyScan = () => {
                 ></div>
               </div>
             </div>
-            <BodyScanCamera
+            <BodyScan360
               onScanComplete={handleCaptureMuscleGroup}
-              instructions={
-                selectedMuscleGroup === 'chest' ? 'Zeige deine Brustmuskulatur in die Kamera.' : 
-                selectedMuscleGroup === 'back' ? 'Drehe deinen Rücken zur Kamera.' : 
-                selectedMuscleGroup === 'shoulders' ? 'Stelle deine Schultern optimal ins Bild.' : 
-                selectedMuscleGroup === 'arms' ? 'Zeige deine Arme in angespannter Position.' : 
-                selectedMuscleGroup === 'abs' ? 'Zeige deine Bauchmuskulatur in die Kamera.' : 
-                selectedMuscleGroup === 'legs' ? 'Stelle deine Beine optimal ins Bild.' : 
-                'Positioniere die Muskelgruppe für den Scan.'
-              }
+              scanType="muscle-group"
               muscleGroup={selectedMuscleGroup || undefined}
               isProcessing={isProcessing}
             />
@@ -225,9 +222,9 @@ const BodyScan = () => {
       
       case 'analysis':
         return (
-          <BodyScanAnalysis 
+          <BodyScan360Analysis 
             userId={user?.id}
-            fullBodyImage={fullBodyImage}
+            fullBodyImages={fullBodyImages}
             muscleImages={muscleImages}
             onAnalyzeComplete={handleAnalysisComplete}
           />
