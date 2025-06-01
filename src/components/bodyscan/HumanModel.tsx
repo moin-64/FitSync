@@ -1,7 +1,10 @@
 
 import React, { useRef, useCallback } from 'react';
-import { useFrame, useThree } from '@react-three/fiber';
+import { useFrame, useThree, extend } from '@react-three/fiber';
 import * as THREE from 'three';
+
+// Extend THREE to make sure all geometries and materials are available
+extend(THREE);
 
 interface HumanModelProps {
   bodyData: any;
