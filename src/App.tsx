@@ -17,7 +17,6 @@ import Workouts from './pages/Workouts';
 import Friends from './pages/Friends';
 import WorkoutSession from './pages/WorkoutSession';
 import Analytics from './pages/Analytics';
-import SecurityAlert from './components/SecurityAlert';
 import './App.css';
 
 function App() {
@@ -27,7 +26,6 @@ function App() {
         <AuthProvider>
           <SecureAuthProvider>
             <UserProvider>
-              <SecurityAlert />
               <Routes>
                 {/* Public routes */}
                 <Route path="/" element={<LandingPage />} />
