@@ -6,7 +6,7 @@ import type { Database } from './types';
 const SUPABASE_URL = "https://vlvaytsqqlzfprphvgll.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZsdmF5dHNxcWx6ZnBycGh2Z2xsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM1NzMxNDYsImV4cCI6MjA1OTE0OTE0Nn0.q-ndRrgUZpvGVutBa-FDXEb8_IOnH0RRvKfXNTkvQB4";
 
-// Configure Supabase client with optimized settings
+// Configure Supabase client with enhanced reliability settings
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     storage: typeof window !== 'undefined' ? window.localStorage : undefined,
@@ -23,6 +23,17 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   global: {
     headers: {
       'X-Client-Info': 'lovable-fitness-app'
+    },
+    fetch: (url, options = {}) => {
+      console.log('Supabase request:', url);
+      return fetch(url, {
+        ...options,
+        // Add timeout to prevent hanging requests
+        signal: AbortSignal.timeout(30000)
+      }).catch(error => {
+        console.error('Supabase fetch error:', error);
+        throw error;
+      });
     }
   }
 });

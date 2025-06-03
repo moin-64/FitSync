@@ -48,8 +48,10 @@ additional_redirect_urls = [
   "https://8accdd86-56fc-4db8-bf32-911128b6866f.lovableproject.com",
   "https://8accdd86-56fc-4db8-bf32-911128b6866f.lovableproject.com/",
   "https://8accdd86-56fc-4db8-bf32-911128b6866f.lovableproject.com/home",
+  "https://8accdd86-56fc-4db8-bf32-911128b6866f.lovableproject.com/secure-login",
   "http://localhost:3000",
-  "http://localhost:3000/"
+  "http://localhost:3000/",
+  "http://localhost:3000/home"
 ]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 seconds (one
 # week).
