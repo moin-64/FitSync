@@ -25,24 +25,57 @@ export const SecureAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const { toast } = useToast();
 
   useEffect(() => {
-    // Set up auth state listener FIRST
+    let mounted = true;
+
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.email);
+      async (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.email || 'no user');
+        
+        if (!mounted) return;
+
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+
+        // Handle specific auth events
+        if (event === 'SIGNED_IN' && session) {
+          console.log('User signed in successfully');
+        } else if (event === 'SIGNED_OUT') {
+          console.log('User signed out');
+          setSession(null);
+          setUser(null);
+        } else if (event === 'TOKEN_REFRESHED') {
+          console.log('Token refreshed');
+        }
       }
     );
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    // Get initial session
+    const getInitialSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error('Error getting session:', error);
+        } else if (mounted) {
+          setSession(session);
+          setUser(session?.user ?? null);
+        }
+      } catch (error) {
+        console.error('Error in getSession:', error);
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
 
-    return () => subscription.unsubscribe();
+    getInitialSession();
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signUp = async (email: string, password: string, username: string) => {
@@ -100,12 +133,14 @@ export const SecureAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       setLoading(true);
       
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) throw error;
+
+      console.log('Sign in successful:', data.user?.email);
 
       toast({
         title: 'Erfolgreich angemeldet',
@@ -128,15 +163,20 @@ export const SecureAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const signOut = async () => {
     try {
+      setLoading(true);
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+
+      // Clear state immediately
+      setSession(null);
+      setUser(null);
 
       toast({
         title: 'Abgemeldet',
         description: 'Sie wurden erfolgreich abgemeldet',
       });
 
-      navigate('/login');
+      navigate('/secure-login');
     } catch (error) {
       console.error('Abmeldung fehlgeschlagen:', error);
       toast({
@@ -144,6 +184,8 @@ export const SecureAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         description: 'Es gab ein Problem bei der Abmeldung',
         variant: 'destructive',
       });
+    } finally {
+      setLoading(false);
     }
   };
 
