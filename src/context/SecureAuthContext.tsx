@@ -26,6 +26,7 @@ export const SecureAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   useEffect(() => {
     let mounted = true;
+    console.log('Initializing Supabase auth...');
 
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -36,15 +37,21 @@ export const SecureAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
         setSession(session);
         setUser(session?.user ?? null);
-        setLoading(false);
+        
+        // Only set loading to false after we've processed the auth state
+        if (event === 'INITIAL_SESSION') {
+          setLoading(false);
+        }
 
         // Handle specific auth events
         if (event === 'SIGNED_IN' && session) {
           console.log('User signed in successfully');
+          setLoading(false);
         } else if (event === 'SIGNED_OUT') {
           console.log('User signed out');
           setSession(null);
           setUser(null);
+          setLoading(false);
         } else if (event === 'TOKEN_REFRESHED') {
           console.log('Token refreshed');
         }
@@ -54,18 +61,22 @@ export const SecureAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     // Get initial session
     const getInitialSession = async () => {
       try {
+        console.log('Getting initial session...');
         const { data: { session }, error } = await supabase.auth.getSession();
+        
         if (error) {
-          console.error('Error getting session:', error);
+          console.error('Error getting initial session:', error);
         } else if (mounted) {
+          console.log('Initial session retrieved:', session?.user?.email || 'no session');
           setSession(session);
           setUser(session?.user ?? null);
         }
       } catch (error) {
         console.error('Error in getSession:', error);
       } finally {
+        // Ensure loading is set to false even if there's an error
         if (mounted) {
-          setLoading(false);
+          setTimeout(() => setLoading(false), 100);
         }
       }
     };
@@ -73,6 +84,7 @@ export const SecureAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     getInitialSession();
 
     return () => {
+      console.log('Cleaning up auth context...');
       mounted = false;
       subscription.unsubscribe();
     };
@@ -81,6 +93,7 @@ export const SecureAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const signUp = async (email: string, password: string, username: string) => {
     try {
       setLoading(true);
+      console.log('Starting signup process for:', email);
       
       // Enhanced password validation
       if (password.length < 8) {
@@ -96,11 +109,9 @@ export const SecureAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         throw new Error('Das Passwort muss Groß- und Kleinbuchstaben, Zahlen und Sonderzeichen enthalten');
       }
 
-      console.log('Starting registration process...');
-      
-      // Use the current origin for redirect
-      const redirectUrl = window.location.origin;
-      console.log('Redirect URL:', redirectUrl);
+      // Use production URL for redirects
+      const redirectUrl = 'https://8accdd86-56fc-4db8-bf32-911128b6866f.lovableproject.com/';
+      console.log('Using redirect URL:', redirectUrl);
       
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -118,25 +129,34 @@ export const SecureAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         throw error;
       }
 
-      console.log('Registration successful:', data);
+      console.log('Registration response:', data);
+
+      // Since email confirmation is disabled, the user should be logged in immediately
+      if (data.user && !data.session) {
+        console.log('User created but no session - this is expected with email confirmation disabled');
+      }
 
       toast({
         title: 'Registrierung erfolgreich',
-        description: 'Bitte überprüfen Sie Ihre E-Mail zur Bestätigung',
+        description: data.session ? 'Sie sind jetzt angemeldet!' : 'Bitte überprüfen Sie Ihre E-Mail zur Bestätigung',
       });
 
+      // If we have a session, redirect to home
+      if (data.session) {
+        navigate('/home');
+      }
+
     } catch (error) {
-      console.error('Registrierung fehlgeschlagen:', error);
+      console.error('Registration failed:', error);
       
       let message = 'Ein unbekannter Fehler ist aufgetreten';
       if (error instanceof Error) {
-        // Handle common Supabase errors
         if (error.message.includes('User already registered')) {
           message = 'Ein Benutzer mit dieser E-Mail ist bereits registriert';
         } else if (error.message.includes('Invalid email')) {
           message = 'Ungültige E-Mail-Adresse';
-        } else if (error.message.includes('Failed to fetch')) {
-          message = 'Verbindungsproblem. Bitte versuchen Sie es erneut.';
+        } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+          message = 'Verbindungsproblem. Bitte überprüfen Sie Ihre Internetverbindung und versuchen Sie es erneut.';
         } else {
           message = error.message;
         }
@@ -156,15 +176,19 @@ export const SecureAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const signIn = async (email: string, password: string) => {
     try {
       setLoading(true);
+      console.log('Starting signin process for:', email);
       
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Signin error:', error);
+        throw error;
+      }
 
-      console.log('Sign in successful:', data.user?.email);
+      console.log('Sign in successful for:', data.user?.email);
 
       toast({
         title: 'Erfolgreich angemeldet',
@@ -174,9 +198,21 @@ export const SecureAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       navigate('/home');
     } catch (error) {
       console.error('Anmeldung fehlgeschlagen:', error);
+      
+      let message = 'Ungültige Anmeldedaten';
+      if (error instanceof Error) {
+        if (error.message.includes('Invalid login credentials')) {
+          message = 'Ungültige E-Mail oder Passwort';
+        } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+          message = 'Verbindungsproblem. Bitte überprüfen Sie Ihre Internetverbindung und versuchen Sie es erneut.';
+        } else {
+          message = error.message;
+        }
+      }
+      
       toast({
         title: 'Anmeldung fehlgeschlagen',
-        description: error instanceof Error ? error.message : 'Ungültige Anmeldedaten',
+        description: message,
         variant: 'destructive',
       });
       throw error;
@@ -188,8 +224,15 @@ export const SecureAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const signOut = async () => {
     try {
       setLoading(true);
+      console.log('Starting signout process...');
+      
       const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      if (error) {
+        console.error('Signout error:', error);
+        throw error;
+      }
+
+      console.log('Signout successful');
 
       // Clear state immediately
       setSession(null);
