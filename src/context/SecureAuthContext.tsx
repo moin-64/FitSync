@@ -29,7 +29,7 @@ export const SecureAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         console.log('Auth state changed:', event, session?.user?.email || 'no user');
         
         if (!mounted) return;
@@ -96,9 +96,13 @@ export const SecureAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         throw new Error('Das Passwort muss Groß- und Kleinbuchstaben, Zahlen und Sonderzeichen enthalten');
       }
 
-      const redirectUrl = `${window.location.origin}/`;
+      console.log('Starting registration process...');
       
-      const { error } = await supabase.auth.signUp({
+      // Use the current origin for redirect
+      const redirectUrl = window.location.origin;
+      console.log('Redirect URL:', redirectUrl);
+      
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -109,7 +113,12 @@ export const SecureAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase signup error:', error);
+        throw error;
+      }
+
+      console.log('Registration successful:', data);
 
       toast({
         title: 'Registrierung erfolgreich',
@@ -118,9 +127,24 @@ export const SecureAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     } catch (error) {
       console.error('Registrierung fehlgeschlagen:', error);
+      
+      let message = 'Ein unbekannter Fehler ist aufgetreten';
+      if (error instanceof Error) {
+        // Handle common Supabase errors
+        if (error.message.includes('User already registered')) {
+          message = 'Ein Benutzer mit dieser E-Mail ist bereits registriert';
+        } else if (error.message.includes('Invalid email')) {
+          message = 'Ungültige E-Mail-Adresse';
+        } else if (error.message.includes('Failed to fetch')) {
+          message = 'Verbindungsproblem. Bitte versuchen Sie es erneut.';
+        } else {
+          message = error.message;
+        }
+      }
+      
       toast({
         title: 'Registrierung fehlgeschlagen',
-        description: error instanceof Error ? error.message : 'Ein unbekannter Fehler ist aufgetreten',
+        description: message,
         variant: 'destructive',
       });
       throw error;
