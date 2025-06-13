@@ -25,33 +25,24 @@ export const SecureAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const { toast } = useToast();
 
   useEffect(() => {
-    let mounted = true;
     console.log('🔄 Initializing Supabase auth...');
 
-    // Set up auth state listener
+    // Set up auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         console.log('🔐 Auth state changed:', event, session?.user?.email || 'no user');
         
-        if (!mounted) return;
-
         setSession(session);
         setUser(session?.user ?? null);
         
-        // Handle specific auth events
         if (event === 'INITIAL_SESSION') {
-          console.log('📋 Initial session loaded');
           setLoading(false);
         } else if (event === 'SIGNED_IN' && session) {
           console.log('✅ User signed in successfully');
           setLoading(false);
         } else if (event === 'SIGNED_OUT') {
           console.log('👋 User signed out');
-          setSession(null);
-          setUser(null);
           setLoading(false);
-        } else if (event === 'TOKEN_REFRESHED') {
-          console.log('🔄 Token refreshed');
         }
       }
     );
@@ -59,12 +50,11 @@ export const SecureAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     // Get initial session
     const getInitialSession = async () => {
       try {
-        console.log('🔍 Getting initial session...');
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error('❌ Error getting initial session:', error);
-        } else if (mounted) {
+        } else {
           console.log('📄 Initial session retrieved:', session?.user?.email || 'no session');
           setSession(session);
           setUser(session?.user ?? null);
@@ -72,17 +62,13 @@ export const SecureAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       } catch (error) {
         console.error('💥 Error in getSession:', error);
       } finally {
-        if (mounted) {
-          setTimeout(() => setLoading(false), 100);
-        }
+        setLoading(false);
       }
     };
 
     getInitialSession();
 
     return () => {
-      console.log('🧹 Cleaning up auth context...');
-      mounted = false;
       subscription.unsubscribe();
     };
   }, []);
@@ -92,21 +78,6 @@ export const SecureAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       setLoading(true);
       console.log('🚀 Starting signup process for:', email);
       
-      // Enhanced password validation
-      if (password.length < 8) {
-        throw new Error('Das Passwort muss mindestens 8 Zeichen lang sein');
-      }
-      
-      const hasUpperCase = /[A-Z]/.test(password);
-      const hasLowerCase = /[a-z]/.test(password);
-      const hasNumbers = /\d/.test(password);
-      const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-      
-      if (!(hasUpperCase && hasLowerCase && hasNumbers && hasSpecialChar)) {
-        throw new Error('Das Passwort muss Groß- und Kleinbuchstaben, Zahlen und Sonderzeichen enthalten');
-      }
-
-      // Use current location for redirect
       const redirectUrl = window.location.origin + '/home';
       console.log('🔗 Using redirect URL:', redirectUrl);
       
@@ -128,13 +99,11 @@ export const SecureAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
       console.log('📊 Registration response:', data);
 
-      // Success message
       toast({
         title: 'Registrierung erfolgreich',
         description: data.session ? 'Sie sind jetzt angemeldet!' : 'Registrierung abgeschlossen',
       });
 
-      // If we have a session, redirect to home
       if (data.session) {
         console.log('🏠 Redirecting to home...');
         navigate('/home');
@@ -149,10 +118,6 @@ export const SecureAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           message = 'Ein Benutzer mit dieser E-Mail ist bereits registriert';
         } else if (error.message.includes('Invalid email')) {
           message = 'Ungültige E-Mail-Adresse';
-        } else if (error.message.includes('Failed to fetch') || 
-                   error.message.includes('NetworkError') ||
-                   error.message.includes('fetch')) {
-          message = 'Verbindungsproblem. Bitte versuchen Sie es erneut.';
         } else {
           message = error.message;
         }
@@ -199,10 +164,6 @@ export const SecureAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       if (error instanceof Error) {
         if (error.message.includes('Invalid login credentials')) {
           message = 'Ungültige E-Mail oder Passwort';
-        } else if (error.message.includes('Failed to fetch') || 
-                   error.message.includes('NetworkError') ||
-                   error.message.includes('fetch')) {
-          message = 'Verbindungsproblem. Bitte versuchen Sie es erneut.';
         } else {
           message = error.message;
         }
@@ -232,7 +193,6 @@ export const SecureAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
       console.log('✅ Signout successful');
 
-      // Clear state immediately
       setSession(null);
       setUser(null);
 

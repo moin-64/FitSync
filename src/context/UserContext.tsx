@@ -8,7 +8,6 @@ import { useWorkoutManagement } from '@/hooks/useWorkoutManagement';
 import { useFriends } from '@/hooks/useFriends';
 import { useProfileManagement } from '@/hooks/useProfileManagement';
 import { useNotifications } from '@/hooks/useNotifications';
-import { supabase } from '@/integrations/supabase/client';
 import { generateCSRFToken } from '../services/authService';
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -23,42 +22,6 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     setCsrfToken(generateCSRFToken());
   }, []);
-  
-  // CSRF-Token regelmäßig rotieren
-  useEffect(() => {
-    const tokenRotationInterval = setInterval(() => {
-      setCsrfToken(generateCSRFToken());
-    }, 30 * 60 * 1000); // Token alle 30 Minuten rotieren
-    
-    return () => clearInterval(tokenRotationInterval);
-  }, []);
-  
-  // Set up auth state listener to reload data when user logs in/out
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      // Reload user data when authenticated
-      console.log("User authenticated, loading data", user.id);
-      reloadData();
-    }
-    
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN') {
-        // Reload user data when signed in
-        console.log("Auth state change: SIGNED_IN");
-        reloadData();
-        toast({
-          title: 'Angemeldet',
-          description: 'Deine Trainingsdaten werden geladen',
-        });
-      } else if (event === 'SIGNED_OUT') {
-        console.log("Auth state change: SIGNED_OUT");
-      }
-    });
-    
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [isAuthenticated, user, reloadData, toast]);
   
   // Show error toast if there's an error loading user data
   useEffect(() => {
@@ -99,23 +62,6 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     markNotificationAsRead,
     clearNotification
   } = useNotifications(userData.profile, updateProfile);
-
-  // Content Security Policy-Verstoß protokollieren
-  useEffect(() => {
-    const reportCSP = (e: SecurityPolicyViolationEvent) => {
-      console.error('CSP-Verstoß:', {
-        'blockiert-uri': e.blockedURI,
-        'verletzt-direktive': e.violatedDirective,
-        'dokument-uri': e.documentURI
-      });
-    };
-    
-    document.addEventListener('securitypolicyviolation', reportCSP);
-    
-    return () => {
-      document.removeEventListener('securitypolicyviolation', reportCSP);
-    };
-  }, []);
 
   return (
     <UserContext.Provider
@@ -167,9 +113,6 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
           try {
             await removeLimitation(limitation);
             return true;
-          } catch (error) {
-            console.error('Error removing limitation:', error);
-            return false;
           }
         },
         // Functions from useFriends
