@@ -12,6 +12,7 @@ import { Form, FormField, FormItem, FormControl, FormMessage } from "@/component
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
+import ConnectionStatus from '@/components/ConnectionStatus';
 
 const registerSchema = z.object({
   username: z.string().min(3, "Benutzername muss mindestens 3 Zeichen enthalten"),
@@ -32,7 +33,7 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 
 const SecureRegister = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const { signUp, loading } = useSecureAuth();
+  const { signUp, loading, connectionHealthy } = useSecureAuth();
   
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -51,6 +52,11 @@ const SecureRegister = () => {
   }, [form.formState.isDirty, errorMessage]);
 
   const handleSubmit = async (values: RegisterFormValues) => {
+    if (!connectionHealthy) {
+      setErrorMessage('Keine Verbindung zum Server. Bitte überprüfen Sie Ihre Internetverbindung.');
+      return;
+    }
+
     try {
       setErrorMessage(null);
       await signUp(values.email, values.password, values.username);
@@ -65,6 +71,8 @@ const SecureRegister = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+      <ConnectionStatus />
+      
       <Link to="/secure-login" className="absolute top-6 left-6 text-muted-foreground hover:text-foreground transition-colors">
         <ArrowLeft className="h-6 w-6" />
       </Link>
@@ -198,7 +206,7 @@ const SecureRegister = () => {
               <Button 
                 type="submit" 
                 className="w-full" 
-                disabled={loading}
+                disabled={loading || !connectionHealthy}
               >
                 {loading ? (
                   <>

@@ -6,7 +6,7 @@ import type { Database } from './types';
 const SUPABASE_URL = "https://vlvaytsqqlzfprphvgll.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZsdmF5dHNxcWx6ZnBycGh2Z2xsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM1NzMxNDYsImV4cCI6MjA1OTE0OTE0Nn0.q-ndRrgUZpvGVutBa-FDXEb8_IOnH0RRvKfXNTkvQB4";
 
-// Simplified and reliable Supabase client configuration
+// Improved Supabase client configuration with better error handling and network resilience
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     storage: typeof window !== 'undefined' ? window.localStorage : undefined,
@@ -18,6 +18,70 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   global: {
     headers: {
       'X-Client-Info': 'lovable-fitness-app'
+    },
+    fetch: (url, options = {}) => {
+      console.log('🌐 Supabase fetch:', url);
+      
+      // Add timeout and retry logic
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      const fetchWithRetry = async (retryCount = 0): Promise<Response> => {
+        try {
+          const response = await fetch(url, {
+            ...options,
+            signal: controller.signal,
+            headers: {
+              ...options.headers,
+              'Content-Type': 'application/json',
+            }
+          });
+          
+          clearTimeout(timeoutId);
+          
+          if (!response.ok && retryCount < 2) {
+            console.warn(`🔄 Retry ${retryCount + 1} for ${url}`);
+            await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+            return fetchWithRetry(retryCount + 1);
+          }
+          
+          return response;
+        } catch (error) {
+          clearTimeout(timeoutId);
+          
+          if (retryCount < 2 && error.name !== 'AbortError') {
+            console.warn(`🔄 Retry ${retryCount + 1} for ${url} after error:`, error);
+            await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+            return fetchWithRetry(retryCount + 1);
+          }
+          
+          console.error('❌ Supabase fetch failed:', error);
+          throw error;
+        }
+      };
+      
+      return fetchWithRetry();
+    }
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 2
     }
   }
 });
+
+// Add connection health check
+export const checkSupabaseConnection = async (): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase.from('workouts').select('count', { count: 'exact', head: true });
+    if (error) {
+      console.warn('⚠️ Supabase connection check failed:', error);
+      return false;
+    }
+    console.log('✅ Supabase connection healthy');
+    return true;
+  } catch (error) {
+    console.error('❌ Supabase connection check error:', error);
+    return false;
+  }
+};
