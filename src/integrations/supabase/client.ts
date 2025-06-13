@@ -7,7 +7,7 @@ import type { Database } from './types';
 const SUPABASE_URL = "https://vlvaytsqqlzfprphvgll.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZsdmF5dHNxcWx6ZnBycGh2Z2xsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM1NzMxNDYsImV4cCI6MjA1OTE0OTE0Nn0.q-ndRrgUZpvGVutBa-FDXEb8_IOnH0RRvKfXNTkvQB4";
 
-// Improved Supabase client configuration with better error handling and network resilience
+// Enhanced Supabase client configuration with comprehensive error handling
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     storage: typeof window !== 'undefined' ? window.localStorage : undefined,
@@ -20,29 +20,45 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     headers: {
       'X-Client-Info': 'lovable-fitness-app'
     },
-    fetch: (url, options: RequestInit = {}) => {
-      console.log('🌐 Supabase fetch:', url);
+    fetch: async (url: string, options: RequestInit = {}) => {
+      console.log('🌐 Supabase fetch attempt:', url);
       
-      // Add timeout and retry logic
+      // Enhanced timeout and retry logic
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      const timeoutId = setTimeout(() => {
+        console.warn('🕐 Request timeout for:', url);
+        controller.abort();
+      }, 15000); // Increased to 15 seconds
       
       const fetchWithRetry = async (retryCount = 0): Promise<Response> => {
         try {
+          console.log(`🔄 Attempt ${retryCount + 1} for ${url}`);
+          
           const response = await fetch(url, {
             ...options,
             signal: controller.signal,
             headers: {
-              ...(options.headers || {}),
               'Content-Type': 'application/json',
-            }
+              'Accept': 'application/json',
+              'User-Agent': 'lovable-fitness-app',
+              ...(options.headers || {}),
+            },
+            // Add explicit mode for CORS
+            mode: 'cors',
+            credentials: 'omit'
           });
           
           clearTimeout(timeoutId);
           
-          if (!response.ok && retryCount < 2) {
-            console.warn(`🔄 Retry ${retryCount + 1} for ${url}`);
-            await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+          console.log(`✅ Response received for ${url}:`, {
+            status: response.status,
+            statusText: response.statusText,
+            ok: response.ok
+          });
+          
+          if (!response.ok && retryCount < 3) {
+            console.warn(`⚠️ Non-OK response, retry ${retryCount + 1} for ${url}:`, response.status);
+            await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
             return fetchWithRetry(retryCount + 1);
           }
           
@@ -50,13 +66,16 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
         } catch (error) {
           clearTimeout(timeoutId);
           
-          if (retryCount < 2 && error.name !== 'AbortError') {
-            console.warn(`🔄 Retry ${retryCount + 1} for ${url} after error:`, error);
-            await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+          console.error(`❌ Fetch error on attempt ${retryCount + 1} for ${url}:`, error);
+          
+          if (retryCount < 3 && error.name !== 'AbortError') {
+            const delay = Math.pow(2, retryCount) * 1000;
+            console.warn(`🔄 Retrying in ${delay}ms for ${url}`);
+            await new Promise(resolve => setTimeout(resolve, delay));
             return fetchWithRetry(retryCount + 1);
           }
           
-          console.error('❌ Supabase fetch failed:', error);
+          console.error('💥 All retries exhausted for:', url);
           throw error;
         }
       };
@@ -66,24 +85,66 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   },
   realtime: {
     params: {
-      eventsPerSecond: 2
+      eventsPerSecond: 1
     }
   }
 });
 
-// Add connection health check
+// Enhanced connection health check with detailed diagnostics
 export const checkSupabaseConnection = async (): Promise<boolean> => {
   try {
-    const { data, error } = await supabase.from('workouts').select('count', { count: 'exact', head: true });
+    console.log('🔍 Starting Supabase connection check...');
+    
+    // Test basic connectivity first
+    const startTime = Date.now();
+    const { data, error } = await supabase
+      .from('workouts')
+      .select('count', { count: 'exact', head: true })
+      .limit(1);
+    
+    const duration = Date.now() - startTime;
+    
     if (error) {
-      console.warn('⚠️ Supabase connection check failed:', error);
+      console.error('❌ Supabase connection check failed:', {
+        error: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
       return false;
     }
-    console.log('✅ Supabase connection healthy');
+    
+    console.log(`✅ Supabase connection healthy (${duration}ms)`);
     return true;
   } catch (error) {
-    console.error('❌ Supabase connection check error:', error);
+    console.error('💥 Supabase connection check error:', error);
     return false;
   }
 };
 
+// Network diagnostics helper
+export const runNetworkDiagnostics = async () => {
+  console.log('🔧 Running network diagnostics...');
+  
+  try {
+    // Test basic internet connectivity
+    const response = await fetch('https://httpbin.org/get', { 
+      method: 'GET',
+      mode: 'cors' 
+    });
+    console.log('🌐 Internet connectivity:', response.ok ? 'OK' : 'FAILED');
+  } catch (error) {
+    console.error('🌐 Internet connectivity test failed:', error);
+  }
+  
+  try {
+    // Test Supabase endpoint reachability
+    const response = await fetch(SUPABASE_URL, { 
+      method: 'HEAD',
+      mode: 'cors' 
+    });
+    console.log('🔗 Supabase endpoint reachable:', response.ok ? 'OK' : 'FAILED');
+  } catch (error) {
+    console.error('🔗 Supabase endpoint test failed:', error);
+  }
+};

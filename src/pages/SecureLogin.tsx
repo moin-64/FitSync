@@ -12,6 +12,7 @@ import { Form, FormField, FormItem, FormControl, FormMessage } from "@/component
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
+import ConnectionStatus from '@/components/ConnectionStatus';
 
 const loginSchema = z.object({
   email: z.string().email("Ungültige E-Mail-Adresse"),
@@ -22,7 +23,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 const SecureLogin = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const { signIn, loading } = useSecureAuth();
+  const { signIn, loading, connectionHealthy } = useSecureAuth();
   
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -39,6 +40,11 @@ const SecureLogin = () => {
   }, [form.formState.isDirty, errorMessage]);
 
   const handleSubmit = async (values: LoginFormValues) => {
+    if (!connectionHealthy) {
+      setErrorMessage('Keine Verbindung zum Server. Bitte überprüfen Sie Ihre Internetverbindung.');
+      return;
+    }
+
     try {
       setErrorMessage(null);
       await signIn(values.email, values.password);
@@ -53,6 +59,8 @@ const SecureLogin = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+      <ConnectionStatus />
+      
       <Link to="/" className="absolute top-6 left-6 text-muted-foreground hover:text-foreground transition-colors">
         <ArrowLeft className="h-6 w-6" />
       </Link>
@@ -97,7 +105,7 @@ const SecureLogin = () => {
                           type="email"
                           placeholder="name@example.com"
                           className="pl-10"
-                          disabled={loading}
+                          disabled={loading || !connectionHealthy}
                           autoComplete="email"
                           {...field}
                         />
@@ -121,7 +129,7 @@ const SecureLogin = () => {
                           id="password"
                           type="password"
                           className="pl-10"
-                          disabled={loading}
+                          disabled={loading || !connectionHealthy}
                           autoComplete="current-password"
                           {...field}
                         />
@@ -137,7 +145,7 @@ const SecureLogin = () => {
               <Button 
                 type="submit" 
                 className="w-full" 
-                disabled={loading}
+                disabled={loading || !connectionHealthy}
               >
                 {loading ? (
                   <>
