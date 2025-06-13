@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useAuth } from './AuthContext';
 import { UserContextType } from '../types/user';
@@ -113,6 +112,9 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
           try {
             await removeLimitation(limitation);
             return true;
+          } catch (error) {
+            console.error('Error removing limitation:', error);
+            return false;
           }
         },
         // Functions from useFriends
