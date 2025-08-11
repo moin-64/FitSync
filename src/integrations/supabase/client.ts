@@ -38,8 +38,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
             ...options,
             signal: controller.signal,
             headers: {
-'Accept': 'application/json',
-              'User-Agent': 'lovable-fitness-app',
+              'Accept': 'application/json',
               ...(options.body ? { 'Content-Type': 'application/json' } : {}),
               ...(options.headers || {}),
             },
@@ -138,12 +137,17 @@ export const runNetworkDiagnostics = async () => {
   }
   
   try {
-    // Test Supabase endpoint reachability
-    const response = await fetch(SUPABASE_URL, { 
-      method: 'HEAD',
-      mode: 'cors' 
+    // Test Supabase REST endpoint reachability with proper headers
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/?select=1`, {
+      method: 'GET',
+      mode: 'cors',
+      headers: {
+        'Accept': 'application/json',
+        'apikey': SUPABASE_PUBLISHABLE_KEY,
+        'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+      },
     });
-    console.log('🔗 Supabase endpoint reachable:', response.ok ? 'OK' : 'FAILED');
+    console.log('🔗 Supabase REST reachable:', response.ok ? 'OK' : `FAILED (${response.status})`);
   } catch (error) {
     console.error('🔗 Supabase endpoint test failed:', error);
   }
