@@ -1,6 +1,8 @@
 
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { Toaster } from '@/components/ui/toaster';
+import { useToast } from '@/hooks/use-toast';
 import { AuthProvider } from './context/AuthContext';
 import { SecureAuthProvider } from './context/SecureAuthContext';
 import { UserProvider } from './context/UserContext';
@@ -17,15 +19,32 @@ import Workouts from './pages/Workouts';
 import Friends from './pages/Friends';
 import WorkoutSession from './pages/WorkoutSession';
 import Analytics from './pages/Analytics';
+import ConnectionStatus from './components/ConnectionStatus';
 import './App.css';
 
 function App() {
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const handleOnline = () => toast({ title: 'Online', description: 'Verbindung wiederhergestellt' });
+    const handleOffline = () => toast({ title: 'Offline', description: 'Keine Internetverbindung', variant: 'destructive' });
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [toast]);
+
   return (
     <Router>
       <div className="App">
         <AuthProvider>
           <SecureAuthProvider>
             <UserProvider>
+              <ConnectionStatus />
               <Routes>
                 {/* Public routes */}
                 <Route path="/" element={<LandingPage />} />

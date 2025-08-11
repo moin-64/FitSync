@@ -2,7 +2,7 @@
 import React from 'react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Wifi, WifiOff, RefreshCw, AlertTriangle } from 'lucide-react';
+import { WifiOff, RefreshCw, AlertTriangle } from 'lucide-react';
 import { useSecureAuth } from '@/context/SecureAuthContext';
 import { checkSupabaseConnection, runNetworkDiagnostics } from '@/integrations/supabase/client';
 
@@ -47,7 +47,7 @@ const ConnectionStatus = () => {
 
   return (
     <div className="fixed top-4 left-4 right-4 z-50 max-w-md mx-auto">
-      <Alert variant="destructive" className="border-red-500 bg-red-50">
+      <Alert variant="destructive">
         <WifiOff className="h-4 w-4" />
         <AlertTitle className="flex items-center gap-2">
           <AlertTriangle className="h-4 w-4" />
