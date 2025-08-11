@@ -38,9 +38,9 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
             ...options,
             signal: controller.signal,
             headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
+'Accept': 'application/json',
               'User-Agent': 'lovable-fitness-app',
+              ...(options.body ? { 'Content-Type': 'application/json' } : {}),
               ...(options.headers || {}),
             },
             // Add explicit mode for CORS
@@ -97,9 +97,9 @@ export const checkSupabaseConnection = async (): Promise<boolean> => {
     
     // Test basic connectivity first
     const startTime = Date.now();
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('workouts')
-      .select('count', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: false })
       .limit(1);
     
     const duration = Date.now() - startTime;
